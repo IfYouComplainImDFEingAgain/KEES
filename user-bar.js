@@ -50,6 +50,7 @@
     ];
 
     let emoteBarVisible = false;
+    let autoSendEnabled = true; // Default to auto-send enabled
 
     function createEmoteBar(doc) {
         // Create the emote bar container
@@ -79,6 +80,39 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         `;
         emoteBar.appendChild(label);
+
+        // Add auto-send checkbox
+        const autoSendContainer = doc.createElement('label');
+        autoSendContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+
+        const autoSendCheckbox = doc.createElement('input');
+        autoSendCheckbox.type = 'checkbox';
+        autoSendCheckbox.id = 'auto-send-checkbox';
+        autoSendCheckbox.checked = autoSendEnabled;
+        autoSendCheckbox.style.cssText = `
+            margin: 0;
+            cursor: pointer;
+        `;
+
+        const autoSendText = doc.createElement('span');
+        autoSendText.textContent = 'Auto-send';
+
+        autoSendCheckbox.addEventListener('change', (e) => {
+            autoSendEnabled = e.target.checked;
+        });
+
+        autoSendContainer.appendChild(autoSendCheckbox);
+        autoSendContainer.appendChild(autoSendText);
+        emoteBar.appendChild(autoSendContainer);
 
         // Create emote buttons
         emotes.forEach(emote => {
@@ -141,7 +175,7 @@
                 `;
             }
 
-            contentElement.title = `${emote.title} - Click to insert ${emote.code}`;
+            contentElement.title = emote.title ? `${emote.title} - Click to insert ${emote.code}` : `Click to insert ${emote.code}`;
             emoteButton.appendChild(contentElement);
 
             // Add hover effect
@@ -161,13 +195,15 @@
                 e.stopPropagation();
                 insertEmote(emote.code, doc);
 
-                // Auto-send the emote
-                setTimeout(() => {
-                    const submitBtn = (doc || document).getElementById('new-message-submit');
-                    if (submitBtn) {
-                        submitBtn.click();
-                    }
-                }, 50);
+                // Auto-send the emote only if enabled
+                if (autoSendEnabled) {
+                    setTimeout(() => {
+                        const submitBtn = (doc || document).getElementById('new-message-submit');
+                        if (submitBtn) {
+                            submitBtn.click();
+                        }
+                    }, 50);
+                }
             });
 
             emoteBar.appendChild(emoteButton);
@@ -224,81 +260,81 @@
         }
     }
 
-    function modifySendButton(doc, win) {
-        const submitButton = doc.getElementById('new-message-submit');
-        const input = doc.getElementById('new-message-input');
+    function createEmoteToggleButton(doc) {
+        // Create emote toggle button
+        const emoteButton = doc.createElement('button');
+        emoteButton.id = 'emote-toggle-button';
+        emoteButton.type = 'button';
+        emoteButton.style.cssText = `
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            margin-right: 8px;
+        `;
 
-        if (submitButton && !submitButton.hasAttribute('data-emote-modified')) {
-            submitButton.setAttribute('data-emote-modified', 'true');
+        // Create Ross emote content
+        const rossImg = doc.createElement('img');
+        rossImg.src = 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png';
+        rossImg.style.cssText = `
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            display: block;
+            filter: brightness(0.9);
+            transition: filter 0.2s ease;
+        `;
 
-            // Store original click handler by cloning the button
-            const originalButton = submitButton.cloneNode(true);
+        emoteButton.appendChild(rossImg);
 
-            // Create new click handler
-            submitButton.addEventListener('click', (e) => {
-                // If shift is held OR there's text in the input, send the message
-                if (e.shiftKey || (input && input.textContent.trim().length > 0)) {
-                    // Let the original handler run
-                    return;
-                } else {
-                    // Toggle emote bar
-                    e.preventDefault();
-                    e.stopPropagation();
+        // Add hover effect
+        emoteButton.addEventListener('mouseenter', () => {
+            emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
+            emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            rossImg.style.filter = 'brightness(1.2)';
+        });
 
-                    const emoteBar = doc.getElementById('custom-emote-bar');
-                    if (emoteBar) {
-                        emoteBarVisible = !emoteBarVisible;
-                        emoteBar.style.display = emoteBarVisible ? 'flex' : 'none';
-                    }
-                }
-            }, true);
+        emoteButton.addEventListener('mouseleave', () => {
+            emoteButton.style.background = 'transparent';
+            emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            rossImg.style.filter = 'brightness(0.9)';
+        });
 
-            // Replace button content with Ross emote
-            const svgContainer = submitButton.querySelector('.sprite');
-            if (svgContainer) {
-                // Create new Ross emote element with same class
-                const rossEmote = doc.createElement('div');
-                rossEmote.className = 'sprite';
-                rossEmote.style.cssText = `
-                    width: 24px;
-                    height: 24px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                `;
+        // Add click handler
+        emoteButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-                // Add the Ross image inside
-                const rossImg = doc.createElement('img');
-                rossImg.src = 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png';
-                rossImg.style.cssText = `
-                    width: 100%;
-                    height: 100%;
-                    object-fit: contain;
-                    display: block;
-                    filter: brightness(0.9);
-                    transition: filter 0.2s ease;
-                `;
-
-                rossEmote.appendChild(rossImg);
-
-                // Replace the original sprite div
-                svgContainer.replaceWith(rossEmote);
-
-                // Add hover effect
-                submitButton.addEventListener('mouseenter', () => {
-                    rossImg.style.filter = 'brightness(1.2)';
-                });
-
-                submitButton.addEventListener('mouseleave', () => {
-                    rossImg.style.filter = 'brightness(0.9)';
-                });
-
-                // Ensure button is properly styled
-                submitButton.style.position = 'relative';
+            const emoteBar = doc.getElementById('custom-emote-bar');
+            if (emoteBar) {
+                emoteBarVisible = !emoteBarVisible;
+                emoteBar.style.display = emoteBarVisible ? 'flex' : 'none';
             }
+        });
 
-            // Add tooltip
-            submitButton.title = 'Click to toggle emotes | Shift+Click or type to send';
+        emoteButton.title = 'Toggle emote bar';
+        return emoteButton;
+    }
+
+    function addEmoteToggleButton(doc) {
+        const buttonsContainer = doc.querySelector('.chat-form-buttons');
+        const submitButton = doc.getElementById('new-message-submit');
+
+        if (buttonsContainer && submitButton && !doc.getElementById('emote-toggle-button')) {
+            // Ensure the buttons container is flexed horizontally
+            buttonsContainer.style.display = 'flex';
+            buttonsContainer.style.flexDirection = 'row';
+            buttonsContainer.style.alignItems = 'center';
+            buttonsContainer.style.gap = '8px';
+
+            const emoteToggleBtn = createEmoteToggleButton(doc);
+            buttonsContainer.insertBefore(emoteToggleBtn, submitButton);
         }
     }
 
@@ -315,8 +351,8 @@
                 // Insert before the form
                 messageForm.parentNode.insertBefore(emoteBar, messageForm);
 
-                // Modify the send button
-                modifySendButton(document, window);
+                // Add emote toggle button next to send button
+                addEmoteToggleButton(document);
 
                 console.log('Emote bar injected into test-chat');
             }
@@ -362,21 +398,23 @@
                                         e.stopPropagation();
                                         insertEmote(emote.code, iframeDoc);
 
-                                        // Auto-send the emote
-                                        setTimeout(() => {
-                                            const submitBtn = iframeDoc.getElementById('new-message-submit');
-                                            if (submitBtn) {
-                                                submitBtn.click();
-                                            }
-                                        }, 50);
+                                        // Auto-send the emote only if enabled
+                                        if (autoSendEnabled) {
+                                            setTimeout(() => {
+                                                const submitBtn = iframeDoc.getElementById('new-message-submit');
+                                                if (submitBtn) {
+                                                    submitBtn.click();
+                                                }
+                                            }, 50);
+                                        }
                                     });
                                 }
                             });
 
                             messageForm.parentNode.insertBefore(emoteBar, messageForm);
 
-                            // Modify the send button
-                            modifySendButton(iframeDoc, iframeWindow);
+                            // Add emote toggle button next to send button
+                            addEmoteToggleButton(iframeDoc);
 
                             console.log('Emote bar injected into iframe');
                         }
