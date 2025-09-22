@@ -65,7 +65,7 @@
             display: none;
             align-items: center;
             padding: 8px 12px;
-            background: transparent;
+            background: rgba(0, 0, 0, 0.1);
             border: none;
             border-radius: 4px;
             margin-bottom: 8px;
