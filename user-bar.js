@@ -283,6 +283,7 @@
             e.preventDefault();
             e.stopPropagation();
 
+            // Only toggle emote bar
             const emoteBar = doc.getElementById('custom-emote-bar');
             if (emoteBar) {
                 emoteBarVisible = !emoteBarVisible;
@@ -297,16 +298,28 @@
     function addEmoteToggleButton(doc) {
         const buttonsContainer = doc.querySelector('.chat-form-buttons');
         const submitButton = doc.getElementById('new-message-submit');
+        const inputElement = doc.getElementById('new-message-input');
 
-        if (buttonsContainer && submitButton && !doc.getElementById('emote-toggle-button')) {
-            // Ensure the buttons container is flexed horizontally
-            buttonsContainer.style.display = 'flex';
-            buttonsContainer.style.flexDirection = 'row';
-            buttonsContainer.style.alignItems = 'center';
-            buttonsContainer.style.gap = '4px';
+        if (buttonsContainer && submitButton && inputElement && !doc.getElementById('emote-toggle-button')) {
+            // Hide the original send button
+            submitButton.style.display = 'none';
 
+            // Create emote toggle button
             const emoteToggleBtn = createEmoteToggleButton(doc);
-            buttonsContainer.insertBefore(emoteToggleBtn, submitButton);
+
+            // Position the toggle button at the right edge of the input box
+            emoteToggleBtn.style.position = 'absolute';
+            emoteToggleBtn.style.right = '8px';
+            emoteToggleBtn.style.top = '50%';
+            emoteToggleBtn.style.transform = 'translateY(-50%)';
+            emoteToggleBtn.style.zIndex = '10';
+
+            // Make the input container relative positioned
+            const inputContainer = inputElement.parentElement;
+            if (inputContainer) {
+                inputContainer.style.position = 'relative';
+                inputContainer.appendChild(emoteToggleBtn);
+            }
         }
     }
 
