@@ -57,6 +57,43 @@
         title: 'Toggle emote bar'
     };
 
+    // Text formatting tools configuration
+    const formatTools = [
+        {
+            name: 'Bold',
+            symbol: 'B',
+            startTag: '[b]',
+            endTag: '[/b]',
+            title: 'Bold text'
+        },
+        {
+            name: 'Italic',
+            symbol: 'I',
+            startTag: '[i]',
+            endTag: '[/i]',
+            title: 'Italic text'
+        },
+        {
+            name: 'Bullet',
+            symbol: '•',
+            customAction: 'bulletLines',
+            title: 'Add bullets to lines'
+        },
+        {
+            name: 'Image',
+            symbol: '🖼',
+            startTag: '[img]',
+            endTag: '[/img]',
+            title: 'Insert image'
+        },
+        {
+            name: 'Newline',
+            symbol: '↵',
+            insertText: '\n',
+            title: 'Insert line break'
+        }
+    ];
+
     function createEmoteBar(doc) {
         // Create the emote bar container
         const emoteBar = doc.createElement('div');
@@ -67,8 +104,8 @@
             padding: 8px 12px;
             background: rgba(0, 0, 0, 0.1);
             border: none;
-            border-radius: 4px;
-            margin-bottom: 8px;
+            border-radius: 4px 4px 0 0;
+            margin-bottom: 0px;
             gap: 8px;
             flex-wrap: wrap;
             transition: all 0.3s ease;
@@ -186,6 +223,177 @@
         return emoteBar;
     }
 
+    function createFormatBar(doc) {
+        // Create the format bar container
+        const formatBar = doc.createElement('div');
+        formatBar.id = 'custom-format-bar';
+        formatBar.style.cssText = `
+            display: none;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.15);
+            border: none;
+            border-radius: 0 0 4px 4px;
+            margin-bottom: 8px;
+            gap: 6px;
+            flex-wrap: wrap;
+            transition: all 0.3s ease;
+        `;
+
+        // Add label
+        const label = doc.createElement('div');
+        label.textContent = 'Format:';
+        label.style.cssText = `
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+        formatBar.appendChild(label);
+
+        // Create format tool buttons
+        formatTools.forEach(tool => {
+            const toolButton = doc.createElement('button');
+            toolButton.type = 'button';
+            toolButton.style.cssText = `
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 4px 8px;
+                cursor: pointer;
+                border-radius: 3px;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                outline: none;
+                font-size: 11px;
+                font-weight: bold;
+                color: rgba(255, 255, 255, 0.9);
+                min-width: 28px;
+                height: 24px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            `;
+
+            toolButton.textContent = tool.symbol;
+            toolButton.title = tool.title;
+
+            // Add hover effect
+            toolButton.addEventListener('mouseenter', () => {
+                toolButton.style.background = 'rgba(255, 255, 255, 0.2)';
+                toolButton.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            });
+
+            toolButton.addEventListener('mouseleave', () => {
+                toolButton.style.background = 'rgba(255, 255, 255, 0.1)';
+                toolButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            });
+
+            // Add click handler
+            toolButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyFormatting(tool, doc);
+            });
+
+            formatBar.appendChild(toolButton);
+        });
+
+        return formatBar;
+    }
+
+    function applyFormatting(tool, doc) {
+        const input = (doc || document).getElementById('new-message-input');
+        if (!input) return;
+
+        input.focus();
+
+        const selection = (doc ? doc.defaultView : window).getSelection();
+        let range;
+
+        if (selection.rangeCount === 0) {
+            range = (doc || document).createRange();
+            range.selectNodeContents(input);
+            range.collapse(false);
+            selection.addRange(range);
+        } else {
+            range = selection.getRangeAt(0);
+        }
+
+        let textToInsert;
+
+        if (tool.customAction === 'bulletLines') {
+            // Handle bullet lines custom action
+            const selectedText = selection.toString();
+            if (selectedText) {
+                // Split by lines and add bullets to each line
+                const lines = selectedText.split('\n');
+                textToInsert = lines.map(line => {
+                    const trimmed = line.trim();
+                    if (trimmed && !trimmed.startsWith('•')) {
+                        return '• ' + trimmed;
+                    }
+                    return line;
+                }).join('\n');
+            } else {
+                // No selection, just insert a bullet
+                textToInsert = '• ';
+            }
+        } else if (tool.insertText) {
+            // Simple text insertion (like newline)
+            textToInsert = tool.insertText;
+        } else if (tool.startTag && tool.endTag) {
+            // BBCode tag insertion with toggle functionality
+            const selectedText = selection.toString();
+            if (selectedText) {
+                // Check if the selected text already has the tags
+                const startsWithTag = selectedText.startsWith(tool.startTag);
+                const endsWithTag = selectedText.endsWith(tool.endTag);
+
+                if (startsWithTag && endsWithTag) {
+                    // Remove existing tags
+                    textToInsert = selectedText.slice(tool.startTag.length, -tool.endTag.length);
+                } else {
+                    // Add tags
+                    textToInsert = tool.startTag + selectedText + tool.endTag;
+                }
+            } else {
+                // Insert empty tags with cursor between
+                textToInsert = tool.startTag + tool.endTag;
+            }
+        }
+
+        if (textToInsert) {
+            const textNode = (doc || document).createTextNode(textToInsert);
+            range.deleteContents();
+            range.insertNode(textNode);
+
+            // Position cursor appropriately
+            if (tool.startTag && tool.endTag && !selection.toString()) {
+                // Position cursor between tags
+                const position = tool.startTag.length;
+                range.setStart(textNode, position);
+                range.setEnd(textNode, position);
+            } else {
+                // Position cursor after inserted text
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+            }
+
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // Trigger input event
+            const event = new Event('input', {
+                bubbles: true,
+                cancelable: true,
+            });
+            input.dispatchEvent(event);
+        }
+
+        input.focus();
+    }
+
     function insertEmote(emoteCode, doc) {
         // Find the input element
         const input = (doc || document).getElementById('new-message-input');
@@ -283,11 +491,15 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // Only toggle emote bar
+            // Toggle both emote bar and format bar
             const emoteBar = doc.getElementById('custom-emote-bar');
-            if (emoteBar) {
+            const formatBar = doc.getElementById('custom-format-bar');
+            const inputElement = doc.getElementById('new-message-input');
+
+            if (emoteBar && formatBar) {
                 emoteBarVisible = !emoteBarVisible;
                 emoteBar.style.display = emoteBarVisible ? 'flex' : 'none';
+                formatBar.style.display = emoteBarVisible ? 'flex' : 'none';
             }
         });
 
@@ -303,6 +515,99 @@
         if (buttonsContainer && submitButton && inputElement && !doc.getElementById('emote-toggle-button')) {
             // Hide the original send button
             submitButton.style.display = 'none';
+
+            // Add auto-resize functionality without changing original styling
+            inputElement.style.maxHeight = '200px';
+            inputElement.style.overflowY = 'auto';
+            inputElement.style.resize = 'none';
+
+            // Add auto-resize functionality
+            function resizeInput() {
+                // Store current height to avoid unnecessary changes
+                const currentHeight = parseInt(inputElement.style.height) || inputElement.offsetHeight;
+
+                // Create a temporary element to measure content height
+                const tempDiv = doc.createElement('div');
+                tempDiv.style.cssText = `
+                    position: absolute;
+                    visibility: hidden;
+                    height: auto;
+                    width: ${inputElement.offsetWidth}px;
+                    font-family: ${window.getComputedStyle(inputElement).fontFamily};
+                    font-size: ${window.getComputedStyle(inputElement).fontSize};
+                    line-height: ${window.getComputedStyle(inputElement).lineHeight};
+                    padding: ${window.getComputedStyle(inputElement).padding};
+                    border: ${window.getComputedStyle(inputElement).border};
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                `;
+                tempDiv.textContent = inputElement.textContent || '\u00A0'; // Use non-breaking space if empty
+                doc.body.appendChild(tempDiv);
+
+                const contentHeight = tempDiv.offsetHeight;
+                doc.body.removeChild(tempDiv);
+
+                // Set height to content height (within bounds), but preserve original when empty
+                const originalHeight = inputElement.offsetHeight;
+                const maxHeight = 200;
+                let newHeight;
+
+                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+                    // When empty, use original height
+                    newHeight = originalHeight;
+                } else {
+                    // When content exists, use content height with max limit
+                    newHeight = Math.min(maxHeight, contentHeight);
+                }
+
+                // Only change height if it's actually different to prevent unnecessary reflows
+                if (Math.abs(newHeight - currentHeight) > 1) {
+                    inputElement.style.height = newHeight + 'px';
+                }
+            }
+
+            // Listen for input changes to trigger resize
+            inputElement.addEventListener('input', resizeInput);
+            inputElement.addEventListener('paste', () => setTimeout(resizeInput, 0));
+
+            // Only add keydown handler if not already added
+            if (!inputElement.hasAttribute('data-shift-enter-handler')) {
+                inputElement.setAttribute('data-shift-enter-handler', 'true');
+                inputElement.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (e.shiftKey) {
+                            // Shift+Enter: Insert newline instead of sending
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            // Insert newline at cursor position
+                            const selection = (doc ? doc.defaultView : window).getSelection();
+                            if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                const textNode = (doc || document).createTextNode('\n');
+                                range.deleteContents();
+                                range.insertNode(textNode);
+                                range.setStartAfter(textNode);
+                                range.setEndAfter(textNode);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+
+                                // Trigger input event
+                                const event = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                });
+                                inputElement.dispatchEvent(event);
+                            }
+                            return false;
+                        }
+                        setTimeout(resizeInput, 0);
+                    }
+                }, true);
+            }
+
+            // Initial resize
+            resizeInput();
 
             // Create emote toggle button
             const emoteToggleBtn = createEmoteToggleButton(doc);
@@ -333,13 +638,50 @@
 
             if (messageForm && !document.getElementById('custom-emote-bar')) {
                 const emoteBar = createEmoteBar(document);
-                // Insert before the form
+                const formatBar = createFormatBar(document);
+
+                // Insert both bars before the form
                 messageForm.parentNode.insertBefore(emoteBar, messageForm);
+                messageForm.parentNode.insertBefore(formatBar, messageForm);
 
                 // Add emote toggle button next to send button
                 addEmoteToggleButton(document);
 
-                console.log('Emote bar injected into test-chat');
+                // Add Shift+Enter handler for direct iframe context
+                const directInput = document.getElementById('new-message-input');
+                if (directInput && !directInput.hasAttribute('data-shift-enter-handler')) {
+                    directInput.setAttribute('data-shift-enter-handler', 'true');
+                    directInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && e.shiftKey) {
+                            // Shift+Enter: Insert newline instead of sending
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            // Insert newline at cursor position
+                            const selection = window.getSelection();
+                            if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                const textNode = document.createTextNode('\n');
+                                range.deleteContents();
+                                range.insertNode(textNode);
+                                range.setStartAfter(textNode);
+                                range.setEndAfter(textNode);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+
+                                // Trigger input event
+                                const event = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                });
+                                directInput.dispatchEvent(event);
+                            }
+                            return false;
+                        }
+                    }, true);
+                }
+
+                console.log('Emote and format bars injected into test-chat');
             }
         } else {
             // We're in the parent page, need to wait for iframe
@@ -355,8 +697,9 @@
                         const messageForm = iframeDoc.getElementById('new-message-form');
 
                         if (messageForm && !iframeDoc.getElementById('custom-emote-bar')) {
-                            // Create emote bar using the shared function
+                            // Create emote bar and format bar using the shared functions
                             const emoteBar = createEmoteBar(iframeDoc);
+                            const formatBar = createFormatBar(iframeDoc);
 
                             // Re-attach event listeners for iframe context
                             const buttons = emoteBar.querySelectorAll('button');
@@ -399,11 +742,46 @@
                             });
 
                             messageForm.parentNode.insertBefore(emoteBar, messageForm);
+                            messageForm.parentNode.insertBefore(formatBar, messageForm);
 
                             // Add emote toggle button next to send button
                             addEmoteToggleButton(iframeDoc);
 
-                            console.log('Emote bar injected into iframe');
+                            // Add Shift+Enter handler for iframe context
+                            const iframeInput = iframeDoc.getElementById('new-message-input');
+                            if (iframeInput && !iframeInput.hasAttribute('data-shift-enter-handler')) {
+                                iframeInput.setAttribute('data-shift-enter-handler', 'true');
+                                iframeInput.addEventListener('keydown', (e) => {
+                                    if (e.key === 'Enter' && e.shiftKey) {
+                                        // Shift+Enter: Insert newline instead of sending
+                                        e.preventDefault();
+                                        e.stopPropagation();
+
+                                        // Insert newline at cursor position
+                                        const selection = iframeDoc.defaultView.getSelection();
+                                        if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            const textNode = iframeDoc.createTextNode('\n');
+                                            range.deleteContents();
+                                            range.insertNode(textNode);
+                                            range.setStartAfter(textNode);
+                                            range.setEndAfter(textNode);
+                                            selection.removeAllRanges();
+                                            selection.addRange(range);
+
+                                            // Trigger input event
+                                            const event = new Event('input', {
+                                                bubbles: true,
+                                                cancelable: true,
+                                            });
+                                            iframeInput.dispatchEvent(event);
+                                        }
+                                        return false;
+                                    }
+                                }, true);
+                            }
+
+                            console.log('Emote and format bars injected into iframe');
                         }
                     }
                 } catch (e) {
@@ -431,7 +809,7 @@
         const isIframe = window.location.pathname.includes('test-chat');
 
         if (isIframe) {
-            if (!document.getElementById('custom-emote-bar')) {
+            if (!document.getElementById('custom-emote-bar') || !document.getElementById('custom-format-bar')) {
                 injectEmoteBar();
             }
         } else {
@@ -440,7 +818,7 @@
             if (iframe) {
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc && !iframeDoc.getElementById('custom-emote-bar')) {
+                    if (iframeDoc && (!iframeDoc.getElementById('custom-emote-bar') || !iframeDoc.getElementById('custom-format-bar'))) {
                         injectEmoteBar();
                     }
                 } catch (e) {
