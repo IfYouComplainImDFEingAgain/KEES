@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // Define emotes with their codes and image URLs or emoji/text
+        // Define emotes with their codes and image URLs or emoji/text
     const emotes = [
         {
             code: ':lossmanjack:',
@@ -99,6 +99,62 @@
             title: 'Insert line break'
         }
     ];
+
+    // Event listener management for cleanup
+    const eventListeners = new WeakMap();
+    const globalListeners = [];
+
+    function addManagedEventListener(element, event, handler, options) {
+        if (!element) return;
+
+        element.addEventListener(event, handler, options);
+
+        // Store listener info for cleanup
+        if (!eventListeners.has(element)) {
+            eventListeners.set(element, []);
+        }
+        eventListeners.get(element).push({ event, handler, options });
+    }
+
+    function removeElementListeners(element) {
+        const listeners = eventListeners.get(element);
+        if (listeners) {
+            listeners.forEach(({ event, handler, options }) => {
+                element.removeEventListener(event, handler, options);
+            });
+            eventListeners.delete(element);
+        }
+    }
+
+    function addGlobalEventListener(element, event, handler, options) {
+        element.addEventListener(event, handler, options);
+        globalListeners.push({ element, event, handler, options });
+    }
+
+    function cleanupAllListeners() {
+        // Cleanup global listeners
+        globalListeners.forEach(({ element, event, handler, options }) => {
+            element.removeEventListener(event, handler, options);
+        });
+        globalListeners.length = 0;
+    }
+
+    // Enhanced cleanup for when bars are removed
+    function cleanupBars() {
+        const emoteBar = document.getElementById('custom-emote-bar');
+        const formatBar = document.getElementById('custom-format-bar');
+
+        if (emoteBar) removeElementListeners(emoteBar);
+        if (formatBar) removeElementListeners(formatBar);
+
+        // Cleanup color picker if exists
+        const colorPicker = document.getElementById('color-picker-popup');
+        if (colorPicker) {
+            removeElementListeners(colorPicker);
+            colorPicker.remove();
+        }
+    }
+
 
     function createEmoteBar(doc) {
         // Create the emote bar container
@@ -194,18 +250,18 @@
             emoteButton.appendChild(contentElement);
 
             // Add hover effect
-            emoteButton.addEventListener('mouseenter', () => {
+            addManagedEventListener(emoteButton, 'mouseenter', () => {
                 emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
                 emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             });
 
-            emoteButton.addEventListener('mouseleave', () => {
+            addManagedEventListener(emoteButton, 'mouseleave', () => {
                 emoteButton.style.background = 'transparent';
                 emoteButton.style.borderColor = 'transparent';
             });
 
             // Add click handler
-            emoteButton.addEventListener('click', (e) => {
+            addManagedEventListener(emoteButton, 'click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 insertEmote(emote.code, doc);
@@ -285,18 +341,18 @@
             toolButton.title = tool.title;
 
             // Add hover effect
-            toolButton.addEventListener('mouseenter', () => {
+            addManagedEventListener(toolButton, 'mouseenter', () => {
                 toolButton.style.background = 'rgba(255, 255, 255, 0.2)';
                 toolButton.style.borderColor = 'rgba(255, 255, 255, 0.4)';
             });
 
-            toolButton.addEventListener('mouseleave', () => {
+            addManagedEventListener(toolButton, 'mouseleave', () => {
                 toolButton.style.background = 'rgba(255, 255, 255, 0.1)';
                 toolButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             });
 
             // Add click handler
-            toolButton.addEventListener('click', (e) => {
+            addManagedEventListener(toolButton, 'click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 applyFormatting(tool, doc);
@@ -459,18 +515,18 @@
             colorButton.title = color.name;
 
             // Hover effect
-            colorButton.addEventListener('mouseenter', () => {
+            addManagedEventListener(colorButton, 'mouseenter', () => {
                 colorButton.style.borderColor = 'rgba(255, 255, 255, 0.8)';
                 colorButton.style.transform = 'scale(1.1)';
             });
 
-            colorButton.addEventListener('mouseleave', () => {
+            addManagedEventListener(colorButton, 'mouseleave', () => {
                 colorButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
                 colorButton.style.transform = 'scale(1)';
             });
 
             // Click handler
-            colorButton.addEventListener('click', (e) => {
+            addManagedEventListener(colorButton, 'click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -551,9 +607,10 @@
             outline: none;
         `;
 
-        closeButton.addEventListener('click', (e) => {
+        addManagedEventListener(closeButton, 'click', (e) => {
             e.preventDefault();
             colorPicker.remove();
+            removeElementListeners(colorPicker);
             input.focus();
         });
 
@@ -563,6 +620,7 @@
         const clickOutside = (e) => {
             if (!colorPicker.contains(e.target)) {
                 colorPicker.remove();
+                removeElementListeners(colorPicker);
                 doc.removeEventListener('click', clickOutside);
                 input.focus();
             }
@@ -655,18 +713,18 @@
         emoteButton.appendChild(toggleImg);
 
         // Add hover effect
-        emoteButton.addEventListener('mouseenter', () => {
+        addManagedEventListener(emoteButton, 'mouseenter', () => {
             emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
             toggleImg.style.filter = 'brightness(1.2)';
         });
 
-        emoteButton.addEventListener('mouseleave', () => {
+        addManagedEventListener(emoteButton, 'mouseleave', () => {
             emoteButton.style.background = 'transparent';
             toggleImg.style.filter = 'brightness(0.9)';
         });
 
         // Add click handler
-        emoteButton.addEventListener('click', (e) => {
+        addManagedEventListener(emoteButton, 'click', (e) => {
             e.preventDefault();
             e.stopPropagation();
 
@@ -746,8 +804,8 @@
             }
 
             // Listen for input changes to trigger resize
-            inputElement.addEventListener('input', resizeInput);
-            inputElement.addEventListener('paste', () => setTimeout(resizeInput, 0));
+            addManagedEventListener(inputElement, 'input', resizeInput);
+            addManagedEventListener(inputElement, 'paste', () => setTimeout(resizeInput, 0));
 
             // Watch for when input gets cleared (message sent)
             const observer = new MutationObserver(() => {
@@ -760,10 +818,16 @@
             });
             observer.observe(inputElement, { childList: true, characterData: true, subtree: true });
 
+            // Store observer for cleanup
+            if (!inputElement.hasAttribute('data-observer-attached')) {
+                inputElement.setAttribute('data-observer-attached', 'true');
+                inputElement._resizeObserver = observer;
+            }
+
             // Also watch for form submission to immediately reset
             const messageForm = doc.getElementById('new-message-form');
             if (messageForm) {
-                messageForm.addEventListener('submit', () => {
+                addManagedEventListener(messageForm, 'submit', () => {
                     setTimeout(() => {
                         inputElement.style.height = 'auto';
                         resizeInput();
@@ -774,7 +838,7 @@
             // Only add keydown handler if not already added
             if (!inputElement.hasAttribute('data-shift-enter-handler')) {
                 inputElement.setAttribute('data-shift-enter-handler', 'true');
-                inputElement.addEventListener('keydown', (e) => {
+                addManagedEventListener(inputElement, 'keydown', (e) => {
                     if (e.key === 'Enter') {
                         if (e.shiftKey) {
                             // Shift+Enter: Insert newline instead of sending
@@ -852,7 +916,7 @@
                 const directInput = document.getElementById('new-message-input');
                 if (directInput && !directInput.hasAttribute('data-shift-enter-handler')) {
                     directInput.setAttribute('data-shift-enter-handler', 'true');
-                    directInput.addEventListener('keydown', (e) => {
+                    addManagedEventListener(directInput, 'keydown', (e) => {
                         if (e.key === 'Enter' && e.shiftKey) {
                             // Shift+Enter: Insert newline instead of sending
                             e.preventDefault();
@@ -912,17 +976,17 @@
                                     button.replaceWith(button.cloneNode(true));
                                     const newButton = emoteBar.querySelectorAll('button')[index];
 
-                                    newButton.addEventListener('mouseenter', () => {
+                                    addManagedEventListener(newButton, 'mouseenter', () => {
                                         newButton.style.background = 'rgba(255, 255, 255, 0.1)';
                                         newButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                                     });
 
-                                    newButton.addEventListener('mouseleave', () => {
+                                    addManagedEventListener(newButton, 'mouseleave', () => {
                                         newButton.style.background = 'transparent';
                                         newButton.style.borderColor = 'transparent';
                                     });
 
-                                    newButton.addEventListener('click', (e) => {
+                                    addManagedEventListener(newButton, 'click', (e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         insertEmote(emote.code, iframeDoc);
@@ -952,7 +1016,7 @@
                             const iframeInput = iframeDoc.getElementById('new-message-input');
                             if (iframeInput && !iframeInput.hasAttribute('data-shift-enter-handler')) {
                                 iframeInput.setAttribute('data-shift-enter-handler', 'true');
-                                iframeInput.addEventListener('keydown', (e) => {
+                                addManagedEventListener(iframeInput, 'keydown', (e) => {
                                     if (e.key === 'Enter' && e.shiftKey) {
                                         // Shift+Enter: Insert newline instead of sending
                                         e.preventDefault();
@@ -995,7 +1059,7 @@
     // Wait for DOM to be ready
     function waitForReady() {
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
+            addGlobalEventListener(document, 'DOMContentLoaded', () => {
                 setTimeout(injectEmoteBar, 500);
             });
         } else {
@@ -1065,14 +1129,14 @@
     }
 
     // Also check when page becomes visible (user switches tabs back)
-    document.addEventListener('visibilitychange', () => {
+    addGlobalEventListener(document, 'visibilitychange', () => {
         if (!document.hidden) {
             checkAndReinject();
         }
     });
 
     // Check on focus as backup
-    window.addEventListener('focus', () => {
+    addGlobalEventListener(window, 'focus', () => {
         checkAndReinject();
     });
 
@@ -1080,7 +1144,15 @@
     setTimeout(checkAndReinject, 1000);
 
     // Cleanup on page unload
-    window.addEventListener('unload', () => {
+    addGlobalEventListener(window, 'unload', () => {
         observer.disconnect();
+        cleanupAllListeners();
+
+        // Cleanup any stored observers
+        document.querySelectorAll('[data-observer-attached]').forEach(element => {
+            if (element._resizeObserver) {
+                element._resizeObserver.disconnect();
+            }
+        });
     });
 })();
