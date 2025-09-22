@@ -87,6 +87,12 @@
             title: 'Insert image'
         },
         {
+            name: 'Color',
+            symbol: '🎨',
+            customAction: 'colorPicker',
+            title: 'Text color'
+        },
+        {
             name: 'Newline',
             symbol: '↵',
             insertText: '[br]',
@@ -339,6 +345,10 @@
                 // No selection, just insert a bullet
                 textToInsert = '• ';
             }
+        } else if (tool.customAction === 'colorPicker') {
+            // Handle color picker custom action
+            showColorPicker(input, selection, range, doc);
+            return; // Exit early since color picker handles its own insertion
         } else if (tool.insertText) {
             // Simple text insertion (like newline)
             textToInsert = tool.insertText;
@@ -392,6 +402,175 @@
         }
 
         input.focus();
+    }
+
+    function showColorPicker(input, selection, range, doc) {
+        // Color palette
+        const colors = [
+            { name: 'Red', hex: '#ff0000' },
+            { name: 'Greentext', hex: '#789922' },
+            { name: 'Blue', hex: '#0080ff' },
+            { name: 'Purple', hex: '#8000ff' },
+            { name: 'Orange', hex: '#ff8000' },
+            { name: 'Pink', hex: '#ff0080' },
+            { name: 'Yellow', hex: '#ffff00' },
+            { name: 'Cyan', hex: '#00ffff' },
+            { name: 'Lime', hex: '#80ff00' },
+            { name: 'Magenta', hex: '#ff00ff' },
+            { name: 'Brown', hex: '#8b4513' },
+            { name: 'Gray', hex: '#808080' }
+        ];
+
+        // Create color picker popup
+        const colorPicker = doc.createElement('div');
+        colorPicker.id = 'color-picker-popup';
+        colorPicker.style.cssText = `
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        `;
+
+        // Position near the input
+        const inputRect = input.getBoundingClientRect();
+        colorPicker.style.left = (inputRect.left + 20) + 'px';
+        colorPicker.style.top = (inputRect.top - 120) + 'px';
+
+        // Create color buttons
+        colors.forEach(color => {
+            const colorButton = doc.createElement('button');
+            colorButton.type = 'button';
+            colorButton.style.cssText = `
+                width: 32px;
+                height: 32px;
+                background: ${color.hex};
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                outline: none;
+            `;
+            colorButton.title = color.name;
+
+            // Hover effect
+            colorButton.addEventListener('mouseenter', () => {
+                colorButton.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+                colorButton.style.transform = 'scale(1.1)';
+            });
+
+            colorButton.addEventListener('mouseleave', () => {
+                colorButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                colorButton.style.transform = 'scale(1)';
+            });
+
+            // Click handler
+            colorButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const selectedText = selection.toString();
+                let textToInsert;
+
+                if (selectedText) {
+                    // Check if text already has color tags
+                    const colorRegex = /^\[color=#[0-9a-fA-F]{6}\](.*)\[\/color\]$/;
+                    const match = selectedText.match(colorRegex);
+
+                    if (match) {
+                        // Remove existing color tags
+                        textToInsert = match[1];
+                    } else {
+                        // Add color tags
+                        textToInsert = `[color=${color.hex}]${selectedText}[/color]`;
+                    }
+                } else {
+                    // Insert empty color tags
+                    textToInsert = `[color=${color.hex}][/color]`;
+                }
+
+                // Insert the text
+                const textNode = doc.createTextNode(textToInsert);
+                range.deleteContents();
+                range.insertNode(textNode);
+
+                // Position cursor appropriately
+                if (!selectedText) {
+                    // Position cursor between tags
+                    const position = `[color=${color.hex}]`.length;
+                    range.setStart(textNode, position);
+                    range.setEnd(textNode, position);
+                } else {
+                    // Position cursor after inserted text
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                }
+
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // Trigger input event
+                const event = new Event('input', {
+                    bubbles: true,
+                    cancelable: true,
+                });
+                input.dispatchEvent(event);
+
+                // Remove color picker and refocus input
+                colorPicker.remove();
+                input.focus();
+            });
+
+            colorPicker.appendChild(colorButton);
+        });
+
+        // Add close button
+        const closeButton = doc.createElement('button');
+        closeButton.type = 'button';
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        `;
+
+        closeButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            colorPicker.remove();
+            input.focus();
+        });
+
+        colorPicker.appendChild(closeButton);
+
+        // Click outside to close
+        const clickOutside = (e) => {
+            if (!colorPicker.contains(e.target)) {
+                colorPicker.remove();
+                doc.removeEventListener('click', clickOutside);
+                input.focus();
+            }
+        };
+
+        // Add to page and set up outside click handler
+        doc.body.appendChild(colorPicker);
+        setTimeout(() => doc.addEventListener('click', clickOutside), 0);
     }
 
     function insertEmote(emoteCode, doc) {
@@ -569,6 +748,28 @@
             // Listen for input changes to trigger resize
             inputElement.addEventListener('input', resizeInput);
             inputElement.addEventListener('paste', () => setTimeout(resizeInput, 0));
+
+            // Watch for when input gets cleared (message sent)
+            const observer = new MutationObserver(() => {
+                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+                    setTimeout(() => {
+                        inputElement.style.height = 'auto';
+                        resizeInput();
+                    }, 50);
+                }
+            });
+            observer.observe(inputElement, { childList: true, characterData: true, subtree: true });
+
+            // Also watch for form submission to immediately reset
+            const messageForm = doc.getElementById('new-message-form');
+            if (messageForm) {
+                messageForm.addEventListener('submit', () => {
+                    setTimeout(() => {
+                        inputElement.style.height = 'auto';
+                        resizeInput();
+                    }, 100);
+                });
+            }
 
             // Only add keydown handler if not already added
             if (!inputElement.hasAttribute('data-shift-enter-handler')) {
