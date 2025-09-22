@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Sneedchat User Bar
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Adds a toggleable custom emote bar to chat.
-// @author       Claudette
+// @version      3.1
+// @description  Adds a toggleable custom emote and format bar to chat.
+// @author       
 // @match        https://kiwifarms.st/chat/*
 // @match        https://kiwifarms.st/test-chat*
 // @match        https://kiwifarms.tw/chat/*
@@ -15,6 +15,9 @@
     'use strict';
 
         // Define emotes with their codes and image URLs or emoji/text
+        // #REQUIRED# code: is the text being entered into the text box as if you were typing it
+        // url: is the URL of the thumbnail in the emote picker. You need to specify this or a title:
+        // emoji: you can put emotes in code: and probably should. This makes the emoji look bigger in the picker. 
     const emotes = [
         {
             code: ':lossmanjack:',
@@ -31,6 +34,17 @@
             url: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
             title: 'Ross',
         },
+        {
+            code: ':gunt:',
+            url: 'https://kiwifarms.st/styles/custom/emotes/gunt.gif',
+            title: 'Gunt',
+        },        
+        // Example using a text entry in the bar instead of a thumbnail        
+        {
+            code: '[img]https://files.catbox.moe/0v5vvb.png[/img]',
+            text: 'test',
+            title: 'Retard Avelloon'
+        },
         // Example emoji/text entries (you can add more)
         {
             code: '👍',
@@ -38,26 +52,25 @@
             title: 'Thumbs Up'
         },
         {
-            code: '😂',
-            emoji: '😂',
-            title: 'Laughing'
-        },
-        {
             code: 'kek',
             text: 'KEK',
             title: 'Kek'
+        },
+        {
+            code: '🚨[color=#ff0000]ALERT[/color]🚨 BOSSMAN IS [color=#80ff00]CLIMBING[/color]',
+            text: 'Alert Bossman is climbing',
+            title: 'Climbing'
         }
     ];
 
-    let emoteBarVisible = false;
-
-    // Configuration for the emote toggle button
+    // Image for the emote toggle button
     const toggleButtonConfig = {
         image: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
         title: 'Toggle emote bar'
     };
 
     // Text formatting tools configuration
+    // You can add your own by following the examples
     const formatTools = [
         {
             name: 'Bold',
@@ -99,6 +112,8 @@
             title: 'Insert line break'
         }
     ];
+
+    let emoteBarVisible = false;
 
     // Event listener management for cleanup
     const eventListeners = new WeakMap();
