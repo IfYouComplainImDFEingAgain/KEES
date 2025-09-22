@@ -155,6 +155,51 @@
         }
     }
 
+    // Reusable Shift+Enter handler for multiline input
+    function createShiftEnterHandler(doc) {
+        return function(e) {
+            if (e.key === 'Enter' && e.shiftKey) {
+                // Shift+Enter: Insert newline instead of sending
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Insert newline at cursor position
+                const win = doc ? doc.defaultView : window;
+                const selection = win.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const textNode = (doc || document).createTextNode('\n');
+                    range.deleteContents();
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+
+                    // Trigger input event
+                    const inputElement = e.target;
+                    const event = new Event('input', {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    inputElement.dispatchEvent(event);
+                }
+                return false;
+            }
+        };
+    }
+
+    // Helper function to attach Shift+Enter handler
+    function attachShiftEnterHandler(inputElement, doc) {
+        if (!inputElement || inputElement.hasAttribute('data-shift-enter-handler')) {
+            return;
+        }
+
+        inputElement.setAttribute('data-shift-enter-handler', 'true');
+        const handler = createShiftEnterHandler(doc);
+        addManagedEventListener(inputElement, 'keydown', handler, true);
+    }
+
 
     function createEmoteBar(doc) {
         // Create the emote bar container
@@ -835,37 +880,14 @@
                 });
             }
 
-            // Only add keydown handler if not already added
-            if (!inputElement.hasAttribute('data-shift-enter-handler')) {
-                inputElement.setAttribute('data-shift-enter-handler', 'true');
+            // Add Shift+Enter handler for multiline input
+            attachShiftEnterHandler(inputElement, doc);
+
+            // Also handle regular Enter for resize
+            if (!inputElement.hasAttribute('data-enter-resize-handler')) {
+                inputElement.setAttribute('data-enter-resize-handler', 'true');
                 addManagedEventListener(inputElement, 'keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        if (e.shiftKey) {
-                            // Shift+Enter: Insert newline instead of sending
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // Insert newline at cursor position
-                            const selection = (doc ? doc.defaultView : window).getSelection();
-                            if (selection.rangeCount > 0) {
-                                const range = selection.getRangeAt(0);
-                                const textNode = (doc || document).createTextNode('\n');
-                                range.deleteContents();
-                                range.insertNode(textNode);
-                                range.setStartAfter(textNode);
-                                range.setEndAfter(textNode);
-                                selection.removeAllRanges();
-                                selection.addRange(range);
-
-                                // Trigger input event
-                                const event = new Event('input', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                });
-                                inputElement.dispatchEvent(event);
-                            }
-                            return false;
-                        }
+                    if (e.key === 'Enter' && !e.shiftKey) {
                         setTimeout(resizeInput, 0);
                     }
                 }, true);
@@ -914,37 +936,7 @@
 
                 // Add Shift+Enter handler for direct iframe context
                 const directInput = document.getElementById('new-message-input');
-                if (directInput && !directInput.hasAttribute('data-shift-enter-handler')) {
-                    directInput.setAttribute('data-shift-enter-handler', 'true');
-                    addManagedEventListener(directInput, 'keydown', (e) => {
-                        if (e.key === 'Enter' && e.shiftKey) {
-                            // Shift+Enter: Insert newline instead of sending
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // Insert newline at cursor position
-                            const selection = window.getSelection();
-                            if (selection.rangeCount > 0) {
-                                const range = selection.getRangeAt(0);
-                                const textNode = document.createTextNode('\n');
-                                range.deleteContents();
-                                range.insertNode(textNode);
-                                range.setStartAfter(textNode);
-                                range.setEndAfter(textNode);
-                                selection.removeAllRanges();
-                                selection.addRange(range);
-
-                                // Trigger input event
-                                const event = new Event('input', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                });
-                                directInput.dispatchEvent(event);
-                            }
-                            return false;
-                        }
-                    }, true);
-                }
+                attachShiftEnterHandler(directInput, document);
 
                 console.log('Emote and format bars injected into test-chat');
             }
@@ -1014,37 +1006,7 @@
 
                             // Add Shift+Enter handler for iframe context
                             const iframeInput = iframeDoc.getElementById('new-message-input');
-                            if (iframeInput && !iframeInput.hasAttribute('data-shift-enter-handler')) {
-                                iframeInput.setAttribute('data-shift-enter-handler', 'true');
-                                addManagedEventListener(iframeInput, 'keydown', (e) => {
-                                    if (e.key === 'Enter' && e.shiftKey) {
-                                        // Shift+Enter: Insert newline instead of sending
-                                        e.preventDefault();
-                                        e.stopPropagation();
-
-                                        // Insert newline at cursor position
-                                        const selection = iframeDoc.defaultView.getSelection();
-                                        if (selection.rangeCount > 0) {
-                                            const range = selection.getRangeAt(0);
-                                            const textNode = iframeDoc.createTextNode('\n');
-                                            range.deleteContents();
-                                            range.insertNode(textNode);
-                                            range.setStartAfter(textNode);
-                                            range.setEndAfter(textNode);
-                                            selection.removeAllRanges();
-                                            selection.addRange(range);
-
-                                            // Trigger input event
-                                            const event = new Event('input', {
-                                                bubbles: true,
-                                                cancelable: true,
-                                            });
-                                            iframeInput.dispatchEvent(event);
-                                        }
-                                        return false;
-                                    }
-                                }, true);
-                            }
+                            attachShiftEnterHandler(iframeInput, iframeDoc);
 
                             console.log('Emote and format bars injected into iframe');
                         }
