@@ -161,10 +161,10 @@
                 e.stopPropagation();
                 insertEmote(emote.code, doc);
 
-                // Auto-send the emote only if the input box is empty
+                // Auto-send the emote only if the input box is empty AND autoSend is not false
                 setTimeout(() => {
                     const input = (doc || document).getElementById('new-message-input');
-                    if (input && input.textContent.trim() === emote.code.trim()) {
+                    if (emote.autoSend !== false && input && input.textContent.trim() === emote.code.trim()) {
                         // Input only contains the emote we just added, so auto-send
                         const submitBtn = (doc || document).getElementById('new-message-submit');
                         if (submitBtn) {
@@ -203,8 +203,8 @@
                 range = selection.getRangeAt(0);
             }
 
-            // Create text node with emote code and a space
-            const textNode = (doc || document).createTextNode(emoteCode + ' ');
+            // Create text node with emote code (no space for auto-send)
+            const textNode = (doc || document).createTextNode(emoteCode);
 
             // Insert the text node
             range.deleteContents();
@@ -364,10 +364,10 @@
                                         e.stopPropagation();
                                         insertEmote(emote.code, iframeDoc);
 
-                                        // Auto-send the emote only if the input box is empty
+                                        // Auto-send the emote only if the input box is empty AND autoSend is not false
                                         setTimeout(() => {
                                             const input = iframeDoc.getElementById('new-message-input');
-                                            if (input && input.textContent.trim() === emote.code.trim()) {
+                                            if (emote.autoSend !== false && input && input.textContent.trim() === emote.code.trim()) {
                                                 // Input only contains the emote we just added, so auto-send
                                                 const submitBtn = iframeDoc.getElementById('new-message-submit');
                                                 if (submitBtn) {
