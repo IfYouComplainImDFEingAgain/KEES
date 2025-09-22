@@ -51,6 +51,12 @@
 
     let emoteBarVisible = false;
 
+    // Configuration for the emote toggle button
+    const toggleButtonConfig = {
+        image: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
+        title: 'Toggle emote bar'
+    };
+
     function createEmoteBar(doc) {
         // Create the emote bar container
         const emoteBar = doc.createElement('div');
@@ -247,10 +253,10 @@
             margin-right: 4px;
         `;
 
-        // Create Ross emote content
-        const rossImg = doc.createElement('img');
-        rossImg.src = 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png';
-        rossImg.style.cssText = `
+        // Create toggle button image content
+        const toggleImg = doc.createElement('img');
+        toggleImg.src = toggleButtonConfig.image;
+        toggleImg.style.cssText = `
             width: 24px;
             height: 24px;
             object-fit: contain;
@@ -259,17 +265,17 @@
             transition: filter 0.2s ease;
         `;
 
-        emoteButton.appendChild(rossImg);
+        emoteButton.appendChild(toggleImg);
 
         // Add hover effect
         emoteButton.addEventListener('mouseenter', () => {
             emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
-            rossImg.style.filter = 'brightness(1.2)';
+            toggleImg.style.filter = 'brightness(1.2)';
         });
 
         emoteButton.addEventListener('mouseleave', () => {
             emoteButton.style.background = 'transparent';
-            rossImg.style.filter = 'brightness(0.9)';
+            toggleImg.style.filter = 'brightness(0.9)';
         });
 
         // Add click handler
@@ -284,7 +290,7 @@
             }
         });
 
-        emoteButton.title = 'Toggle emote bar';
+        emoteButton.title = toggleButtonConfig.title;
         return emoteButton;
     }
 
