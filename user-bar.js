@@ -104,6 +104,10 @@
     const eventListeners = new WeakMap();
     const globalListeners = [];
 
+    // Observer management for cleanup
+    const observers = new WeakMap();
+    const globalObservers = [];
+
     function addManagedEventListener(element, event, handler, options) {
         if (!element) return;
 
@@ -139,20 +143,73 @@
         globalListeners.length = 0;
     }
 
+    // Observer management functions
+    function addManagedObserver(element, observer, isGlobal = false) {
+        if (isGlobal) {
+            globalObservers.push({ observer, element });
+        } else if (element) {
+            if (!observers.has(element)) {
+                observers.set(element, []);
+            }
+            observers.get(element).push(observer);
+        }
+        return observer;
+    }
+
+    function removeElementObservers(element) {
+        const elementObservers = observers.get(element);
+        if (elementObservers) {
+            elementObservers.forEach(observer => {
+                observer.disconnect();
+            });
+            observers.delete(element);
+        }
+    }
+
+    function cleanupAllObservers() {
+        // Cleanup global observers
+        globalObservers.forEach(({ observer }) => {
+            observer.disconnect();
+        });
+        globalObservers.length = 0;
+
+        // Cleanup any stored resize observers
+        document.querySelectorAll('[data-observer-attached]').forEach(element => {
+            if (element._resizeObserver) {
+                element._resizeObserver.disconnect();
+                delete element._resizeObserver;
+            }
+            removeElementObservers(element);
+        });
+    }
+
     // Enhanced cleanup for when bars are removed
     function cleanupBars() {
         const emoteBar = document.getElementById('custom-emote-bar');
         const formatBar = document.getElementById('custom-format-bar');
 
-        if (emoteBar) removeElementListeners(emoteBar);
-        if (formatBar) removeElementListeners(formatBar);
+        if (emoteBar) {
+            removeElementListeners(emoteBar);
+            removeElementObservers(emoteBar);
+        }
+        if (formatBar) {
+            removeElementListeners(formatBar);
+            removeElementObservers(formatBar);
+        }
 
         // Cleanup color picker if exists
         const colorPicker = document.getElementById('color-picker-popup');
         if (colorPicker) {
             removeElementListeners(colorPicker);
+            removeElementObservers(colorPicker);
             colorPicker.remove();
         }
+
+        // Cleanup input observers
+        const inputs = document.querySelectorAll('[data-observer-attached]');
+        inputs.forEach(input => {
+            removeElementObservers(input);
+        });
     }
 
     // Reusable Shift+Enter handler for multiline input
@@ -853,20 +910,21 @@
             addManagedEventListener(inputElement, 'paste', () => setTimeout(resizeInput, 0));
 
             // Watch for when input gets cleared (message sent)
-            const observer = new MutationObserver(() => {
-                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-                    setTimeout(() => {
-                        inputElement.style.height = 'auto';
-                        resizeInput();
-                    }, 50);
-                }
-            });
-            observer.observe(inputElement, { childList: true, characterData: true, subtree: true });
-
-            // Store observer for cleanup
             if (!inputElement.hasAttribute('data-observer-attached')) {
+                const observer = new MutationObserver(() => {
+                    if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+                        setTimeout(() => {
+                            inputElement.style.height = 'auto';
+                            resizeInput();
+                        }, 50);
+                    }
+                });
+                observer.observe(inputElement, { childList: true, characterData: true, subtree: true });
+
+                // Store observer for cleanup using managed system
+                addManagedObserver(inputElement, observer);
                 inputElement.setAttribute('data-observer-attached', 'true');
-                inputElement._resizeObserver = observer;
+                inputElement._resizeObserver = observer;  // Keep for backward compatibility
             }
 
             // Also watch for form submission to immediately reset
@@ -1063,11 +1121,15 @@
     }
 
     // Use MutationObserver to detect when chat UI might have been replaced
-    const observer = new MutationObserver((mutations) => {
+    const mainObserver = new MutationObserver((mutations) => {
         // Check if our elements were removed
         const needsReinject = mutations.some(mutation => {
             return Array.from(mutation.removedNodes).some(node => {
                 if (node.nodeType === 1) { // Element node
+                    // Also cleanup if our elements are removed
+                    if (node.id === 'custom-emote-bar' || node.id === 'custom-format-bar') {
+                        cleanupBars();
+                    }
                     return node.id === 'custom-emote-bar' ||
                            node.id === 'custom-format-bar' ||
                            node.querySelector?.('#custom-emote-bar') ||
@@ -1082,12 +1144,13 @@
         }
     });
 
-    // Observe the body for changes
+    // Observe the body for changes using managed observer
     if (document.body) {
-        observer.observe(document.body, {
+        mainObserver.observe(document.body, {
             childList: true,
             subtree: true
         });
+        addManagedObserver(document.body, mainObserver, true);
     }
 
     // Also check when page becomes visible (user switches tabs back)
@@ -1107,14 +1170,13 @@
 
     // Cleanup on page unload
     addGlobalEventListener(window, 'unload', () => {
-        observer.disconnect();
+        // Cleanup all observers using the managed system
+        cleanupAllObservers();
+
+        // Cleanup all event listeners
         cleanupAllListeners();
 
-        // Cleanup any stored observers
-        document.querySelectorAll('[data-observer-attached]').forEach(element => {
-            if (element._resizeObserver) {
-                element._resizeObserver.disconnect();
-            }
-        });
+        // Final cleanup of bars
+        cleanupBars();
     });
 })();
