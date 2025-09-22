@@ -173,14 +173,138 @@
         });
         globalObservers.length = 0;
 
-        // Cleanup any stored resize observers
+        // Cleanup any stored resize observers and resizers
         document.querySelectorAll('[data-observer-attached]').forEach(element => {
             if (element._resizeObserver) {
                 element._resizeObserver.disconnect();
                 delete element._resizeObserver;
             }
             removeElementObservers(element);
+
+            // Cleanup optimized resizers
+            const cached = resizeCache.get(element);
+            if (cached) {
+                cached.cleanup();
+                resizeCache.delete(element);
+            }
         });
+    }
+
+    // Configuration constants
+    const CONFIG = {
+        MAX_INPUT_HEIGHT: 200,
+        RESIZE_DEBOUNCE_DELAY: 16, // ~60fps
+        AUTO_SEND_DELAY: 50,
+        INIT_DELAY: 500,
+        POLLING_CHECK_DELAY: 1000
+    };
+
+    // Optimized input resize system
+    const resizeCache = new WeakMap();
+
+    function createOptimizedResizer(inputElement, doc) {
+        let measureElement = null;
+        let debounceTimer = null;
+        let computedStyles = null;
+
+        // Create reusable measurement element
+        function createMeasurementElement() {
+            if (measureElement) return measureElement;
+
+            measureElement = (doc || document).createElement('div');
+            measureElement.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                height: auto;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                pointer-events: none;
+                z-index: -1000;
+            `;
+            (doc || document).body.appendChild(measureElement);
+            return measureElement;
+        }
+
+        // Cache computed styles
+        function getComputedStyles() {
+            if (computedStyles) return computedStyles;
+
+            const styles = (doc ? doc.defaultView : window).getComputedStyle(inputElement);
+            computedStyles = {
+                fontFamily: styles.fontFamily,
+                fontSize: styles.fontSize,
+                lineHeight: styles.lineHeight,
+                padding: styles.padding,
+                border: styles.border,
+                width: inputElement.offsetWidth
+            };
+            return computedStyles;
+        }
+
+        // Optimized resize function
+        function resizeInput() {
+            // Clear any pending resize
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+
+            debounceTimer = setTimeout(() => {
+                const currentHeight = parseInt(inputElement.style.height) || inputElement.offsetHeight;
+                const content = inputElement.textContent || '\u00A0';
+
+                // Early return for empty content
+                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
+                    const originalHeight = inputElement.offsetHeight;
+                    if (Math.abs(originalHeight - currentHeight) > 1) {
+                        inputElement.style.height = 'auto';
+                    }
+                    return;
+                }
+
+                // Use cached measurement element
+                const measurer = createMeasurementElement();
+                const styles = getComputedStyles();
+
+                // Apply styles to measurement element
+                Object.assign(measurer.style, {
+                    width: styles.width + 'px',
+                    fontFamily: styles.fontFamily,
+                    fontSize: styles.fontSize,
+                    lineHeight: styles.lineHeight,
+                    padding: styles.padding,
+                    border: styles.border
+                });
+
+                measurer.textContent = content;
+                const contentHeight = measurer.offsetHeight;
+
+                // Calculate new height within bounds
+                const newHeight = Math.min(CONFIG.MAX_INPUT_HEIGHT, contentHeight);
+
+                // Only update if significantly different
+                if (Math.abs(newHeight - currentHeight) > 1) {
+                    inputElement.style.height = newHeight + 'px';
+                }
+            }, CONFIG.RESIZE_DEBOUNCE_DELAY);
+        }
+
+        // Cleanup function
+        function cleanup() {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            if (measureElement) {
+                measureElement.remove();
+                measureElement = null;
+            }
+            computedStyles = null;
+        }
+
+        // Store cleanup function for later use
+        resizeCache.set(inputElement, { resizeInput, cleanup });
+
+        return { resizeInput, cleanup };
     }
 
     // Enhanced cleanup for when bars are removed
@@ -205,10 +329,17 @@
             colorPicker.remove();
         }
 
-        // Cleanup input observers
+        // Cleanup input observers and resizers
         const inputs = document.querySelectorAll('[data-observer-attached]');
         inputs.forEach(input => {
             removeElementObservers(input);
+
+            // Cleanup optimized resizers
+            const cached = resizeCache.get(input);
+            if (cached) {
+                cached.cleanup();
+                resizeCache.delete(input);
+            }
         });
     }
 
@@ -855,55 +986,13 @@
             // Hide the original send button
             submitButton.style.display = 'none';
 
-            // Add auto-resize functionality without changing original styling
-            inputElement.style.maxHeight = '200px';
+            // Add auto-resize functionality with optimized resizer
+            inputElement.style.maxHeight = CONFIG.MAX_INPUT_HEIGHT + 'px';
             inputElement.style.overflowY = 'auto';
             inputElement.style.resize = 'none';
 
-            // Add auto-resize functionality
-            function resizeInput() {
-                // Store current height to avoid unnecessary changes
-                const currentHeight = parseInt(inputElement.style.height) || inputElement.offsetHeight;
-
-                // Create a temporary element to measure content height
-                const tempDiv = doc.createElement('div');
-                tempDiv.style.cssText = `
-                    position: absolute;
-                    visibility: hidden;
-                    height: auto;
-                    width: ${inputElement.offsetWidth}px;
-                    font-family: ${window.getComputedStyle(inputElement).fontFamily};
-                    font-size: ${window.getComputedStyle(inputElement).fontSize};
-                    line-height: ${window.getComputedStyle(inputElement).lineHeight};
-                    padding: ${window.getComputedStyle(inputElement).padding};
-                    border: ${window.getComputedStyle(inputElement).border};
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                `;
-                tempDiv.textContent = inputElement.textContent || '\u00A0'; // Use non-breaking space if empty
-                doc.body.appendChild(tempDiv);
-
-                const contentHeight = tempDiv.offsetHeight;
-                doc.body.removeChild(tempDiv);
-
-                // Set height to content height (within bounds), but preserve original when empty
-                const originalHeight = inputElement.offsetHeight;
-                const maxHeight = 200;
-                let newHeight;
-
-                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-                    // When empty, use original height
-                    newHeight = originalHeight;
-                } else {
-                    // When content exists, use content height with max limit
-                    newHeight = Math.min(maxHeight, contentHeight);
-                }
-
-                // Only change height if it's actually different to prevent unnecessary reflows
-                if (Math.abs(newHeight - currentHeight) > 1) {
-                    inputElement.style.height = newHeight + 'px';
-                }
-            }
+            // Create optimized resizer
+            const { resizeInput, cleanup } = createOptimizedResizer(inputElement, doc);
 
             // Listen for input changes to trigger resize
             addManagedEventListener(inputElement, 'input', resizeInput);
@@ -1080,10 +1169,10 @@
     function waitForReady() {
         if (document.readyState === 'loading') {
             addGlobalEventListener(document, 'DOMContentLoaded', () => {
-                setTimeout(injectEmoteBar, 500);
+                setTimeout(injectEmoteBar, CONFIG.INIT_DELAY);
             });
         } else {
-            setTimeout(injectEmoteBar, 500);
+            setTimeout(injectEmoteBar, CONFIG.INIT_DELAY);
         }
     }
 
@@ -1166,7 +1255,7 @@
     });
 
     // Initial check after a short delay for dynamic content
-    setTimeout(checkAndReinject, 1000);
+    setTimeout(checkAndReinject, CONFIG.POLLING_CHECK_DELAY);
 
     // Cleanup on page unload
     addGlobalEventListener(window, 'unload', () => {
