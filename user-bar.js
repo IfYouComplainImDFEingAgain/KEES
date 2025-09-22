@@ -1005,13 +1005,19 @@
 
     waitForReady();
 
-    // Re-check periodically in case of dynamic loading
-    setInterval(() => {
+    // Smart detection using MutationObserver instead of setInterval
+    let reinjectAttempts = 0;
+    const MAX_REINJECT_ATTEMPTS = 10;
+
+    function checkAndReinject() {
+        if (reinjectAttempts >= MAX_REINJECT_ATTEMPTS) return;
+
         const isIframe = window.location.pathname.includes('test-chat');
 
         if (isIframe) {
             if (!document.getElementById('custom-emote-bar') || !document.getElementById('custom-format-bar')) {
                 injectEmoteBar();
+                reinjectAttempts++;
             }
         } else {
             // Check iframe
@@ -1021,11 +1027,60 @@
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     if (iframeDoc && (!iframeDoc.getElementById('custom-emote-bar') || !iframeDoc.getElementById('custom-format-bar'))) {
                         injectEmoteBar();
+                        reinjectAttempts++;
                     }
                 } catch (e) {
                     // Silent fail for cross-origin
                 }
             }
         }
-    }, 2000);
+    }
+
+    // Use MutationObserver to detect when chat UI might have been replaced
+    const observer = new MutationObserver((mutations) => {
+        // Check if our elements were removed
+        const needsReinject = mutations.some(mutation => {
+            return Array.from(mutation.removedNodes).some(node => {
+                if (node.nodeType === 1) { // Element node
+                    return node.id === 'custom-emote-bar' ||
+                           node.id === 'custom-format-bar' ||
+                           node.querySelector?.('#custom-emote-bar') ||
+                           node.querySelector?.('#custom-format-bar');
+                }
+                return false;
+            });
+        });
+
+        if (needsReinject) {
+            checkAndReinject();
+        }
+    });
+
+    // Observe the body for changes
+    if (document.body) {
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    // Also check when page becomes visible (user switches tabs back)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            checkAndReinject();
+        }
+    });
+
+    // Check on focus as backup
+    window.addEventListener('focus', () => {
+        checkAndReinject();
+    });
+
+    // Initial check after a short delay for dynamic content
+    setTimeout(checkAndReinject, 1000);
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        observer.disconnect();
+    });
 })();
