@@ -29,7 +29,7 @@
         {
             code: ':ross:',
             url: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
-            title: 'Ross'
+            title: 'Ross',
         },
         // Example emoji/text entries (you can add more)
         {
@@ -50,7 +50,6 @@
     ];
 
     let emoteBarVisible = false;
-    let autoSendEnabled = true; // Default to auto-send enabled
 
     function createEmoteBar(doc) {
         // Create the emote bar container
@@ -76,43 +75,10 @@
             color: rgba(255, 255, 255, 0.7);
             font-size: 13px;
             font-weight: 500;
-            margin-right: 4px;
+            margin-right: 8px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         `;
         emoteBar.appendChild(label);
-
-        // Add auto-send checkbox
-        const autoSendContainer = doc.createElement('label');
-        autoSendContainer.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-right: 12px;
-            cursor: pointer;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        `;
-
-        const autoSendCheckbox = doc.createElement('input');
-        autoSendCheckbox.type = 'checkbox';
-        autoSendCheckbox.id = 'auto-send-checkbox';
-        autoSendCheckbox.checked = autoSendEnabled;
-        autoSendCheckbox.style.cssText = `
-            margin: 0;
-            cursor: pointer;
-        `;
-
-        const autoSendText = doc.createElement('span');
-        autoSendText.textContent = 'Auto-send';
-
-        autoSendCheckbox.addEventListener('change', (e) => {
-            autoSendEnabled = e.target.checked;
-        });
-
-        autoSendContainer.appendChild(autoSendCheckbox);
-        autoSendContainer.appendChild(autoSendText);
-        emoteBar.appendChild(autoSendContainer);
 
         // Create emote buttons
         emotes.forEach(emote => {
@@ -195,15 +161,17 @@
                 e.stopPropagation();
                 insertEmote(emote.code, doc);
 
-                // Auto-send the emote only if enabled
-                if (autoSendEnabled) {
-                    setTimeout(() => {
+                // Auto-send the emote only if the input box is empty
+                setTimeout(() => {
+                    const input = (doc || document).getElementById('new-message-input');
+                    if (input && input.textContent.trim() === emote.code.trim()) {
+                        // Input only contains the emote we just added, so auto-send
                         const submitBtn = (doc || document).getElementById('new-message-submit');
                         if (submitBtn) {
                             submitBtn.click();
                         }
-                    }, 50);
-                }
+                    }
+                }, 50);
             });
 
             emoteBar.appendChild(emoteButton);
@@ -267,7 +235,7 @@
         emoteButton.type = 'button';
         emoteButton.style.cssText = `
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: none;
             padding: 8px;
             cursor: pointer;
             border-radius: 4px;
@@ -276,7 +244,7 @@
             align-items: center;
             justify-content: center;
             outline: none;
-            margin-right: 8px;
+            margin-right: 4px;
         `;
 
         // Create Ross emote content
@@ -296,13 +264,11 @@
         // Add hover effect
         emoteButton.addEventListener('mouseenter', () => {
             emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
-            emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.3)';
             rossImg.style.filter = 'brightness(1.2)';
         });
 
         emoteButton.addEventListener('mouseleave', () => {
             emoteButton.style.background = 'transparent';
-            emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             rossImg.style.filter = 'brightness(0.9)';
         });
 
@@ -331,7 +297,7 @@
             buttonsContainer.style.display = 'flex';
             buttonsContainer.style.flexDirection = 'row';
             buttonsContainer.style.alignItems = 'center';
-            buttonsContainer.style.gap = '8px';
+            buttonsContainer.style.gap = '4px';
 
             const emoteToggleBtn = createEmoteToggleButton(doc);
             buttonsContainer.insertBefore(emoteToggleBtn, submitButton);
@@ -398,15 +364,17 @@
                                         e.stopPropagation();
                                         insertEmote(emote.code, iframeDoc);
 
-                                        // Auto-send the emote only if enabled
-                                        if (autoSendEnabled) {
-                                            setTimeout(() => {
+                                        // Auto-send the emote only if the input box is empty
+                                        setTimeout(() => {
+                                            const input = iframeDoc.getElementById('new-message-input');
+                                            if (input && input.textContent.trim() === emote.code.trim()) {
+                                                // Input only contains the emote we just added, so auto-send
                                                 const submitBtn = iframeDoc.getElementById('new-message-submit');
                                                 if (submitBtn) {
                                                     submitBtn.click();
                                                 }
-                                            }, 50);
-                                        }
+                                            }
+                                        }, 50);
                                     });
                                 }
                             });
