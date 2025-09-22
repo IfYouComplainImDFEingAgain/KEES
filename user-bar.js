@@ -199,6 +199,182 @@
         POLLING_CHECK_DELAY: 1000
     };
 
+    // Styles configuration
+    const STYLES = {
+        emoteBar: {
+            display: 'none',
+            alignItems: 'center',
+            padding: '8px 12px',
+            background: 'rgba(0, 0, 0, 0.1)',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            marginBottom: '0px',
+            gap: '8px',
+            flexWrap: 'wrap',
+            transition: 'all 0.3s ease'
+        },
+        formatBar: {
+            display: 'none',
+            alignItems: 'center',
+            padding: '6px 12px',
+            background: 'rgba(0, 0, 0, 0.15)',
+            border: 'none',
+            borderRadius: '0 0 4px 4px',
+            marginBottom: '8px',
+            gap: '6px',
+            flexWrap: 'wrap',
+            transition: 'all 0.3s ease'
+        },
+        label: {
+            color: 'rgba(255, 255, 255, 0.7)',
+            fontSize: '13px',
+            fontWeight: '500',
+            marginRight: '8px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        formatLabel: {
+            color: 'rgba(255, 255, 255, 0.7)',
+            fontSize: '12px',
+            fontWeight: '500',
+            marginRight: '6px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        emoteButton: {
+            background: 'transparent',
+            border: '1px solid transparent',
+            padding: '4px',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none'
+        },
+        formatButton: {
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            padding: '4px 8px',
+            cursor: 'pointer',
+            borderRadius: '3px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: 'rgba(255, 255, 255, 0.9)',
+            minWidth: '28px',
+            height: '24px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        emoteToggleButton: {
+            background: 'transparent',
+            border: 'none',
+            padding: '8px',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none',
+            marginRight: '4px'
+        },
+        toggleImg: {
+            width: '24px',
+            height: '24px',
+            objectFit: 'contain',
+            display: 'block',
+            filter: 'brightness(0.9)',
+            transition: 'filter 0.2s ease'
+        },
+        emoteImage: {
+            width: '24px',
+            height: '24px',
+            objectFit: 'contain',
+            display: 'block'
+        },
+        emoteEmoji: {
+            fontSize: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px'
+        },
+        emoteText: {
+            fontSize: '10px',
+            fontWeight: 'bold',
+            color: 'rgba(255, 255, 255, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            textAlign: 'center',
+            lineHeight: '1'
+        },
+        colorPicker: {
+            position: 'absolute',
+            background: 'rgba(0, 0, 0, 0.9)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '8px',
+            padding: '12px',
+            zIndex: '1000',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '6px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+        },
+        colorButton: {
+            width: '32px',
+            height: '32px',
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            outline: 'none'
+        },
+        colorPickerCloseButton: {
+            position: 'absolute',
+            top: '-8px',
+            right: '-8px',
+            width: '20px',
+            height: '20px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            borderRadius: '50%',
+            color: 'white',
+            cursor: 'pointer',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none'
+        },
+        measureElement: {
+            position: 'absolute',
+            visibility: 'hidden',
+            height: 'auto',
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word',
+            pointerEvents: 'none',
+            zIndex: '-1000'
+        }
+    };
+
+    // Helper function to convert style object to CSS string
+    function stylesToString(styles) {
+        return Object.entries(styles)
+            .map(([key, value]) => {
+                const cssKey = key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+                return `${cssKey}: ${value}`;
+            })
+            .join('; ');
+    }
+
     // Optimized input resize system
     const resizeCache = new WeakMap();
 
@@ -212,15 +388,7 @@
             if (measureElement) return measureElement;
 
             measureElement = (doc || document).createElement('div');
-            measureElement.style.cssText = `
-                position: absolute;
-                visibility: hidden;
-                height: auto;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                pointer-events: none;
-                z-index: -1000;
-            `;
+            measureElement.style.cssText = stylesToString(STYLES.measureElement);
             (doc || document).body.appendChild(measureElement);
             return measureElement;
         }
@@ -393,47 +561,19 @@
         // Create the emote bar container
         const emoteBar = doc.createElement('div');
         emoteBar.id = 'custom-emote-bar';
-        emoteBar.style.cssText = `
-            display: none;
-            align-items: center;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.1);
-            border: none;
-            border-radius: 4px 4px 0 0;
-            margin-bottom: 0px;
-            gap: 8px;
-            flex-wrap: wrap;
-            transition: all 0.3s ease;
-        `;
+        emoteBar.style.cssText = stylesToString(STYLES.emoteBar);
 
         // Add label
         const label = doc.createElement('div');
         label.textContent = 'Quick Emotes:';
-        label.style.cssText = `
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-            font-weight: 500;
-            margin-right: 8px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        `;
+        label.style.cssText = stylesToString(STYLES.label);
         emoteBar.appendChild(label);
 
         // Create emote buttons
         emotes.forEach(emote => {
             const emoteButton = doc.createElement('button');
             emoteButton.type = 'button';
-            emoteButton.style.cssText = `
-                background: transparent;
-                border: 1px solid transparent;
-                padding: 4px;
-                cursor: pointer;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                outline: none;
-            `;
+            emoteButton.style.cssText = stylesToString(STYLES.emoteButton);
 
             // Create content element (image, emoji, or text)
             let contentElement;
@@ -443,40 +583,17 @@
                 contentElement = doc.createElement('img');
                 contentElement.src = emote.url;
                 contentElement.alt = emote.code;
-                contentElement.style.cssText = `
-                    width: 24px;
-                    height: 24px;
-                    object-fit: contain;
-                    display: block;
-                `;
+                contentElement.style.cssText = stylesToString(STYLES.emoteImage);
             } else if (emote.emoji) {
                 // Emoji emote
                 contentElement = doc.createElement('span');
                 contentElement.textContent = emote.emoji;
-                contentElement.style.cssText = `
-                    font-size: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 24px;
-                    height: 24px;
-                `;
+                contentElement.style.cssText = stylesToString(STYLES.emoteEmoji);
             } else if (emote.text) {
                 // Text emote
                 contentElement = doc.createElement('span');
                 contentElement.textContent = emote.text;
-                contentElement.style.cssText = `
-                    font-size: 10px;
-                    font-weight: bold;
-                    color: rgba(255, 255, 255, 0.9);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 24px;
-                    height: 24px;
-                    text-align: center;
-                    line-height: 1;
-                `;
+                contentElement.style.cssText = stylesToString(STYLES.emoteText);
             }
 
             contentElement.title = emote.title ? `${emote.title} - Click to insert ${emote.code}` : `Click to insert ${emote.code}`;
@@ -522,53 +639,19 @@
         // Create the format bar container
         const formatBar = doc.createElement('div');
         formatBar.id = 'custom-format-bar';
-        formatBar.style.cssText = `
-            display: none;
-            align-items: center;
-            padding: 6px 12px;
-            background: rgba(0, 0, 0, 0.15);
-            border: none;
-            border-radius: 0 0 4px 4px;
-            margin-bottom: 8px;
-            gap: 6px;
-            flex-wrap: wrap;
-            transition: all 0.3s ease;
-        `;
+        formatBar.style.cssText = stylesToString(STYLES.formatBar);
 
         // Add label
         const label = doc.createElement('div');
         label.textContent = 'Format:';
-        label.style.cssText = `
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 12px;
-            font-weight: 500;
-            margin-right: 6px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        `;
+        label.style.cssText = stylesToString(STYLES.formatLabel);
         formatBar.appendChild(label);
 
         // Create format tool buttons
         formatTools.forEach(tool => {
             const toolButton = doc.createElement('button');
             toolButton.type = 'button';
-            toolButton.style.cssText = `
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                padding: 4px 8px;
-                cursor: pointer;
-                border-radius: 3px;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                outline: none;
-                font-size: 11px;
-                font-weight: bold;
-                color: rgba(255, 255, 255, 0.9);
-                min-width: 28px;
-                height: 24px;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            `;
+            toolButton.style.cssText = stylesToString(STYLES.formatButton);
 
             toolButton.textContent = tool.symbol;
             toolButton.title = tool.title;
@@ -713,18 +796,7 @@
         // Create color picker popup
         const colorPicker = doc.createElement('div');
         colorPicker.id = 'color-picker-popup';
-        colorPicker.style.cssText = `
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            z-index: 1000;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        `;
+        colorPicker.style.cssText = stylesToString(STYLES.colorPicker);
 
         // Position near the input
         const inputRect = input.getBoundingClientRect();
@@ -735,16 +807,10 @@
         colors.forEach(color => {
             const colorButton = doc.createElement('button');
             colorButton.type = 'button';
-            colorButton.style.cssText = `
-                width: 32px;
-                height: 32px;
-                background: ${color.hex};
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                border-radius: 4px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                outline: none;
-            `;
+            colorButton.style.cssText = stylesToString({
+                ...STYLES.colorButton,
+                background: color.hex
+            });
             colorButton.title = color.name;
 
             // Hover effect
@@ -822,23 +888,7 @@
         const closeButton = doc.createElement('button');
         closeButton.type = 'button';
         closeButton.textContent = '×';
-        closeButton.style.cssText = `
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 20px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            outline: none;
-        `;
+        closeButton.style.cssText = stylesToString(STYLES.colorPickerCloseButton);
 
         addManagedEventListener(closeButton, 'click', (e) => {
             e.preventDefault();
@@ -917,31 +967,12 @@
         const emoteButton = doc.createElement('button');
         emoteButton.id = 'emote-toggle-button';
         emoteButton.type = 'button';
-        emoteButton.style.cssText = `
-            background: transparent;
-            border: none;
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            outline: none;
-            margin-right: 4px;
-        `;
+        emoteButton.style.cssText = stylesToString(STYLES.emoteToggleButton);
 
         // Create toggle button image content
         const toggleImg = doc.createElement('img');
         toggleImg.src = toggleButtonConfig.image;
-        toggleImg.style.cssText = `
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            display: block;
-            filter: brightness(0.9);
-            transition: filter 0.2s ease;
-        `;
+        toggleImg.style.cssText = stylesToString(STYLES.toggleImg);
 
         emoteButton.appendChild(toggleImg);
 
