@@ -89,7 +89,7 @@
         {
             name: 'Newline',
             symbol: '↵',
-            insertText: '\n',
+            insertText: '[br]',
             title: 'Insert line break'
         }
     ];
