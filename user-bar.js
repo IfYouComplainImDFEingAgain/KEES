@@ -47,14 +47,14 @@
         },
         // Example emoji/text entries (you can add more)
         {
-            code: '👍',
-            emoji: '👍',
-            title: 'Thumbs Up'
+            code: '🤡',
+            emoji: '🤡',
+            title: 'What are you laughing at?'
         },
         {
-            code: 'kek',
-            text: 'KEK',
-            title: 'Kek'
+            code: '5',
+            text: '5',
+            title: 'Type a 5 in the chat if you think hes weird.'
         },
         {
             code: '🚨[color=#ff0000]ALERT[/color]🚨 BOSSMAN IS [color=#80ff00]CLIMBING[/color]',
@@ -739,38 +739,58 @@
         } else if (tool.insertText) {
             // Simple text insertion (like newline)
             textToInsert = tool.insertText;
-        } else if (tool.startTag && tool.endTag) {
+        } else if (tool.startTag || tool.endTag) {
             // BBCode tag insertion with toggle functionality
             const selectedText = selection.toString();
-            if (selectedText) {
-                // Check if the selected text already has the tags
-                const startsWithTag = selectedText.startsWith(tool.startTag);
-                const endsWithTag = selectedText.endsWith(tool.endTag);
 
-                if (startsWithTag && endsWithTag) {
-                    // Remove existing tags
+            // Safely handle both paired and single-sided tags
+            const hasStartTag = !!tool.startTag;
+            const hasEndTag = !!tool.endTag;
+            const isPairedTag = hasStartTag && hasEndTag;
+
+            if (selectedText) {
+                // Check if the selected text already has the tags (safely)
+                const startsWithTag = hasStartTag && selectedText.startsWith(tool.startTag);
+                const endsWithTag = hasEndTag && selectedText.endsWith(tool.endTag);
+
+                if (isPairedTag && startsWithTag && endsWithTag) {
+                    // Remove existing paired tags
                     textToInsert = selectedText.slice(tool.startTag.length, -tool.endTag.length);
+                } else if (!isPairedTag && hasStartTag && startsWithTag) {
+                    // Remove existing start-only tag
+                    textToInsert = selectedText.slice(tool.startTag.length);
+                } else if (!isPairedTag && hasEndTag && endsWithTag) {
+                    // Remove existing end-only tag
+                    textToInsert = selectedText.slice(0, -tool.endTag.length);
                 } else {
-                    // Add tags
-                    textToInsert = tool.startTag + selectedText + tool.endTag;
+                    // Add tags (safely handle undefined tags)
+                    const prefix = tool.startTag || '';
+                    const suffix = tool.endTag || '';
+                    textToInsert = prefix + selectedText + suffix;
                 }
             } else {
-                // Insert empty tags with cursor between
-                textToInsert = tool.startTag + tool.endTag;
+                // Insert tags with cursor positioning
+                const prefix = tool.startTag || '';
+                const suffix = tool.endTag || '';
+                textToInsert = prefix + suffix;
             }
         }
 
-        if (textToInsert) {
+        if (textToInsert !== undefined) {
             const textNode = (doc || document).createTextNode(textToInsert);
             range.deleteContents();
             range.insertNode(textNode);
 
-            // Position cursor appropriately
+            // Position cursor appropriately based on tag type
             if (tool.startTag && tool.endTag && !selection.toString()) {
-                // Position cursor between tags
+                // Position cursor between paired tags
                 const position = tool.startTag.length;
                 range.setStart(textNode, position);
                 range.setEnd(textNode, position);
+            } else if (tool.startTag && !tool.endTag) {
+                // Position cursor after start-only tag
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
             } else {
                 // Position cursor after inserted text
                 range.setStartAfter(textNode);
