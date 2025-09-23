@@ -611,7 +611,9 @@
                 contentElement.style.cssText = stylesToString(STYLES.emoteText);
             }
 
-            contentElement.title = emote.title ? `${emote.title} - Click to insert ${emote.code}` : `Click to insert ${emote.code}`;
+            contentElement.title = emote.title ?
+                `${emote.title} - Click to insert ${emote.code}, Shift+Click to insert without auto-send` :
+                `Click to insert ${emote.code}, Shift+Click to insert without auto-send`;
             emoteButton.appendChild(contentElement);
 
             // Add hover effect
@@ -631,17 +633,17 @@
                 e.stopPropagation();
                 insertEmote(emote.code, doc);
 
-                // Auto-send the emote only if the input box is empty AND autoSend is not false
+                // Auto-send the emote only if the input box is empty AND autoSend is not false AND shift wasn't held
                 setTimeout(() => {
                     const input = (doc || document).getElementById('new-message-input');
-                    if (emote.autoSend !== false && input && input.textContent.trim() === emote.code.trim()) {
+                    if (emote.autoSend !== false && !e.shiftKey && input && input.textContent.trim() === emote.code.trim()) {
                         // Input only contains the emote we just added, so auto-send
                         const submitBtn = (doc || document).getElementById('new-message-submit');
                         if (submitBtn) {
                             submitBtn.click();
                         }
                     }
-                }, 50);
+                }, CONFIG.AUTO_SEND_DELAY);
             });
 
             emoteBar.appendChild(emoteButton);
@@ -1196,17 +1198,17 @@
                                         e.stopPropagation();
                                         insertEmote(emote.code, iframeDoc);
 
-                                        // Auto-send the emote only if the input box is empty AND autoSend is not false
+                                        // Auto-send the emote only if the input box is empty AND autoSend is not false AND shift wasn't held
                                         setTimeout(() => {
                                             const input = iframeDoc.getElementById('new-message-input');
-                                            if (emote.autoSend !== false && input && input.textContent.trim() === emote.code.trim()) {
+                                            if (emote.autoSend !== false && !e.shiftKey && input && input.textContent.trim() === emote.code.trim()) {
                                                 // Input only contains the emote we just added, so auto-send
                                                 const submitBtn = iframeDoc.getElementById('new-message-submit');
                                                 if (submitBtn) {
                                                     submitBtn.click();
                                                 }
                                             }
-                                        }, 50);
+                                        }, CONFIG.AUTO_SEND_DELAY);
                                     });
                                 }
                             });
