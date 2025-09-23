@@ -1126,6 +1126,9 @@
             if (inputContainer) {
                 inputContainer.style.position = 'relative';
                 inputContainer.appendChild(emoteToggleBtn);
+
+                // Add padding to prevent text overlap with toggle button
+                inputElement.style.paddingRight = '50px';
             }
         }
     }
