@@ -132,4 +132,9 @@ To update the script:
 
 ## License
 
-This 
+Upon immediate usage of this this script, you agree that:
+
+ - You are weird.
+ - Sweet Honey is kino.
+ - He is CLEAN.
+ - You will type a 5 in the chat.
