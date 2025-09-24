@@ -53,9 +53,6 @@ Check for updates in the script settings.
 - **B**: Bold text `[b]text[/b]`
 - **I**: Italic text `[i]text[/i]`
 - **U**: Underline text `[u]text[/u]`
-- **S**: Strikethrough text `[s]text[/s]`
-- **>**: Greentext quote `[quote]text[/quote]`
-- **Code**: Code formatting `[code]text[/code]`
 - **Color Palette**: Opens color picker for colored text
 - **↵**: Insert line break `[br]`
 
