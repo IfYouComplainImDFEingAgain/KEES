@@ -640,7 +640,48 @@
                         // Input only contains the emote we just added, so auto-send
                         const submitBtn = (doc || document).getElementById('new-message-submit');
                         if (submitBtn) {
+                            // Store message content before clicking submit
+                            const messageContent = input.innerHTML || '';
+                            const messageText = input.textContent || '';
+                            const sendTime = Date.now();
                             submitBtn.click();
+
+                            // Verify the message appeared in chat after a delay
+                            setTimeout(() => {
+                                const messages = (doc || document).querySelectorAll('.message, [class*="message-content"], .chat-message');
+                                let messageFound = false;
+
+                                // Check recent messages
+                                const recentMessages = Array.from(messages).slice(-5);
+                                for (const msg of recentMessages) {
+                                    if (messageText && msg.textContent && msg.textContent.includes(messageText.trim())) {
+                                        messageFound = true;
+                                        break;
+                                    }
+                                }
+
+                                // Check for connection indicators
+                                const connectionLost = (doc || document).querySelector('.connection-lost, .connecting, [class*="connecting"]');
+
+                                if (!messageFound && input.textContent.trim() === '' && connectionLost) {
+                                    // Restore the content
+                                    if (input.contentEditable === 'true') {
+                                        input.innerHTML = messageContent;
+                                    } else {
+                                        input.textContent = messageText;
+                                    }
+                                    console.log('Auto-send failed (disconnected) - content restored');
+
+                                    // Focus and position cursor
+                                    input.focus();
+                                    const range = (doc || document).createRange();
+                                    const selection = (doc ? doc.defaultView : window).getSelection();
+                                    range.selectNodeContents(input);
+                                    range.collapse(false);
+                                    selection.removeAllRanges();
+                                    selection.addRange(range);
+                                }
+                            }, 3000);
                         }
                     }
                 }, CONFIG.AUTO_SEND_DELAY);
@@ -1087,12 +1128,134 @@
             // Also watch for form submission to immediately reset
             const messageForm = doc.getElementById('new-message-form');
             if (messageForm) {
-                addManagedEventListener(messageForm, 'submit', () => {
-                    setTimeout(() => {
+                // Store message content before submission
+                let lastMessageContent = '';
+                let lastMessageText = '';
+                let submissionTime = 0;
+                let messageVerificationTimeout = null;
+
+                addManagedEventListener(messageForm, 'submit', (e) => {
+                    // Store the message content before it gets cleared
+                    lastMessageContent = inputElement.innerHTML || '';
+                    lastMessageText = inputElement.textContent || '';
+                    submissionTime = Date.now();
+
+                    // Clear any existing verification timeout
+                    if (messageVerificationTimeout) {
+                        clearTimeout(messageVerificationTimeout);
+                    }
+
+                    // Wait a bit then check if message appeared in chat
+                    messageVerificationTimeout = setTimeout(() => {
+                        verifyMessageAppeared();
+                    }, 3000); // Wait 3 seconds to see if message appears
+                });
+
+                const verifyMessageAppeared = () => {
+                    // Check if the message appeared in the chat
+                    const messages = doc.querySelectorAll('.message, [class*="message-content"], .chat-message');
+                    let messageFound = false;
+
+                    // Check recent messages for our content
+                    const recentMessages = Array.from(messages).slice(-10); // Check last 10 messages
+                    for (const msg of recentMessages) {
+                        const msgText = msg.textContent || '';
+                        // Check if this message contains our sent text (accounting for emotes being converted)
+                        if (lastMessageText && msgText.includes(lastMessageText.trim())) {
+                            // Check if this message was posted around the time we sent it
+                            const timeElement = msg.querySelector('.timestamp, [class*="time"], time');
+                            if (timeElement || (Date.now() - submissionTime) < 5000) {
+                                messageFound = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Also check for connection status indicators
+                    const connectionLost = doc.querySelector('.connection-lost, .connecting, [class*="connecting"], [class*="reconnect"]');
+
+                    // Check if input was cleared (normally happens on send)
+                    const inputCleared = inputElement.textContent.trim() === '';
+
+                    if (!messageFound && inputCleared && (connectionLost || (Date.now() - submissionTime) > 2500)) {
+                        // Message was cleared but didn't appear in chat, likely failed
+                        console.log('Message did not appear in chat - restoring content');
+
+                        // Restore the message content
+                        if (inputElement.contentEditable === 'true') {
+                            inputElement.innerHTML = lastMessageContent;
+                        } else {
+                            inputElement.textContent = lastMessageText;
+                        }
+
+                        // Focus and place cursor at end
+                        inputElement.focus();
+                        const range = doc.createRange();
+                        const selection = (doc ? doc.defaultView : window).getSelection();
+                        range.selectNodeContents(inputElement);
+                        range.collapse(false);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        // Resize to fit content
+                        resizeInput();
+
+                        // Show a visual indicator if possible
+                        showSendFailureIndicator(doc);
+                    } else if (messageFound) {
+                        // Message was sent successfully
+                        console.log('Message confirmed in chat');
                         inputElement.style.height = 'auto';
                         resizeInput();
-                    }, 100);
-                });
+                        lastMessageContent = '';
+                        lastMessageText = '';
+                    } else if (!inputCleared) {
+                        // Input wasn't cleared, form submission may have been prevented
+                        console.log('Message still in input - send may have been blocked');
+                    }
+                };
+
+                // Helper function to show a temporary failure indicator
+                const showSendFailureIndicator = (doc) => {
+                    // Check if we already have an indicator
+                    if (doc.getElementById('send-failure-indicator')) return;
+
+                    const indicator = doc.createElement('div');
+                    indicator.id = 'send-failure-indicator';
+                    indicator.textContent = 'Message failed to send - content restored';
+                    indicator.style.cssText = `
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        background: #ff4444;
+                        color: white;
+                        padding: 10px 15px;
+                        border-radius: 5px;
+                        font-size: 14px;
+                        z-index: 10000;
+                        animation: fadeInOut 3s ease-in-out;
+                    `;
+
+                    // Add animation
+                    if (!doc.getElementById('send-failure-animation')) {
+                        const style = doc.createElement('style');
+                        style.id = 'send-failure-animation';
+                        style.textContent = `
+                            @keyframes fadeInOut {
+                                0% { opacity: 0; transform: translateY(20px); }
+                                20% { opacity: 1; transform: translateY(0); }
+                                80% { opacity: 1; transform: translateY(0); }
+                                100% { opacity: 0; transform: translateY(20px); }
+                            }
+                        `;
+                        doc.head.appendChild(style);
+                    }
+
+                    doc.body.appendChild(indicator);
+                    setTimeout(() => {
+                        indicator.remove();
+                    }, 3000);
+                };
             }
 
             // Add Shift+Enter handler for multiline input
@@ -1208,7 +1371,48 @@
                                                 // Input only contains the emote we just added, so auto-send
                                                 const submitBtn = iframeDoc.getElementById('new-message-submit');
                                                 if (submitBtn) {
+                                                    // Store message content before clicking submit
+                                                    const messageContent = input.innerHTML || '';
+                                                    const messageText = input.textContent || '';
+                                                    const sendTime = Date.now();
                                                     submitBtn.click();
+
+                                                    // Verify the message appeared in chat after a delay
+                                                    setTimeout(() => {
+                                                        const messages = iframeDoc.querySelectorAll('.message, [class*="message-content"], .chat-message');
+                                                        let messageFound = false;
+
+                                                        // Check recent messages
+                                                        const recentMessages = Array.from(messages).slice(-5);
+                                                        for (const msg of recentMessages) {
+                                                            if (messageText && msg.textContent && msg.textContent.includes(messageText.trim())) {
+                                                                messageFound = true;
+                                                                break;
+                                                            }
+                                                        }
+
+                                                        // Check for connection indicators
+                                                        const connectionLost = iframeDoc.querySelector('.connection-lost, .connecting, [class*="connecting"]');
+
+                                                        if (!messageFound && input.textContent.trim() === '' && connectionLost) {
+                                                            // Restore the content
+                                                            if (input.contentEditable === 'true') {
+                                                                input.innerHTML = messageContent;
+                                                            } else {
+                                                                input.textContent = messageText;
+                                                            }
+                                                            console.log('Auto-send failed (disconnected) - content restored');
+
+                                                            // Focus and position cursor
+                                                            input.focus();
+                                                            const range = iframeDoc.createRange();
+                                                            const selection = iframeDoc.defaultView.getSelection();
+                                                            range.selectNodeContents(input);
+                                                            range.collapse(false);
+                                                            selection.removeAllRanges();
+                                                            selection.addRange(range);
+                                                        }
+                                                    }, 3000);
                                                 }
                                             }
                                         }, CONFIG.AUTO_SEND_DELAY);
