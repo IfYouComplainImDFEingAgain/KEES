@@ -10,6 +10,9 @@ A Tampermonkey userscript that adds enhanced features to Sneedchat, including qu
 - **Smart Input Resizing**: Auto-expanding chat input that adjusts to content
 - **Shift+Enter Support**: Send messages with Enter, add newlines with Shift+Enter
 - **Shift+Click Emotes**: Hold Shift while clicking emotes to insert without auto-sending
+- **Better Lost Connection Handling**: Helps prevent the client from eating messages when connecton is lost
+  
+
 
 
 ![Emote Picker](img/emote-picker.png)
