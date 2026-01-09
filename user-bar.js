@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Sneedchat User Bar
 // @namespace    http://tampermonkey.net/
-// @version      3.1
-// @description  Adds a toggleable custom emote and format bar to chat.
-// @author       
+// @version      3.4
+// @description  Adds a toggleable custom emote and format bar with image blacklist and emote management.
+// @author
 // @match        https://kiwifarms.st/chat/*
 // @match        https://kiwifarms.st/test-chat*
 // @match        https://kiwifarms.tw/chat/*
@@ -17,8 +17,8 @@
         // Define emotes with their codes and image URLs or emoji/text
         // #REQUIRED# code: is the text being entered into the text box as if you were typing it
         // url: is the URL of the thumbnail in the emote picker. You need to specify this or a title:
-        // emoji: you can put emotes in code: and probably should. This makes the emoji look bigger in the picker. 
-    const emotes = [
+        // emoji: you can put emotes in code: and probably should. This makes the emoji look bigger in the picker.
+    const defaultEmotes = [
         {
             code: ':lossmanjack:',
             url: 'https://kiwifarms.st/styles/custom/emotes/bmj_loss.png',
@@ -38,8 +38,8 @@
             code: ':gunt:',
             url: 'https://kiwifarms.st/styles/custom/emotes/gunt.gif',
             title: 'Gunt',
-        },        
-        // Example using a text entry in the bar instead of a thumbnail        
+        },
+        // Example using a text entry in the bar instead of a thumbnail
         {
             code: '[img]https://files.catbox.moe/0v5vvb.png[/img]',
             text: 'test',
@@ -110,10 +110,110 @@
             symbol: '↵',
             insertText: '[br]',
             title: 'Insert line break'
+        },
+        {
+            name: 'Blacklist',
+            symbol: '🚫',
+            customAction: 'blacklistManager',
+            title: 'Manage blacklisted images'
+        },
+        {
+            name: 'Emotes',
+            symbol: '⚙️',
+            customAction: 'emoteManager',
+            title: 'Manage custom emotes'
         }
     ];
 
     let emoteBarVisible = false;
+
+    // Emotes storage management
+    const EMOTES_KEY = 'sneedchat-custom-emotes';
+
+    function getEmotes() {
+        try {
+            const stored = localStorage.getItem(EMOTES_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultEmotes;
+            }
+            return defaultEmotes;
+        } catch (e) {
+            console.error('Failed to load emotes:', e);
+            return defaultEmotes;
+        }
+    }
+
+    function saveEmotes(emotesList) {
+        try {
+            localStorage.setItem(EMOTES_KEY, JSON.stringify(emotesList));
+            return true;
+        } catch (e) {
+            console.error('Failed to save emotes:', e);
+            return false;
+        }
+    }
+
+    function resetEmotesToDefault() {
+        return saveEmotes(defaultEmotes);
+    }
+
+    // Get emotes (will use stored or default)
+    let emotes = getEmotes();
+
+    // Image blacklist management
+    const BLACKLIST_KEY = 'sneedchat-image-blacklist';
+
+    function getBlacklist() {
+        try {
+            const stored = localStorage.getItem(BLACKLIST_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.error('Failed to load blacklist:', e);
+            return [];
+        }
+    }
+
+    function saveBlacklist(blacklist) {
+        try {
+            localStorage.setItem(BLACKLIST_KEY, JSON.stringify(blacklist));
+            return true;
+        } catch (e) {
+            console.error('Failed to save blacklist:', e);
+            return false;
+        }
+    }
+
+    function isBlacklisted(url) {
+        if (!url) return false;
+        const blacklist = getBlacklist();
+        return blacklist.includes(url);
+    }
+
+    function addToBlacklist(url) {
+        if (!url) return false;
+        const blacklist = getBlacklist();
+        if (!blacklist.includes(url)) {
+            blacklist.push(url);
+            return saveBlacklist(blacklist);
+        }
+        return false;
+    }
+
+    function removeFromBlacklist(url) {
+        if (!url) return false;
+        const blacklist = getBlacklist();
+        const index = blacklist.indexOf(url);
+        if (index > -1) {
+            blacklist.splice(index, 1);
+            return saveBlacklist(blacklist);
+        }
+        return false;
+    }
+
+    function clearBlacklist() {
+        return saveBlacklist([]);
+    }
 
     // Event listener management for cleanup
     const eventListeners = new WeakMap();
@@ -394,99 +494,47 @@
     const resizeCache = new WeakMap();
 
     function createOptimizedResizer(inputElement, doc) {
-        let measureElement = null;
-        let debounceTimer = null;
-        let computedStyles = null;
+        let raf = 0;
+        let baseHeight = 0;
 
-        // Create reusable measurement element
-        function createMeasurementElement() {
-            if (measureElement) return measureElement;
-
-            measureElement = (doc || document).createElement('div');
-            measureElement.style.cssText = stylesToString(STYLES.measureElement);
-            (doc || document).body.appendChild(measureElement);
-            return measureElement;
-        }
-
-        // Cache computed styles
-        function getComputedStyles() {
-            if (computedStyles) return computedStyles;
-
-            const styles = (doc ? doc.defaultView : window).getComputedStyle(inputElement);
-            computedStyles = {
-                fontFamily: styles.fontFamily,
-                fontSize: styles.fontSize,
-                lineHeight: styles.lineHeight,
-                padding: styles.padding,
-                border: styles.border,
-                width: inputElement.offsetWidth
-            };
-            return computedStyles;
-        }
-
-        // Optimized resize function
         function resizeInput() {
-            // Clear any pending resize
-            if (debounceTimer) {
-                clearTimeout(debounceTimer);
-            }
+            if (raf) cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(() => {
+                raf = 0;
 
-            debounceTimer = setTimeout(() => {
-                const currentHeight = parseInt(inputElement.style.height) || inputElement.offsetHeight;
-                const content = inputElement.textContent || '\u00A0';
-
-                // Early return for empty content
-                if (!inputElement.textContent || inputElement.textContent.trim() === '') {
-                    const originalHeight = inputElement.offsetHeight;
-                    if (Math.abs(originalHeight - currentHeight) > 1) {
-                        inputElement.style.height = 'auto';
-                    }
+                const txt = (inputElement.textContent || '').trim();
+                if (!txt) {
+                    inputElement.style.height = '';
+                    baseHeight = 0;
                     return;
                 }
 
-                // Use cached measurement element
-                const measurer = createMeasurementElement();
-                const styles = getComputedStyles();
-
-                // Apply styles to measurement element
-                Object.assign(measurer.style, {
-                    width: styles.width + 'px',
-                    fontFamily: styles.fontFamily,
-                    fontSize: styles.fontSize,
-                    lineHeight: styles.lineHeight,
-                    padding: styles.padding,
-                    border: styles.border
-                });
-
-                measurer.textContent = content;
-                const contentHeight = measurer.offsetHeight;
-
-                // Calculate new height within bounds
-                const newHeight = Math.min(CONFIG.MAX_INPUT_HEIGHT, contentHeight);
-
-                // Only update if significantly different
-                if (Math.abs(newHeight - currentHeight) > 1) {
-                    inputElement.style.height = newHeight + 'px';
+                // Capture base height on first content
+                if (!baseHeight) {
+                    baseHeight = inputElement.offsetHeight;
                 }
-            }, CONFIG.RESIZE_DEBOUNCE_DELAY);
+
+                // Temporarily set to auto to measure true content height
+                inputElement.style.height = 'auto';
+                const scrollH = inputElement.scrollHeight;
+
+                // Only set explicit height if content exceeds base height
+                if (scrollH > baseHeight) {
+                    const newH = Math.min(CONFIG.MAX_INPUT_HEIGHT, scrollH);
+                    inputElement.style.height = newH + 'px';
+                } else {
+                    // Restore to natural height
+                    inputElement.style.height = '';
+                }
+            });
         }
 
-        // Cleanup function
         function cleanup() {
-            if (debounceTimer) {
-                clearTimeout(debounceTimer);
-                debounceTimer = null;
-            }
-            if (measureElement) {
-                measureElement.remove();
-                measureElement = null;
-            }
-            computedStyles = null;
+            if (raf) cancelAnimationFrame(raf), (raf = 0);
+            baseHeight = 0;
         }
 
-        // Store cleanup function for later use
         resizeCache.set(inputElement, { resizeInput, cleanup });
-
         return { resizeInput, cleanup };
     }
 
@@ -524,6 +572,105 @@
                 resizeCache.delete(input);
             }
         });
+    }
+
+    // Helper functions for performance-optimized observers
+    function findMessageContainer(doc) {
+        return (
+            doc.querySelector('.messages') ||
+            doc.querySelector('#messages') ||
+            doc.querySelector('[class*="messages"]') ||
+            doc.querySelector('[class*="chat-messages"]') ||
+            doc.querySelector('.chat-log') ||
+            doc.querySelector('[role="log"]') ||
+            doc.body
+        );
+    }
+
+    function ensureSendWatcher(doc) {
+        if (doc.__sneed_sendWatcher) return doc.__sneed_sendWatcher;
+
+        const state = { pending: null, timer: null };
+        const container = findMessageContainer(doc);
+
+        const obs = new MutationObserver((mutations) => {
+            if (!state.pending) return;
+            const want = (state.pending.text || '').trim();
+            if (!want) return;
+
+            for (const m of mutations) {
+                for (const n of m.addedNodes) {
+                    if (!n || n.nodeType !== 1) continue;
+                    const t = n.textContent || '';
+                    if (t.includes(want)) {
+                        const done = state.pending;
+                        state.pending = null;
+                        if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+                        done.onConfirm && done.onConfirm();
+                        return;
+                    }
+                }
+            }
+        });
+
+        obs.observe(container, { childList: true, subtree: true });
+        addManagedObserver(container, obs);
+
+        doc.__sneed_sendWatcher = {
+            arm(pending) {
+                state.pending = pending;
+                if (state.timer) clearTimeout(state.timer);
+                state.timer = setTimeout(() => {
+                    const still = state.pending;
+                    state.pending = null;
+                    if (still && still.onFail) still.onFail();
+                }, 3000);
+            },
+            clear() {
+                state.pending = null;
+                if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+            }
+        };
+        return doc.__sneed_sendWatcher;
+    }
+
+    function observeForIframe(doc) {
+        if (doc.__sneed_iframe_observed) return;
+        doc.__sneed_iframe_observed = true;
+
+        const obs = new MutationObserver(() => {
+            const iframe = doc.getElementById('rust-shim');
+            if (iframe && !iframe.__sneed_observed) {
+                iframe.__sneed_observed = true;
+                iframe.addEventListener('load', () => checkAndReinject(), { passive: true });
+                setTimeout(checkAndReinject, 50);
+            }
+        });
+        obs.observe(doc.documentElement, { childList: true, subtree: true });
+        addManagedObserver(doc.documentElement, obs, true);
+    }
+
+    function observeForBarsRemoval(chatRoot, doc) {
+        if (chatRoot.__sneed_bar_observed) return;
+        chatRoot.__sneed_bar_observed = true;
+
+        const obs = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                for (const n of m.removedNodes) {
+                    if (!n || n.nodeType !== 1) continue;
+                    if (
+                        n.id === 'custom-emote-bar' || n.id === 'custom-format-bar' ||
+                        n.querySelector?.('#custom-emote-bar') || n.querySelector?.('#custom-format-bar')
+                    ) {
+                        cleanupBars();
+                        checkAndReinject();
+                        return;
+                    }
+                }
+            }
+        });
+        obs.observe(chatRoot, { childList: true, subtree: true });
+        addManagedObserver(chatRoot, obs);
     }
 
     // Reusable Shift+Enter handler for multiline input
@@ -586,6 +733,11 @@
 
         // Create emote buttons
         emotes.forEach(emote => {
+            // Skip blacklisted images
+            if (emote.url && isBlacklisted(emote.url)) {
+                return;
+            }
+
             const emoteButton = doc.createElement('button');
             emoteButton.type = 'button';
             emoteButton.style.cssText = stylesToString(STYLES.emoteButton);
@@ -643,45 +795,43 @@
                             // Store message content before clicking submit
                             const messageContent = input.innerHTML || '';
                             const messageText = input.textContent || '';
-                            const sendTime = Date.now();
+
+                            // Use the send watcher for verification
+                            const watcher = ensureSendWatcher(doc || document);
+                            watcher.arm({
+                                text: messageText,
+                                html: messageContent,
+                                time: Date.now(),
+                                onConfirm: () => {
+                                    console.log('Auto-send emote confirmed');
+                                },
+                                onFail: () => {
+                                    // Check for connection indicators
+                                    const connectionLost = (doc || document).querySelector('.connection-lost, .connecting, [class*="connecting"]');
+                                    const inputCleared = input.textContent.trim() === '';
+
+                                    if (inputCleared && connectionLost) {
+                                        // Restore the content
+                                        if (input.contentEditable === 'true') {
+                                            input.innerHTML = messageContent;
+                                        } else {
+                                            input.textContent = messageText;
+                                        }
+                                        console.log('Auto-send failed (disconnected) - content restored');
+
+                                        // Focus and position cursor
+                                        input.focus();
+                                        const range = (doc || document).createRange();
+                                        const selection = ((doc || document).defaultView || window).getSelection();
+                                        range.selectNodeContents(input);
+                                        range.collapse(false);
+                                        selection.removeAllRanges();
+                                        selection.addRange(range);
+                                    }
+                                }
+                            });
+
                             submitBtn.click();
-
-                            // Verify the message appeared in chat after a delay
-                            setTimeout(() => {
-                                const messages = (doc || document).querySelectorAll('.message, [class*="message-content"], .chat-message');
-                                let messageFound = false;
-
-                                // Check recent messages
-                                const recentMessages = Array.from(messages).slice(-5);
-                                for (const msg of recentMessages) {
-                                    if (messageText && msg.textContent && msg.textContent.includes(messageText.trim())) {
-                                        messageFound = true;
-                                        break;
-                                    }
-                                }
-
-                                // Check for connection indicators
-                                const connectionLost = (doc || document).querySelector('.connection-lost, .connecting, [class*="connecting"]');
-
-                                if (!messageFound && input.textContent.trim() === '' && connectionLost) {
-                                    // Restore the content
-                                    if (input.contentEditable === 'true') {
-                                        input.innerHTML = messageContent;
-                                    } else {
-                                        input.textContent = messageText;
-                                    }
-                                    console.log('Auto-send failed (disconnected) - content restored');
-
-                                    // Focus and position cursor
-                                    input.focus();
-                                    const range = (doc || document).createRange();
-                                    const selection = (doc ? doc.defaultView : window).getSelection();
-                                    range.selectNodeContents(input);
-                                    range.collapse(false);
-                                    selection.removeAllRanges();
-                                    selection.addRange(range);
-                                }
-                            }, 3000);
                         }
                     }
                 }, CONFIG.AUTO_SEND_DELAY);
@@ -704,6 +854,25 @@
         label.textContent = 'Format:';
         label.style.cssText = stylesToString(STYLES.formatLabel);
         formatBar.appendChild(label);
+
+        // Container for left-aligned tools
+        const leftTools = doc.createElement('div');
+        leftTools.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1;
+        `;
+
+        // Container for right-aligned tools
+        const rightTools = doc.createElement('div');
+        rightTools.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        `;
 
         // Create format tool buttons
         formatTools.forEach(tool => {
@@ -732,8 +901,16 @@
                 applyFormatting(tool, doc);
             });
 
-            formatBar.appendChild(toolButton);
+            // Right-align blacklist and emote manager buttons
+            if (tool.name === 'Blacklist' || tool.name === 'Emotes') {
+                rightTools.appendChild(toolButton);
+            } else {
+                leftTools.appendChild(toolButton);
+            }
         });
+
+        formatBar.appendChild(leftTools);
+        formatBar.appendChild(rightTools);
 
         return formatBar;
     }
@@ -779,6 +956,14 @@
             // Handle color picker custom action
             showColorPicker(input, selection, range, doc);
             return; // Exit early since color picker handles its own insertion
+        } else if (tool.customAction === 'blacklistManager') {
+            // Handle blacklist manager custom action
+            showBlacklistManager(doc);
+            return; // Exit early since blacklist manager is a separate UI
+        } else if (tool.customAction === 'emoteManager') {
+            // Handle emote manager custom action
+            showEmoteManager(doc);
+            return; // Exit early since emote manager is a separate UI
         } else if (tool.insertText) {
             // Simple text insertion (like newline)
             textToInsert = tool.insertText;
@@ -852,6 +1037,1179 @@
         }
 
         input.focus();
+    }
+
+    function showBlacklistManager(doc) {
+        // Remove any existing manager
+        const existing = doc.getElementById('blacklist-manager');
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        const blacklist = getBlacklist();
+
+        // Create manager popup
+        const manager = doc.createElement('div');
+        manager.id = 'blacklist-manager';
+        manager.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+
+        // Title
+        const title = doc.createElement('h3');
+        title.textContent = 'Blacklisted Images';
+        title.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 12px 0;
+            font-size: 16px;
+        `;
+        manager.appendChild(title);
+
+        // Add URL input section
+        const addSection = doc.createElement('div');
+        addSection.style.cssText = `
+            margin-bottom: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        `;
+
+        const addLabel = doc.createElement('label');
+        addLabel.textContent = 'Paste image URL to blacklist:';
+        addLabel.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            display: block;
+            margin-bottom: 8px;
+        `;
+        addSection.appendChild(addLabel);
+
+        const inputContainer = doc.createElement('div');
+        inputContainer.style.cssText = `
+            display: flex;
+            gap: 8px;
+        `;
+
+        const urlInput = doc.createElement('input');
+        urlInput.type = 'text';
+        urlInput.placeholder = 'https://example.com/image.png';
+        urlInput.style.cssText = `
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            flex: 1;
+        `;
+
+        const addUrlBtn = doc.createElement('button');
+        addUrlBtn.type = 'button';
+        addUrlBtn.textContent = 'Blacklist';
+        addUrlBtn.style.cssText = `
+            background: rgba(255, 0, 0, 0.3);
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background 0.2s ease;
+            white-space: nowrap;
+        `;
+
+        addManagedEventListener(addUrlBtn, 'mouseenter', () => {
+            addUrlBtn.style.background = 'rgba(255, 0, 0, 0.5)';
+        });
+
+        addManagedEventListener(addUrlBtn, 'mouseleave', () => {
+            addUrlBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+        });
+
+        const doAddUrl = () => {
+            const url = urlInput.value.trim();
+            if (url) {
+                if (addToBlacklist(url)) {
+                    urlInput.value = '';
+                    manager.remove();
+                    showBlacklistManager(doc);
+                    reloadEmoteBar(doc);
+                } else {
+                    alert('URL is already blacklisted or invalid');
+                }
+            }
+        };
+
+        addManagedEventListener(addUrlBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            doAddUrl();
+        });
+
+        addManagedEventListener(urlInput, 'keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doAddUrl();
+            }
+        });
+
+        inputContainer.appendChild(urlInput);
+        inputContainer.appendChild(addUrlBtn);
+        addSection.appendChild(inputContainer);
+        manager.appendChild(addSection);
+
+        if (blacklist.length === 0) {
+            const empty = doc.createElement('p');
+            empty.textContent = 'No images blacklisted';
+            empty.style.cssText = `
+                color: rgba(255, 255, 255, 0.6);
+                font-size: 13px;
+                margin: 0;
+            `;
+            manager.appendChild(empty);
+        } else {
+            const list = doc.createElement('div');
+            list.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            `;
+
+            blacklist.forEach(url => {
+                const item = doc.createElement('div');
+                item.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 4px;
+                `;
+
+                const img = doc.createElement('img');
+                img.src = url;
+                img.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    object-fit: contain;
+                `;
+
+                const urlText = doc.createElement('span');
+                urlText.textContent = url;
+                urlText.style.cssText = `
+                    color: rgba(255, 255, 255, 0.7);
+                    font-size: 11px;
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                `;
+
+                const removeBtn = doc.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = 'Remove';
+                removeBtn.style.cssText = `
+                    background: rgba(255, 0, 0, 0.3);
+                    border: 1px solid rgba(255, 0, 0, 0.5);
+                    color: rgba(255, 255, 255, 0.9);
+                    padding: 4px 12px;
+                    cursor: pointer;
+                    border-radius: 3px;
+                    font-size: 11px;
+                    transition: background 0.2s ease;
+                `;
+
+                addManagedEventListener(removeBtn, 'mouseenter', () => {
+                    removeBtn.style.background = 'rgba(255, 0, 0, 0.5)';
+                });
+
+                addManagedEventListener(removeBtn, 'mouseleave', () => {
+                    removeBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+                });
+
+                addManagedEventListener(removeBtn, 'click', () => {
+                    if (removeFromBlacklist(url)) {
+                        // Refresh the manager
+                        manager.remove();
+                        showBlacklistManager(doc);
+                        // Reload the emote bar
+                        const emoteBar = doc.getElementById('custom-emote-bar');
+                        if (emoteBar) {
+                            const wasVisible = emoteBar.style.display !== 'none';
+                            emoteBar.replaceWith(createEmoteBar(doc));
+                            if (wasVisible) {
+                                doc.getElementById('custom-emote-bar').style.display = 'flex';
+                            }
+                        }
+                    }
+                });
+
+                item.appendChild(img);
+                item.appendChild(urlText);
+                item.appendChild(removeBtn);
+                list.appendChild(item);
+            });
+
+            manager.appendChild(list);
+
+            // Clear all button
+            const clearBtn = doc.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.textContent = 'Clear All';
+            clearBtn.style.cssText = `
+                background: rgba(255, 0, 0, 0.3);
+                border: 1px solid rgba(255, 0, 0, 0.5);
+                color: rgba(255, 255, 255, 0.9);
+                padding: 8px 16px;
+                cursor: pointer;
+                border-radius: 4px;
+                font-size: 12px;
+                margin-top: 12px;
+                width: 100%;
+                transition: background 0.2s ease;
+            `;
+
+            addManagedEventListener(clearBtn, 'mouseenter', () => {
+                clearBtn.style.background = 'rgba(255, 0, 0, 0.5)';
+            });
+
+            addManagedEventListener(clearBtn, 'mouseleave', () => {
+                clearBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+            });
+
+            addManagedEventListener(clearBtn, 'click', () => {
+                if (confirm('Clear all blacklisted images?')) {
+                    clearBlacklist();
+                    manager.remove();
+                    showBlacklistManager(doc);
+                    // Reload the emote bar
+                    const emoteBar = doc.getElementById('custom-emote-bar');
+                    if (emoteBar) {
+                        const wasVisible = emoteBar.style.display !== 'none';
+                        emoteBar.replaceWith(createEmoteBar(doc));
+                        if (wasVisible) {
+                            doc.getElementById('custom-emote-bar').style.display = 'flex';
+                        }
+                    }
+                }
+            });
+
+            manager.appendChild(clearBtn);
+        }
+
+        // Close button
+        const closeBtn = doc.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 8px;
+            width: 100%;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(closeBtn, 'mouseenter', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        addManagedEventListener(closeBtn, 'mouseleave', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        addManagedEventListener(closeBtn, 'click', () => {
+            manager.remove();
+            removeElementListeners(manager);
+        });
+
+        manager.appendChild(closeBtn);
+
+        // Click outside to close
+        const clickOutside = (e) => {
+            if (!manager.contains(e.target)) {
+                manager.remove();
+                removeElementListeners(manager);
+                doc.removeEventListener('click', clickOutside);
+            }
+        };
+
+        // Add to page and set up outside click handler
+        doc.body.appendChild(manager);
+        setTimeout(() => doc.addEventListener('click', clickOutside), 0);
+    }
+
+    function showExportDialog(doc, emotesToExport) {
+        // Create export dialog
+        const dialog = doc.createElement('div');
+        dialog.id = 'export-dialog';
+        dialog.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            z-index: 10002;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 500px;
+            max-width: 700px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+
+        // Title
+        const title = doc.createElement('h3');
+        title.textContent = 'Export Emotes';
+        title.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 12px 0;
+            font-size: 16px;
+        `;
+        dialog.appendChild(title);
+
+        // Instructions
+        const instructions = doc.createElement('p');
+        instructions.textContent = 'Copy the JSON below and save it to a .json file:';
+        instructions.style.cssText = `
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin: 0 0 8px 0;
+        `;
+        dialog.appendChild(instructions);
+
+        // Textarea with JSON
+        const textarea = doc.createElement('textarea');
+        textarea.value = JSON.stringify(emotesToExport, null, 2);
+        textarea.readOnly = true;
+        textarea.style.cssText = `
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            resize: vertical;
+            margin-bottom: 12px;
+        `;
+        dialog.appendChild(textarea);
+
+        // Button container
+        const buttonContainer = doc.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 8px;
+        `;
+
+        // Copy button
+        const copyBtn = doc.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'Copy to Clipboard';
+        copyBtn.style.cssText = `
+            background: rgba(0, 255, 0, 0.3);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(copyBtn, 'mouseenter', () => {
+            copyBtn.style.background = 'rgba(0, 255, 0, 0.5)';
+        });
+
+        addManagedEventListener(copyBtn, 'mouseleave', () => {
+            copyBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+        });
+
+        addManagedEventListener(copyBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            textarea.select();
+            try {
+                doc.execCommand('copy');
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy to Clipboard';
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy. Please manually select and copy the text.');
+            }
+        });
+
+        // Close button
+        const closeBtn = doc.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(closeBtn, 'mouseenter', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        addManagedEventListener(closeBtn, 'mouseleave', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        addManagedEventListener(closeBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dialog.remove();
+            removeElementListeners(dialog);
+        });
+
+        buttonContainer.appendChild(copyBtn);
+        buttonContainer.appendChild(closeBtn);
+        dialog.appendChild(buttonContainer);
+
+        // Add to page
+        doc.body.appendChild(dialog);
+
+        // Auto-select text for easy copying
+        textarea.select();
+        textarea.focus();
+    }
+
+    function showEmoteManager(doc) {
+        // Remove any existing manager
+        const existing = doc.getElementById('emote-manager');
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        const currentEmotes = getEmotes();
+
+        // Create manager popup
+        const manager = doc.createElement('div');
+        manager.id = 'emote-manager';
+        manager.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+
+        // Title
+        const title = doc.createElement('h3');
+        title.textContent = 'Manage Emotes';
+        title.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 12px 0;
+            font-size: 16px;
+        `;
+        manager.appendChild(title);
+
+        // Add emote button
+        const addBtn = doc.createElement('button');
+        addBtn.type = 'button';
+        addBtn.textContent = '+ Add New Emote';
+        addBtn.style.cssText = `
+            background: rgba(0, 255, 0, 0.3);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 12px;
+            width: 100%;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(addBtn, 'mouseenter', () => {
+            addBtn.style.background = 'rgba(0, 255, 0, 0.5)';
+        });
+
+        addManagedEventListener(addBtn, 'mouseleave', () => {
+            addBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+        });
+
+        addManagedEventListener(addBtn, 'click', () => {
+            manager.remove();
+            showEmoteEditor(doc, null, -1);
+        });
+
+        manager.appendChild(addBtn);
+
+        // Emotes list
+        const list = doc.createElement('div');
+        list.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        `;
+
+        currentEmotes.forEach((emote, index) => {
+            const item = doc.createElement('div');
+            item.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 4px;
+            `;
+
+            // Preview
+            let preview;
+            if (emote.url) {
+                preview = doc.createElement('img');
+                preview.src = emote.url;
+                preview.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    object-fit: contain;
+                `;
+            } else if (emote.emoji) {
+                preview = doc.createElement('span');
+                preview.textContent = emote.emoji;
+                preview.style.cssText = `
+                    font-size: 24px;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+            } else if (emote.text) {
+                preview = doc.createElement('span');
+                preview.textContent = emote.text;
+                preview.style.cssText = `
+                    font-size: 10px;
+                    font-weight: bold;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: rgba(255, 255, 255, 0.9);
+                `;
+            }
+
+            const info = doc.createElement('div');
+            info.style.cssText = `
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            `;
+
+            const code = doc.createElement('span');
+            code.textContent = emote.code;
+            code.style.cssText = `
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 12px;
+                font-family: monospace;
+            `;
+
+            const titleText = doc.createElement('span');
+            titleText.textContent = emote.title || '(no title)';
+            titleText.style.cssText = `
+                color: rgba(255, 255, 255, 0.6);
+                font-size: 11px;
+            `;
+
+            info.appendChild(code);
+            info.appendChild(titleText);
+
+            const editBtn = doc.createElement('button');
+            editBtn.type = 'button';
+            editBtn.textContent = 'Edit';
+            editBtn.style.cssText = `
+                background: rgba(0, 128, 255, 0.3);
+                border: 1px solid rgba(0, 128, 255, 0.5);
+                color: rgba(255, 255, 255, 0.9);
+                padding: 4px 12px;
+                cursor: pointer;
+                border-radius: 3px;
+                font-size: 11px;
+                transition: background 0.2s ease;
+            `;
+
+            addManagedEventListener(editBtn, 'mouseenter', () => {
+                editBtn.style.background = 'rgba(0, 128, 255, 0.5)';
+            });
+
+            addManagedEventListener(editBtn, 'mouseleave', () => {
+                editBtn.style.background = 'rgba(0, 128, 255, 0.3)';
+            });
+
+            addManagedEventListener(editBtn, 'click', () => {
+                manager.remove();
+                showEmoteEditor(doc, emote, index);
+            });
+
+            const deleteBtn = doc.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.style.cssText = `
+                background: rgba(255, 0, 0, 0.3);
+                border: 1px solid rgba(255, 0, 0, 0.5);
+                color: rgba(255, 255, 255, 0.9);
+                padding: 4px 12px;
+                cursor: pointer;
+                border-radius: 3px;
+                font-size: 11px;
+                transition: background 0.2s ease;
+            `;
+
+            addManagedEventListener(deleteBtn, 'mouseenter', () => {
+                deleteBtn.style.background = 'rgba(255, 0, 0, 0.5)';
+            });
+
+            addManagedEventListener(deleteBtn, 'mouseleave', () => {
+                deleteBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+            });
+
+            addManagedEventListener(deleteBtn, 'click', () => {
+                if (confirm(`Delete emote "${emote.code}"?`)) {
+                    const updatedEmotes = currentEmotes.filter((_, i) => i !== index);
+                    emotes = updatedEmotes;
+                    saveEmotes(updatedEmotes);
+                    manager.remove();
+                    showEmoteManager(doc);
+                    reloadEmoteBar(doc);
+                }
+            });
+
+            if (preview) item.appendChild(preview);
+            item.appendChild(info);
+            item.appendChild(editBtn);
+            item.appendChild(deleteBtn);
+            list.appendChild(item);
+        });
+
+        manager.appendChild(list);
+
+        // Utility buttons
+        const utilityContainer = doc.createElement('div');
+        utilityContainer.style.cssText = `
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        `;
+
+        // Export button
+        const exportBtn = doc.createElement('button');
+        exportBtn.type = 'button';
+        exportBtn.textContent = 'Export';
+        exportBtn.style.cssText = `
+            background: rgba(128, 128, 128, 0.3);
+            border: 1px solid rgba(128, 128, 128, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(exportBtn, 'mouseenter', () => {
+            exportBtn.style.background = 'rgba(128, 128, 128, 0.5)';
+        });
+
+        addManagedEventListener(exportBtn, 'mouseleave', () => {
+            exportBtn.style.background = 'rgba(128, 128, 128, 0.3)';
+        });
+
+        addManagedEventListener(exportBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showExportDialog(doc, currentEmotes);
+        });
+
+        // Import button
+        const importBtn = doc.createElement('button');
+        importBtn.type = 'button';
+        importBtn.textContent = 'Import';
+        importBtn.style.cssText = `
+            background: rgba(128, 128, 128, 0.3);
+            border: 1px solid rgba(128, 128, 128, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(importBtn, 'mouseenter', () => {
+            importBtn.style.background = 'rgba(128, 128, 128, 0.5)';
+        });
+
+        addManagedEventListener(importBtn, 'mouseleave', () => {
+            importBtn.style.background = 'rgba(128, 128, 128, 0.3)';
+        });
+
+        addManagedEventListener(importBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const input = doc.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            addManagedEventListener(input, 'change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (Array.isArray(imported)) {
+                                emotes = imported;
+                                saveEmotes(imported);
+                                manager.remove();
+                                showEmoteManager(doc);
+                                reloadEmoteBar(doc);
+                            } else {
+                                alert('Invalid emotes file format');
+                            }
+                        } catch (err) {
+                            alert('Error parsing emotes file: ' + err.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            input.click();
+        });
+
+        // Reset button
+        const resetBtn = doc.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.textContent = 'Reset to Default';
+        resetBtn.style.cssText = `
+            background: rgba(255, 128, 0, 0.3);
+            border: 1px solid rgba(255, 128, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(resetBtn, 'mouseenter', () => {
+            resetBtn.style.background = 'rgba(255, 128, 0, 0.5)';
+        });
+
+        addManagedEventListener(resetBtn, 'mouseleave', () => {
+            resetBtn.style.background = 'rgba(255, 128, 0, 0.3)';
+        });
+
+        addManagedEventListener(resetBtn, 'click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm('Reset all emotes to default? This will delete your custom emotes.')) {
+                emotes = defaultEmotes;
+                resetEmotesToDefault();
+                manager.remove();
+                showEmoteManager(doc);
+                reloadEmoteBar(doc);
+            }
+        });
+
+        utilityContainer.appendChild(exportBtn);
+        utilityContainer.appendChild(importBtn);
+        utilityContainer.appendChild(resetBtn);
+        manager.appendChild(utilityContainer);
+
+        // Close button
+        const closeBtn = doc.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 100%;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(closeBtn, 'mouseenter', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        addManagedEventListener(closeBtn, 'mouseleave', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        addManagedEventListener(closeBtn, 'click', () => {
+            manager.remove();
+            removeElementListeners(manager);
+        });
+
+        manager.appendChild(closeBtn);
+
+        // Click outside to close
+        const clickOutside = (e) => {
+            if (!manager.contains(e.target)) {
+                manager.remove();
+                removeElementListeners(manager);
+                doc.removeEventListener('click', clickOutside);
+            }
+        };
+
+        // Add to page and set up outside click handler
+        doc.body.appendChild(manager);
+        setTimeout(() => doc.addEventListener('click', clickOutside), 0);
+    }
+
+    function showEmoteEditor(doc, emote, index) {
+        // Remove any existing editor
+        const existing = doc.getElementById('emote-editor');
+        if (existing) {
+            existing.remove();
+        }
+
+        const isNew = index === -1;
+        const currentEmotes = getEmotes();
+
+        // Create editor popup
+        const editor = doc.createElement('div');
+        editor.id = 'emote-editor';
+        editor.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            z-index: 10001;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            min-width: 400px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+
+        // Title
+        const title = doc.createElement('h3');
+        title.textContent = isNew ? 'Add New Emote' : 'Edit Emote';
+        title.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 16px 0;
+            font-size: 16px;
+        `;
+        editor.appendChild(title);
+
+        // Form fields
+        const fieldStyle = `
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        `;
+
+        const labelStyle = `
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            font-weight: 500;
+        `;
+
+        const inputStyle = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        `;
+
+        // Code field
+        const codeField = doc.createElement('div');
+        codeField.style.cssText = fieldStyle;
+        const codeLabel = doc.createElement('label');
+        codeLabel.textContent = 'Code (required):';
+        codeLabel.style.cssText = labelStyle;
+        const codeInput = doc.createElement('input');
+        codeInput.type = 'text';
+        codeInput.value = emote?.code || '';
+        codeInput.placeholder = ':example:';
+        codeInput.style.cssText = inputStyle;
+        codeField.appendChild(codeLabel);
+        codeField.appendChild(codeInput);
+
+        // Title field
+        const titleField = doc.createElement('div');
+        titleField.style.cssText = fieldStyle;
+        const titleLabel = doc.createElement('label');
+        titleLabel.textContent = 'Title:';
+        titleLabel.style.cssText = labelStyle;
+        const titleInput = doc.createElement('input');
+        titleInput.type = 'text';
+        titleInput.value = emote?.title || '';
+        titleInput.placeholder = 'Emote description';
+        titleInput.style.cssText = inputStyle;
+        titleField.appendChild(titleLabel);
+        titleField.appendChild(titleInput);
+
+        // Type selector
+        const typeField = doc.createElement('div');
+        typeField.style.cssText = fieldStyle;
+        const typeLabel = doc.createElement('label');
+        typeLabel.textContent = 'Type:';
+        typeLabel.style.cssText = labelStyle;
+        const typeSelect = doc.createElement('select');
+        typeSelect.style.cssText = inputStyle;
+
+        const types = [
+            { value: 'url', label: 'Image URL' },
+            { value: 'emoji', label: 'Emoji' },
+            { value: 'text', label: 'Text' }
+        ];
+
+        types.forEach(type => {
+            const option = doc.createElement('option');
+            option.value = type.value;
+            option.textContent = type.label;
+            typeSelect.appendChild(option);
+        });
+
+        // Set initial type
+        if (emote?.url) typeSelect.value = 'url';
+        else if (emote?.emoji) typeSelect.value = 'emoji';
+        else if (emote?.text) typeSelect.value = 'text';
+        else typeSelect.value = 'url';
+
+        typeField.appendChild(typeLabel);
+        typeField.appendChild(typeSelect);
+
+        // Value field (changes based on type)
+        const valueField = doc.createElement('div');
+        valueField.style.cssText = fieldStyle;
+        const valueLabel = doc.createElement('label');
+        valueLabel.style.cssText = labelStyle;
+        const valueInput = doc.createElement('input');
+        valueInput.type = 'text';
+        valueInput.style.cssText = inputStyle;
+        valueField.appendChild(valueLabel);
+        valueField.appendChild(valueInput);
+
+        const updateValueField = () => {
+            const type = typeSelect.value;
+            if (type === 'url') {
+                valueLabel.textContent = 'Image URL:';
+                valueInput.placeholder = 'https://example.com/image.png';
+                valueInput.value = emote?.url || '';
+            } else if (type === 'emoji') {
+                valueLabel.textContent = 'Emoji:';
+                valueInput.placeholder = '😀';
+                valueInput.value = emote?.emoji || '';
+            } else if (type === 'text') {
+                valueLabel.textContent = 'Text:';
+                valueInput.placeholder = 'ABC';
+                valueInput.value = emote?.text || '';
+            }
+        };
+
+        updateValueField();
+        addManagedEventListener(typeSelect, 'change', updateValueField);
+
+        // Auto-send checkbox
+        const autoSendField = doc.createElement('div');
+        autoSendField.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        `;
+        const autoSendCheckbox = doc.createElement('input');
+        autoSendCheckbox.type = 'checkbox';
+        autoSendCheckbox.id = 'auto-send-checkbox';
+        autoSendCheckbox.checked = emote?.autoSend !== false;
+        const autoSendLabel = doc.createElement('label');
+        autoSendLabel.htmlFor = 'auto-send-checkbox';
+        autoSendLabel.textContent = 'Auto-send when input is empty';
+        autoSendLabel.style.cssText = `
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            cursor: pointer;
+        `;
+        autoSendField.appendChild(autoSendCheckbox);
+        autoSendField.appendChild(autoSendLabel);
+
+        editor.appendChild(codeField);
+        editor.appendChild(titleField);
+        editor.appendChild(typeField);
+        editor.appendChild(valueField);
+        editor.appendChild(autoSendField);
+
+        // Buttons
+        const buttonContainer = doc.createElement('div');
+        buttonContainer.style.cssText = `
+            display: flex;
+            gap: 8px;
+        `;
+
+        const saveBtn = doc.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.textContent = 'Save';
+        saveBtn.style.cssText = `
+            background: rgba(0, 255, 0, 0.3);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(saveBtn, 'mouseenter', () => {
+            saveBtn.style.background = 'rgba(0, 255, 0, 0.5)';
+        });
+
+        addManagedEventListener(saveBtn, 'mouseleave', () => {
+            saveBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+        });
+
+        addManagedEventListener(saveBtn, 'click', () => {
+            const code = codeInput.value.trim();
+            if (!code) {
+                alert('Code is required');
+                return;
+            }
+
+            const type = typeSelect.value;
+            const value = valueInput.value.trim();
+            if (!value) {
+                alert(`${type === 'url' ? 'URL' : type === 'emoji' ? 'Emoji' : 'Text'} is required`);
+                return;
+            }
+
+            const newEmote = {
+                code: code,
+                title: titleInput.value.trim() || undefined
+            };
+
+            if (type === 'url') newEmote.url = value;
+            else if (type === 'emoji') newEmote.emoji = value;
+            else if (type === 'text') newEmote.text = value;
+
+            if (!autoSendCheckbox.checked) {
+                newEmote.autoSend = false;
+            }
+
+            let updatedEmotes;
+            if (isNew) {
+                updatedEmotes = [...currentEmotes, newEmote];
+            } else {
+                updatedEmotes = [...currentEmotes];
+                updatedEmotes[index] = newEmote;
+            }
+
+            emotes = updatedEmotes;
+            saveEmotes(updatedEmotes);
+            editor.remove();
+            showEmoteManager(doc);
+            reloadEmoteBar(doc);
+        });
+
+        const cancelBtn = doc.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            flex: 1;
+            transition: background 0.2s ease;
+        `;
+
+        addManagedEventListener(cancelBtn, 'mouseenter', () => {
+            cancelBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        addManagedEventListener(cancelBtn, 'mouseleave', () => {
+            cancelBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        addManagedEventListener(cancelBtn, 'click', () => {
+            editor.remove();
+            showEmoteManager(doc);
+        });
+
+        buttonContainer.appendChild(saveBtn);
+        buttonContainer.appendChild(cancelBtn);
+        editor.appendChild(buttonContainer);
+
+        // Add to page
+        doc.body.appendChild(editor);
+    }
+
+    function reloadEmoteBar(doc) {
+        // Reload emotes from storage
+        emotes = getEmotes();
+
+        const emoteBar = doc.getElementById('custom-emote-bar');
+        if (emoteBar) {
+            const wasVisible = emoteBar.style.display !== 'none';
+            emoteBar.replaceWith(createEmoteBar(doc));
+            if (wasVisible) {
+                doc.getElementById('custom-emote-bar').style.display = 'flex';
+            }
+        }
     }
 
     function showColorPicker(input, selection, range, doc) {
@@ -1086,6 +2444,48 @@
         return emoteButton;
     }
 
+    // Helper function to show a temporary failure indicator
+    function showSendFailureIndicator(doc) {
+        // Check if we already have an indicator
+        if (doc.getElementById('send-failure-indicator')) return;
+
+        const indicator = doc.createElement('div');
+        indicator.id = 'send-failure-indicator';
+        indicator.textContent = 'Message failed to send - content restored';
+        indicator.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ff4444;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 10000;
+            animation: fadeInOut 3s ease-in-out;
+        `;
+
+        // Add animation
+        if (!doc.getElementById('send-failure-animation')) {
+            const style = doc.createElement('style');
+            style.id = 'send-failure-animation';
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateY(20px); }
+                    20% { opacity: 1; transform: translateY(0); }
+                    80% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(20px); }
+                }
+            `;
+            doc.head.appendChild(style);
+        }
+
+        doc.body.appendChild(indicator);
+        setTimeout(() => {
+            indicator.remove();
+        }, 3000);
+    }
+
     function addEmoteToggleButton(doc) {
         const buttonsContainer = doc.querySelector('.chat-form-buttons');
         const submitButton = doc.getElementById('new-message-submit');
@@ -1127,135 +2527,67 @@
 
             // Also watch for form submission to immediately reset
             const messageForm = doc.getElementById('new-message-form');
-            if (messageForm) {
-                // Store message content before submission
-                let lastMessageContent = '';
-                let lastMessageText = '';
-                let submissionTime = 0;
-                let messageVerificationTimeout = null;
+            if (messageForm && !messageForm.__sneed_submit_handler) {
+                messageForm.__sneed_submit_handler = true;
+
+                // Create the send watcher once
+                const watcher = ensureSendWatcher(doc);
 
                 addManagedEventListener(messageForm, 'submit', (e) => {
                     // Store the message content before it gets cleared
-                    lastMessageContent = inputElement.innerHTML || '';
-                    lastMessageText = inputElement.textContent || '';
-                    submissionTime = Date.now();
+                    const lastMessageContent = inputElement.innerHTML || '';
+                    const lastMessageText = inputElement.textContent || '';
 
-                    // Clear any existing verification timeout
-                    if (messageVerificationTimeout) {
-                        clearTimeout(messageVerificationTimeout);
-                    }
+                    // Arm the watcher with callbacks
+                    watcher.arm({
+                        text: lastMessageText,
+                        html: lastMessageContent,
+                        time: Date.now(),
+                        onConfirm: () => {
+                            // Message was sent successfully
+                            console.log('Message confirmed in chat');
+                            inputElement.style.height = 'auto';
+                            resizeInput();
+                        },
+                        onFail: () => {
+                            // Check for connection status indicators
+                            const connectionLost = doc.querySelector('.connection-lost, .connecting, [class*="connecting"], [class*="reconnect"]');
 
-                    // Wait a bit then check if message appeared in chat
-                    messageVerificationTimeout = setTimeout(() => {
-                        verifyMessageAppeared();
-                    }, 3000); // Wait 3 seconds to see if message appears
+                            // Check if input was cleared (normally happens on send)
+                            const inputCleared = inputElement.textContent.trim() === '';
+
+                            if (inputCleared && connectionLost) {
+                                // Message was cleared but didn't appear in chat, likely failed
+                                console.log('Message did not appear in chat - restoring content');
+
+                                // Restore the message content
+                                if (inputElement.contentEditable === 'true') {
+                                    inputElement.innerHTML = lastMessageContent;
+                                } else {
+                                    inputElement.textContent = lastMessageText;
+                                }
+
+                                // Focus and place cursor at end
+                                inputElement.focus();
+                                const range = doc.createRange();
+                                const selection = (doc ? doc.defaultView : window).getSelection();
+                                range.selectNodeContents(inputElement);
+                                range.collapse(false);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+
+                                // Resize to fit content
+                                resizeInput();
+
+                                // Show a visual indicator
+                                showSendFailureIndicator(doc);
+                            } else if (!inputCleared) {
+                                // Input wasn't cleared, form submission may have been prevented
+                                console.log('Message still in input - send may have been blocked');
+                            }
+                        }
+                    });
                 });
-
-                const verifyMessageAppeared = () => {
-                    // Check if the message appeared in the chat
-                    const messages = doc.querySelectorAll('.message, [class*="message-content"], .chat-message');
-                    let messageFound = false;
-
-                    // Check recent messages for our content
-                    const recentMessages = Array.from(messages).slice(-10); // Check last 10 messages
-                    for (const msg of recentMessages) {
-                        const msgText = msg.textContent || '';
-                        // Check if this message contains our sent text (accounting for emotes being converted)
-                        if (lastMessageText && msgText.includes(lastMessageText.trim())) {
-                            // Check if this message was posted around the time we sent it
-                            const timeElement = msg.querySelector('.timestamp, [class*="time"], time');
-                            if (timeElement || (Date.now() - submissionTime) < 5000) {
-                                messageFound = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // Also check for connection status indicators
-                    const connectionLost = doc.querySelector('.connection-lost, .connecting, [class*="connecting"], [class*="reconnect"]');
-
-                    // Check if input was cleared (normally happens on send)
-                    const inputCleared = inputElement.textContent.trim() === '';
-
-                    if (!messageFound && inputCleared && (connectionLost || (Date.now() - submissionTime) > 2500)) {
-                        // Message was cleared but didn't appear in chat, likely failed
-                        console.log('Message did not appear in chat - restoring content');
-
-                        // Restore the message content
-                        if (inputElement.contentEditable === 'true') {
-                            inputElement.innerHTML = lastMessageContent;
-                        } else {
-                            inputElement.textContent = lastMessageText;
-                        }
-
-                        // Focus and place cursor at end
-                        inputElement.focus();
-                        const range = doc.createRange();
-                        const selection = (doc ? doc.defaultView : window).getSelection();
-                        range.selectNodeContents(inputElement);
-                        range.collapse(false);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-
-                        // Resize to fit content
-                        resizeInput();
-
-                        // Show a visual indicator if possible
-                        showSendFailureIndicator(doc);
-                    } else if (messageFound) {
-                        // Message was sent successfully
-                        console.log('Message confirmed in chat');
-                        inputElement.style.height = 'auto';
-                        resizeInput();
-                        lastMessageContent = '';
-                        lastMessageText = '';
-                    } else if (!inputCleared) {
-                        // Input wasn't cleared, form submission may have been prevented
-                        console.log('Message still in input - send may have been blocked');
-                    }
-                };
-
-                // Helper function to show a temporary failure indicator
-                const showSendFailureIndicator = (doc) => {
-                    // Check if we already have an indicator
-                    if (doc.getElementById('send-failure-indicator')) return;
-
-                    const indicator = doc.createElement('div');
-                    indicator.id = 'send-failure-indicator';
-                    indicator.textContent = 'Message failed to send - content restored';
-                    indicator.style.cssText = `
-                        position: fixed;
-                        bottom: 20px;
-                        right: 20px;
-                        background: #ff4444;
-                        color: white;
-                        padding: 10px 15px;
-                        border-radius: 5px;
-                        font-size: 14px;
-                        z-index: 10000;
-                        animation: fadeInOut 3s ease-in-out;
-                    `;
-
-                    // Add animation
-                    if (!doc.getElementById('send-failure-animation')) {
-                        const style = doc.createElement('style');
-                        style.id = 'send-failure-animation';
-                        style.textContent = `
-                            @keyframes fadeInOut {
-                                0% { opacity: 0; transform: translateY(20px); }
-                                20% { opacity: 1; transform: translateY(0); }
-                                80% { opacity: 1; transform: translateY(0); }
-                                100% { opacity: 0; transform: translateY(20px); }
-                            }
-                        `;
-                        doc.head.appendChild(style);
-                    }
-
-                    doc.body.appendChild(indicator);
-                    setTimeout(() => {
-                        indicator.remove();
-                    }, 3000);
-                };
             }
 
             // Add Shift+Enter handler for multiline input
@@ -1319,6 +2651,12 @@
                 const directInput = document.getElementById('new-message-input');
                 attachShiftEnterHandler(directInput, document);
 
+                // Install bar-removal observer
+                const root = messageForm.parentElement || document.body;
+                if (root && !root.__sneed_bar_observed) {
+                    observeForBarsRemoval(root, document);
+                }
+
                 console.log('Emote and format bars injected into test-chat');
             }
         } else {
@@ -1339,87 +2677,7 @@
                             const emoteBar = createEmoteBar(iframeDoc);
                             const formatBar = createFormatBar(iframeDoc);
 
-                            // Re-attach event listeners for iframe context
-                            const buttons = emoteBar.querySelectorAll('button');
-                            buttons.forEach((button, index) => {
-                                if (index < emotes.length) {
-                                    const emote = emotes[index];
-
-                                    // Replace click handler for iframe context
-                                    button.replaceWith(button.cloneNode(true));
-                                    const newButton = emoteBar.querySelectorAll('button')[index];
-
-                                    addManagedEventListener(newButton, 'mouseenter', () => {
-                                        newButton.style.background = 'rgba(255, 255, 255, 0.1)';
-                                        newButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                                    });
-
-                                    addManagedEventListener(newButton, 'mouseleave', () => {
-                                        newButton.style.background = 'transparent';
-                                        newButton.style.borderColor = 'transparent';
-                                    });
-
-                                    addManagedEventListener(newButton, 'click', (e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        insertEmote(emote.code, iframeDoc);
-
-                                        // Auto-send the emote only if the input box is empty AND autoSend is not false AND shift wasn't held
-                                        setTimeout(() => {
-                                            const input = iframeDoc.getElementById('new-message-input');
-                                            if (emote.autoSend !== false && !e.shiftKey && input && input.textContent.trim() === emote.code.trim()) {
-                                                // Input only contains the emote we just added, so auto-send
-                                                const submitBtn = iframeDoc.getElementById('new-message-submit');
-                                                if (submitBtn) {
-                                                    // Store message content before clicking submit
-                                                    const messageContent = input.innerHTML || '';
-                                                    const messageText = input.textContent || '';
-                                                    const sendTime = Date.now();
-                                                    submitBtn.click();
-
-                                                    // Verify the message appeared in chat after a delay
-                                                    setTimeout(() => {
-                                                        const messages = iframeDoc.querySelectorAll('.message, [class*="message-content"], .chat-message');
-                                                        let messageFound = false;
-
-                                                        // Check recent messages
-                                                        const recentMessages = Array.from(messages).slice(-5);
-                                                        for (const msg of recentMessages) {
-                                                            if (messageText && msg.textContent && msg.textContent.includes(messageText.trim())) {
-                                                                messageFound = true;
-                                                                break;
-                                                            }
-                                                        }
-
-                                                        // Check for connection indicators
-                                                        const connectionLost = iframeDoc.querySelector('.connection-lost, .connecting, [class*="connecting"]');
-
-                                                        if (!messageFound && input.textContent.trim() === '' && connectionLost) {
-                                                            // Restore the content
-                                                            if (input.contentEditable === 'true') {
-                                                                input.innerHTML = messageContent;
-                                                            } else {
-                                                                input.textContent = messageText;
-                                                            }
-                                                            console.log('Auto-send failed (disconnected) - content restored');
-
-                                                            // Focus and position cursor
-                                                            input.focus();
-                                                            const range = iframeDoc.createRange();
-                                                            const selection = iframeDoc.defaultView.getSelection();
-                                                            range.selectNodeContents(input);
-                                                            range.collapse(false);
-                                                            selection.removeAllRanges();
-                                                            selection.addRange(range);
-                                                        }
-                                                    }, 3000);
-                                                }
-                                            }
-                                        }, CONFIG.AUTO_SEND_DELAY);
-                                    });
-                                }
-                            });
-
+                            // Insert bars before the form
                             messageForm.parentNode.insertBefore(emoteBar, messageForm);
                             messageForm.parentNode.insertBefore(formatBar, messageForm);
 
@@ -1429,6 +2687,12 @@
                             // Add Shift+Enter handler for iframe context
                             const iframeInput = iframeDoc.getElementById('new-message-input');
                             attachShiftEnterHandler(iframeInput, iframeDoc);
+
+                            // Install bar-removal observer
+                            const root = messageForm.parentElement || iframeDoc.body;
+                            if (root && !root.__sneed_bar_observed) {
+                                observeForBarsRemoval(root, iframeDoc);
+                            }
 
                             console.log('Emote and format bars injected into iframe');
                         }
@@ -1449,11 +2713,14 @@
         } else {
             setTimeout(injectEmoteBar, CONFIG.INIT_DELAY);
         }
+
+        // Observe for iframe on parent page (harmless if we're in iframe)
+        observeForIframe(document);
     }
 
     waitForReady();
 
-    // Smart detection using MutationObserver instead of setInterval
+    // Smart detection for reinject
     let reinjectAttempts = 0;
     const MAX_REINJECT_ATTEMPTS = 10;
 
@@ -1482,39 +2749,6 @@
                 }
             }
         }
-    }
-
-    // Use MutationObserver to detect when chat UI might have been replaced
-    const mainObserver = new MutationObserver((mutations) => {
-        // Check if our elements were removed
-        const needsReinject = mutations.some(mutation => {
-            return Array.from(mutation.removedNodes).some(node => {
-                if (node.nodeType === 1) { // Element node
-                    // Also cleanup if our elements are removed
-                    if (node.id === 'custom-emote-bar' || node.id === 'custom-format-bar') {
-                        cleanupBars();
-                    }
-                    return node.id === 'custom-emote-bar' ||
-                           node.id === 'custom-format-bar' ||
-                           node.querySelector?.('#custom-emote-bar') ||
-                           node.querySelector?.('#custom-format-bar');
-                }
-                return false;
-            });
-        });
-
-        if (needsReinject) {
-            checkAndReinject();
-        }
-    });
-
-    // Observe the body for changes using managed observer
-    if (document.body) {
-        mainObserver.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        addManagedObserver(document.body, mainObserver, true);
     }
 
     // Also check when page becomes visible (user switches tabs back)
