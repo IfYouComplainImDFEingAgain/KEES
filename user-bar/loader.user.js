@@ -8,7 +8,9 @@
 // @match        https://kiwifarms.st/test-chat*
 // @match        https://kiwifarms.tw/chat/*
 // @match        https://kiwifarms.tw/test-chat*
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @connect      raw.githubusercontent.com
+// @connect      github.com
 // ==/UserScript==
 
 (function() {
@@ -18,9 +20,11 @@
     // CONFIGURATION - Update these for new releases
     // ============================================
     const VERSION = 'user-bar-3.5.0';
-    const BASE_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/sneedchat-enhancer/' + VERSION + '/user-bar/';
+    const BASE_URL = 'https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/' + VERSION + '/user-bar/';
     // For local development, use:
     // const BASE_URL = 'http://localhost:8080/user-bar/';
+
+    const DEBUG = false; // Set to true to stop on first module failure
 
     // ============================================
     // GLOBAL NAMESPACE
@@ -44,32 +48,43 @@
     window.SNEED.log = log;
 
     // ============================================
+    // GM_xmlhttpRequest HELPER
+    // ============================================
+    function gmGetText(url) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: url,
+                timeout: 30000,
+                onload: function(response) {
+                    if (response.status >= 200 && response.status < 300) {
+                        resolve(response.responseText);
+                    } else {
+                        reject(new Error(`HTTP ${response.status}: ${response.statusText} - ${url}`));
+                    }
+                },
+                onerror: function(error) {
+                    reject(new Error(`Network error fetching ${url}: ${error.statusText || 'Unknown error'}`));
+                },
+                ontimeout: function() {
+                    reject(new Error(`Timeout fetching ${url}`));
+                }
+            });
+        });
+    }
+
+    // ============================================
     // MODULE LOADER
     // ============================================
     const loadedModules = [];
     const failedModules = [];
-
-    async function fetchModule(url) {
-        const response = await fetch(url, {
-            cache: 'no-cache',
-            headers: {
-                'Accept': 'application/javascript'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return await response.text();
-    }
 
     async function loadModule(modulePath) {
         const url = BASE_URL + modulePath;
 
         try {
             log.info(`Loading module: ${modulePath}`);
-            const code = await fetchModule(url);
+            const code = await gmGetText(url);
 
             // Evaluate the module in a try-catch to isolate errors
             try {
@@ -80,12 +95,12 @@
                 return true;
             } catch (evalError) {
                 log.error(`Eval error in ${modulePath}:`, evalError);
-                failedModules.push({ module: modulePath, error: evalError.message });
+                failedModules.push({ module: modulePath, url: url, error: evalError.message });
                 return false;
             }
         } catch (fetchError) {
-            log.error(`Fetch error for ${modulePath}:`, fetchError);
-            failedModules.push({ module: modulePath, error: fetchError.message });
+            log.error(`Fetch error for ${modulePath} (${url}):`, fetchError);
+            failedModules.push({ module: modulePath, url: url, error: fetchError.message });
             return false;
         }
     }
@@ -94,13 +109,10 @@
         const url = BASE_URL + 'manifest.json';
 
         try {
-            const response = await fetch(url, { cache: 'no-cache' });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return await response.json();
+            const text = await gmGetText(url);
+            return JSON.parse(text);
         } catch (error) {
-            log.error('Failed to load manifest:', error);
+            log.error(`Failed to load manifest (${url}):`, error);
             // Fallback to hardcoded module list
             return {
                 version: VERSION,
@@ -123,6 +135,7 @@
 
     async function init() {
         log.info(`Sneedchat User Bar v${VERSION} - Loading...`);
+        log.info(`Base URL: ${BASE_URL}`);
 
         // Wait for DOM ready
         if (document.readyState === 'loading') {
@@ -139,7 +152,12 @@
         for (const modulePath of manifest.modules) {
             const success = await loadModule(modulePath);
             if (!success) {
-                log.warn(`Module ${modulePath} failed to load, continuing...`);
+                if (DEBUG) {
+                    log.error(`Module ${modulePath} failed to load, stopping (DEBUG mode)`);
+                    break;
+                } else {
+                    log.warn(`Module ${modulePath} failed to load, continuing...`);
+                }
             }
         }
 
