@@ -17,8 +17,8 @@
     // ============================================
     // CONFIGURATION - Update these for new releases
     // ============================================
-    const VERSION = '3.5.0';
-    const BASE_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/sneedchat-enhancer/v' + VERSION + '/user-bar/';
+    const VERSION = 'user-bar-3.5.0';
+    const BASE_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/sneedchat-enhancer/' + VERSION + '/user-bar/';
     // For local development, use:
     // const BASE_URL = 'http://localhost:8080/user-bar/';
 
