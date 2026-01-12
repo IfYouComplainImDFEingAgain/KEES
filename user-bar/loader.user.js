@@ -13,6 +13,9 @@
 // @connect      github.com
 // ==/UserScript==
 
+// Initialize global SNEED namespace BEFORE the IIFE so it exists as a true global
+var SNEED = window.SNEED = window.SNEED || {};
+
 (function() {
     'use strict';
 
@@ -27,15 +30,27 @@
     const DEBUG = false; // Set to true to stop on first module failure
 
     // ============================================
-    // GLOBAL NAMESPACE
+    // NAMESPACE PRELUDE
+    // Evaluated before modules to ensure SNEED is accessible in eval context
     // ============================================
-    window.SNEED = window.SNEED || {};
+    const NAMESPACE_PRELUDE = `
+var SNEED = window.SNEED = window.SNEED || {};
+SNEED.util = SNEED.util || {};
+SNEED.core = SNEED.core || {};
+SNEED.ui = SNEED.ui || {};
+SNEED.features = SNEED.features || {};
+SNEED.state = SNEED.state || {};
+`;
+
+    // ============================================
+    // GLOBAL NAMESPACE SETUP
+    // ============================================
     window.SNEED.version = VERSION;
-    window.SNEED.state = {};
-    window.SNEED.ui = {};
-    window.SNEED.features = {};
-    window.SNEED.util = {};
-    window.SNEED.core = {};
+    window.SNEED.state = window.SNEED.state || {};
+    window.SNEED.ui = window.SNEED.ui || {};
+    window.SNEED.features = window.SNEED.features || {};
+    window.SNEED.util = window.SNEED.util || {};
+    window.SNEED.core = window.SNEED.core || {};
 
     // ============================================
     // LOGGING
@@ -84,7 +99,10 @@
 
         try {
             log.info(`Loading module: ${modulePath}`);
-            const code = await gmGetText(url);
+            const moduleCode = await gmGetText(url);
+
+            // Prefix module code with namespace prelude for robustness
+            const code = NAMESPACE_PRELUDE + '\n' + moduleCode;
 
             // Evaluate the module in a try-catch to isolate errors
             try {
@@ -142,6 +160,14 @@
             await new Promise(resolve => {
                 document.addEventListener('DOMContentLoaded', resolve, { once: true });
             });
+        }
+
+        // Initialize namespace in eval context before loading any modules
+        try {
+            (0, eval)(NAMESPACE_PRELUDE);
+            log.info('Namespace initialized in eval context');
+        } catch (e) {
+            log.error('Failed to initialize namespace prelude:', e);
         }
 
         // Load manifest
