@@ -5,7 +5,7 @@
 (function() {
     'use strict';
 
-    const SNEED = window.SNEED;
+    const SNEED = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).SNEED;
 
     // ============================================
     // STYLE DEFINITIONS

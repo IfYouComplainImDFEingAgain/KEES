@@ -8,6 +8,7 @@
 // @match        https://kiwifarms.st/test-chat*
 // @match        https://kiwifarms.tw/chat/*
 // @match        https://kiwifarms.tw/test-chat*
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/namespace.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/util/dom.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/state.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/storage.js
@@ -27,9 +28,12 @@
 
     const VERSION = 'user-bar-v3.5.0';
 
+    // Get the real page global
+    const g = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+
     // Ensure global namespace exists
-    window.SNEED = window.SNEED || {};
-    window.SNEED.version = VERSION;
+    g.SNEED = g.SNEED || {};
+    g.SNEED.version = VERSION;
 
     // Logging
     const log = {
@@ -37,7 +41,7 @@
         error: (...args) => console.error('[SNEED]', ...args),
         warn: (...args) => console.warn('[SNEED]', ...args)
     };
-    window.SNEED.log = window.SNEED.log || log;
+    g.SNEED.log = g.SNEED.log || log;
 
     log.info(`Sneedchat User Bar ${VERSION} - @require modular load`);
 
@@ -45,15 +49,15 @@
     function initWhenReady() {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
-                if (window.SNEED.init) {
-                    window.SNEED.init();
+                if (g.SNEED.init) {
+                    g.SNEED.init();
                 } else {
                     log.error('Bootstrap module not loaded - SNEED.init() not available');
                 }
             }, { once: true });
         } else {
-            if (window.SNEED.init) {
-                window.SNEED.init();
+            if (g.SNEED.init) {
+                g.SNEED.init();
             } else {
                 log.error('Bootstrap module not loaded - SNEED.init() not available');
             }

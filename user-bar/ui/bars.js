@@ -5,7 +5,7 @@
 (function() {
     'use strict';
 
-    const SNEED = window.SNEED;
+    const SNEED = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).SNEED;
     const { stylesToString } = SNEED.util;
     const { addManagedEventListener, removeElementListeners, removeElementObservers } = SNEED.core.events;
     const storage = SNEED.core.storage;
