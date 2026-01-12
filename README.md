@@ -23,22 +23,33 @@ A Tampermonkey userscript that adds enhanced features to Sneedchat, including qu
 
 ### Prerequisites
 
-1. Install the [Tampermonkey](https://www.tampermonkey.net/) browser extension:
-   - [Chrome/Edge/Brave](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-   - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
-   - [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089)
+1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/):
+   - **Tampermonkey**: [Chrome/Edge/Brave](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) | [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089)
+   - **Violentmonkey**: [Chrome/Edge](https://chrome.google.com/webstore/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/)
 
-### Script Installation
+### Quick Install (Recommended)
 
-1. Open Tampermonkey dashboard by clicking the Tampermonkey icon in your browser toolbar
+Click this link to install directly:
+
+**[Install Sneedchat User Bar](https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/loader.user.js)**
+
+Your userscript manager will prompt you to install. Click "Install" to confirm.
+
+### Manual Installation
+
+1. Open Tampermonkey/Violentmonkey dashboard
 2. Click the "+" tab to create a new script
 3. Delete any default content
-4. Copy the entire contents of `user-bar.js` and paste it into the editor
+4. Copy the contents of [`user-bar/loader.user.js`](user-bar/loader.user.js) and paste it
 5. Click **File → Save** or press `Ctrl+S` (or `Cmd+S` on Mac)
 6. The script will automatically run on Sneedchat pages
 
+### How It Works
 
-You can alternatively add it via this link: https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/refs/heads/master/user-bar.js which supports updates in Tampermonkey
+The loader script uses `@require` directives to load modular components from GitHub. This means:
+- Smaller initial script size
+- Modules are cached by your userscript manager
+- Updates can be version-pinned for stability
 
 ![install](img/install.png)
 
@@ -68,62 +79,36 @@ Select text first to wrap it with formatting, or click to insert empty tags.
 
 ## Configuration
 
-The script includes customizable settings at the top of the file:
+### Managing Emotes
 
-```javascript
- const emotes = [
-        {
-            code: ':lossmanjack:',
-            url: 'https://kiwifarms.st/styles/custom/emotes/bmj_loss.png',
-            title: 'Loss Man Jack'
-        },
-        {
-            code: ':juice:',
-            url: 'https://kiwifarms.st/styles/custom/emotes/bmj_juicy.gif',
-            title: 'Juice!'
-        },
-        {
-            code: ':ross:',
-            url: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
-            title: 'Ross',
-        },
-        {
-            code: ':gunt:',
-            url: 'https://kiwifarms.st/styles/custom/emotes/gunt.gif',
-            title: 'Gunt',
-        },        
-        // Example using a text entry in the bar instead of a thumbnail        
-        {
-            code: '[img]https://files.catbox.moe/0v5vvb.png[/img]',
-            text: 'Drooling Avelloon',
-            title: 'Drooling Avelloon'
-        },
-        // Example emoji/text entries (you can add more)
-        {
-            code: '🤡',
-            emoji: '🤡',
-            title: 'What are you laughing at?'
-        },
-        {
-            code: '5',
-            text: '5',
-            title: 'Type a 5 in the chat if you think hes weird.'
-        },
-        {
-            code: '🚨[color=#ff0000]ALERT[/color]🚨 BOSSMAN IS [color=#80ff00]CLIMBING[/color]',
-            text: 'Alert Bossman is climbing',
-            title: 'Climbing'
-        }
-    ];
-```
+Click the **gear icon** (⚙️) in the format bar to open the Emote Manager:
+
+- **Add**: Click "+ Add New Emote" to create custom emotes
+- **Edit**: Modify existing emotes (code, image URL, emoji, or text)
+- **Delete**: Remove emotes you don't need
+- **Import/Export**: Backup and restore your emote collection as JSON
+- **Reset**: Restore default emotes
+
+Emote types:
+- **Image URL**: Display an image thumbnail (e.g., `https://example.com/emote.png`)
+- **Emoji**: Display an emoji character (e.g., `🤡`)
+- **Text**: Display text label (e.g., `5`)
+
+### Image Blacklist
+
+Click the **ban icon** (🚫) to manage blacklisted images. Blacklisted image URLs won't appear in the emote bar.
 
 ## Updating
 
-To update the script:
-1. Open Tampermonkey dashboard
-2. Click on "Sneedchat Enhancer"
-3. Replace the code with the latest version from `user-bar.js`
+The script automatically loads the latest modules from GitHub based on the version tag in the loader.
+
+To update to a new version:
+1. Open Tampermonkey/Violentmonkey dashboard
+2. Click on "Sneedchat User Bar"
+3. Replace the loader with the latest version from [`user-bar/loader.user.js`](user-bar/loader.user.js)
 4. Save the changes
+
+Or simply reinstall using the quick install link above.
 
 
 ## Browser Compatibility
@@ -133,11 +118,23 @@ To update the script:
 - Safari: Not tested but supported with Tampermonkey
 - Firefox Mobile:  Limited support (requires mobile Tampermonkey)
 
-## License
+## Additional Scripts
 
-Upon immediate usage of this this script, you agree that:
+### I LOVE CHRIS. YES I DO. (`ILOVECHRIS-YESIDO.js`)
 
- - You are weird.
- - Sweet Honey is kino.
- - He is CLEAN.
- - You will type a 5 in the chat.
+A Tampermonkey userscript that automatically clicks the like button on Chris' DLive with random intervals.
+
+**Features:**
+- Automatically clicks the like button with random delays (0.1-0.7 seconds)
+- Pauses for 5 seconds after every 190 clicks to avoid detection
+- Automatically clicks "Close" button on rate limit popups
+- Stops permanently when like count reaches 6,000
+- Requires login to DLive to function
+
+**Installation:**
+1. Install Tampermonkey (see prerequisites above)
+2. Open Tampermonkey dashboard
+3. Create a new script
+4. Copy contents of `ILOVECHRIS-YESIDO.js` and paste it into the editor
+5. Save the script
+6. Navigate to https://dlive.tv/djheartbeatz (must be logged in)
