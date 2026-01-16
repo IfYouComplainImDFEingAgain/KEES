@@ -30,11 +30,6 @@
         // Create emote buttons
         const emotes = storage.getEmotes();
         emotes.forEach(emote => {
-            // Skip blacklisted images
-            if (emote.url && storage.isBlacklisted(emote.url)) {
-                return;
-            }
-
             const emoteButton = doc.createElement('button');
             emoteButton.type = 'button';
             emoteButton.style.cssText = stylesToString(STYLES.emoteButton);
