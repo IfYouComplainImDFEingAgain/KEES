@@ -225,9 +225,17 @@
             messageForm.__sneed_submit_handler = true;
             const watcher = ensureSendWatcher(doc);
 
-            addManagedEventListener(messageForm, 'submit', () => {
+            addManagedEventListener(messageForm, 'submit', (e) => {
                 const lastMessageContent = inputElement.innerHTML || '';
                 const lastMessageText = inputElement.textContent || '';
+
+                // Block send if over character limit
+                if (lastMessageText.length > CHAR_LIMIT) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    SNEED.log.warn(`Message blocked: ${lastMessageText.length} characters exceeds ${CHAR_LIMIT} limit`);
+                    return false;
+                }
 
                 watcher.arm({
                     text: lastMessageText,
