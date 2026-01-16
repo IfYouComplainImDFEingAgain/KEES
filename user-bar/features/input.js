@@ -97,6 +97,39 @@
     }
 
     // ============================================
+    // CHARACTER LIMIT WARNING
+    // ============================================
+
+    const CHAR_LIMIT = 1023;
+
+    function updateCharacterWarning(inputElement, doc) {
+        const messageForm = doc.getElementById('new-message-form');
+        if (!messageForm) return;
+
+        const charCount = (inputElement.textContent || '').length;
+        let warning = doc.getElementById('sneed-char-warning');
+
+        if (charCount > CHAR_LIMIT) {
+            if (!warning) {
+                warning = doc.createElement('div');
+                warning.id = 'sneed-char-warning';
+                warning.style.cssText = `
+                    color: #ff4444;
+                    font-size: 11px;
+                    text-align: right;
+                    padding: 2px 4px 0 0;
+                    margin-top: 2px;
+                `;
+                messageForm.appendChild(warning);
+            }
+            warning.textContent = `${charCount}/${CHAR_LIMIT} characters (${charCount - CHAR_LIMIT} over limit)`;
+            warning.style.display = 'block';
+        } else if (warning) {
+            warning.style.display = 'none';
+        }
+    }
+
+    // ============================================
     // SEND FAILURE INDICATOR
     // ============================================
 
@@ -160,8 +193,14 @@
 
         const { resizeInput } = createOptimizedResizer(inputElement, doc);
 
-        addManagedEventListener(inputElement, 'input', resizeInput);
-        addManagedEventListener(inputElement, 'paste', () => setTimeout(resizeInput, 0));
+        addManagedEventListener(inputElement, 'input', () => {
+            resizeInput();
+            updateCharacterWarning(inputElement, doc);
+        });
+        addManagedEventListener(inputElement, 'paste', () => setTimeout(() => {
+            resizeInput();
+            updateCharacterWarning(inputElement, doc);
+        }, 0));
 
         // Watch for input clear
         if (!inputElement.hasAttribute('data-observer-attached')) {
@@ -170,6 +209,7 @@
                     setTimeout(() => {
                         inputElement.style.height = 'auto';
                         resizeInput();
+                        updateCharacterWarning(inputElement, doc);
                     }, 50);
                 }
             });
