@@ -47,6 +47,11 @@
                     features.startBlacklistFilter(document);
                 }
 
+                // Start watched users feature
+                if (features.startWatchedUsers) {
+                    features.startWatchedUsers(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -80,6 +85,11 @@
                             // Start blacklist filter for chat messages
                             if (features.startBlacklistFilter) {
                                 features.startBlacklistFilter(iframeDoc);
+                            }
+
+                            // Start watched users feature
+                            if (features.startWatchedUsers) {
+                                features.startWatchedUsers(iframeDoc);
                             }
 
                             log.info('Emote and format bars injected into iframe');

@@ -20,6 +20,7 @@
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/dev/user-bar/features/formatting.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/dev/user-bar/features/input.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/dev/user-bar/features/blacklist-filter.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/dev/user-bar/features/watched-users.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/dev/user-bar/bootstrap.js
 // @grant        none
 // ==/UserScript==
