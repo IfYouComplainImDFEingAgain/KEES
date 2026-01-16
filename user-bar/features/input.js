@@ -274,11 +274,20 @@
         // Shift+Enter handler
         attachShiftEnterHandler(inputElement, doc);
 
-        // Enter resize handler
+        // Enter key handler - block send if over limit, resize after send
         if (!inputElement.hasAttribute('data-enter-resize-handler')) {
             inputElement.setAttribute('data-enter-resize-handler', 'true');
             addManagedEventListener(inputElement, 'keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
+                    // Block send if over character limit
+                    const charCount = (inputElement.textContent || '').length;
+                    if (charCount > CHAR_LIMIT) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        SNEED.log.warn(`Message blocked: ${charCount} characters exceeds ${CHAR_LIMIT} limit`);
+                        return false;
+                    }
                     setTimeout(resizeInput, 0);
                 }
             }, true);
