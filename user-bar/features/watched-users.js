@@ -75,7 +75,7 @@
     }
 
     function updateWatchedUsersPanel(doc) {
-        const chatActivity = doc.querySelector('.chat-activity');
+        const chatActivity = doc.querySelector('#chat-activity');
         if (!chatActivity) return;
 
         let panel = doc.getElementById('sneed-watched-users');
@@ -91,7 +91,7 @@
         const foundUsers = [];
 
         // Find all user entries in chat-activity
-        const userEntries = chatActivity.querySelectorAll('.chat-activity-row, .activity-row, [class*="activity"] [class*="user"], [data-username]');
+        const userEntries = chatActivity.querySelectorAll('#chat-activity-row, .activity-row, [class*="activity"] [class*="user"], [data-username]');
 
         userEntries.forEach(entry => {
             // Try to extract username from various possible structures
@@ -134,7 +134,7 @@
     function startWatchedUsers(doc) {
         if (doc.__sneed_watchedUsers) return;
 
-        const chatActivity = doc.querySelector('.chat-activity');
+        const chatActivity = doc.querySelector('#chat-activity');
         if (!chatActivity) {
             log.warn('Could not find chat-activity for watched users');
             return;
