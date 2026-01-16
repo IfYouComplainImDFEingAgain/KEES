@@ -63,14 +63,20 @@
     function setupClickOutside(doc, popup, onClose) {
         const clickOutside = (e) => {
             if (!popup.contains(e.target)) {
-                popup.remove();
-                removeElementListeners(popup);
-                doc.removeEventListener('click', clickOutside);
+                cleanup();
                 if (onClose) onClose();
             }
         };
+
+        const cleanup = () => {
+            doc.removeEventListener('click', clickOutside);
+            removeElementListeners(popup);
+            popup.remove();
+        };
+
         setTimeout(() => doc.addEventListener('click', clickOutside), 0);
-        return clickOutside;
+        popup.__sneed_cleanup = cleanup; // Store for programmatic removal
+        return cleanup;
     }
 
     // ============================================
@@ -112,6 +118,7 @@
                 manager.remove();
                 showBlacklistManager(doc);
                 if (SNEED.ui.reloadEmoteBar) SNEED.ui.reloadEmoteBar(doc);
+                if (SNEED.features.rescanMessages) SNEED.features.rescanMessages(doc);
             } else if (url) {
                 alert('URL is already blacklisted or invalid');
             }
@@ -155,6 +162,7 @@
                         manager.remove();
                         showBlacklistManager(doc);
                         if (SNEED.ui.reloadEmoteBar) SNEED.ui.reloadEmoteBar(doc);
+                        if (SNEED.features.rescanMessages) SNEED.features.rescanMessages(doc);
                     }
                 });
 
@@ -173,13 +181,17 @@
                     manager.remove();
                     showBlacklistManager(doc);
                     if (SNEED.ui.reloadEmoteBar) SNEED.ui.reloadEmoteBar(doc);
+                    if (SNEED.features.rescanMessages) SNEED.features.rescanMessages(doc);
                 }
             });
             manager.appendChild(clearBtn);
         }
 
         const closeBtn = createStyledButton(doc, 'Close', 'secondary', { fullWidth: true, marginTop: '8px' });
-        addManagedEventListener(closeBtn, 'click', () => { manager.remove(); removeElementListeners(manager); });
+        addManagedEventListener(closeBtn, 'click', () => {
+            if (manager.__sneed_cleanup) manager.__sneed_cleanup();
+            else { manager.remove(); removeElementListeners(manager); }
+        });
         manager.appendChild(closeBtn);
 
         doc.body.appendChild(manager);
@@ -227,8 +239,8 @@
         addManagedEventListener(closeBtn, 'click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            dialog.remove();
-            removeElementListeners(dialog);
+            if (dialog.__sneed_cleanup) dialog.__sneed_cleanup();
+            else { dialog.remove(); removeElementListeners(dialog); }
         });
 
         buttonContainer.appendChild(copyBtn);
@@ -236,6 +248,8 @@
         dialog.appendChild(buttonContainer);
 
         doc.body.appendChild(dialog);
+        // Export dialog doesn't use click-outside, but store cleanup for consistency
+        dialog.__sneed_cleanup = () => { dialog.remove(); removeElementListeners(dialog); };
         textarea.select();
         textarea.focus();
     }
@@ -543,7 +557,10 @@
         manager.appendChild(utilityContainer);
 
         const closeBtn = createStyledButton(doc, 'Close', 'secondary', { fullWidth: true });
-        addManagedEventListener(closeBtn, 'click', () => { manager.remove(); removeElementListeners(manager); });
+        addManagedEventListener(closeBtn, 'click', () => {
+            if (manager.__sneed_cleanup) manager.__sneed_cleanup();
+            else { manager.remove(); removeElementListeners(manager); }
+        });
         manager.appendChild(closeBtn);
 
         doc.body.appendChild(manager);

@@ -152,7 +152,8 @@
         emoteBarVisible: false,
         reinjectAttempts: 0,
         emotes: null, // Will be loaded from storage
-        initialized: false
+        initialized: false,
+        pendingTimers: new Set()
     };
 
     // ============================================
@@ -204,6 +205,21 @@
 
         isInitialized() {
             return runtimeState.initialized;
+        },
+
+        // Timer management
+        addTimer(id) {
+            runtimeState.pendingTimers.add(id);
+            return id;
+        },
+
+        removeTimer(id) {
+            runtimeState.pendingTimers.delete(id);
+        },
+
+        clearAllTimers() {
+            runtimeState.pendingTimers.forEach(id => clearTimeout(id));
+            runtimeState.pendingTimers.clear();
         }
     });
 

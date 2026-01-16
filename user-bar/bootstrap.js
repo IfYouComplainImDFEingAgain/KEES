@@ -42,6 +42,11 @@
                     observeForBarsRemoval(root, document);
                 }
 
+                // Start blacklist filter for chat messages
+                if (features.startBlacklistFilter) {
+                    features.startBlacklistFilter(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -72,6 +77,11 @@
                                 observeForBarsRemoval(root, iframeDoc);
                             }
 
+                            // Start blacklist filter for chat messages
+                            if (features.startBlacklistFilter) {
+                                features.startBlacklistFilter(iframeDoc);
+                            }
+
                             log.info('Emote and format bars injected into iframe');
                         }
                     }
@@ -95,7 +105,28 @@
             if (iframe && !iframe.__sneed_observed) {
                 iframe.__sneed_observed = true;
                 iframe.addEventListener('load', () => checkAndReinject(), { passive: true });
-                setTimeout(checkAndReinject, 50);
+                state.addTimer(setTimeout(checkAndReinject, 50));
+
+                // Setup cleanup when iframe unloads/reloads
+                try {
+                    const iframeWin = iframe.contentWindow;
+                    if (iframeWin && !iframe.__sneed_unload_handler) {
+                        iframe.__sneed_unload_handler = true;
+                        iframeWin.addEventListener('beforeunload', () => {
+                            events.cleanupIframeObservers(iframe);
+                            // Clear iframe-specific state
+                            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                            if (iframeDoc) {
+                                if (iframeDoc.__sneed_sendWatcher) {
+                                    iframeDoc.__sneed_sendWatcher.destroy();
+                                }
+                                delete iframeDoc.__sneed_blacklistFilter;
+                            }
+                        });
+                    }
+                } catch (e) {
+                    // Cross-origin - can't attach beforeunload
+                }
             }
         });
         obs.observe(doc.documentElement, { childList: true, subtree: true });
@@ -174,10 +205,10 @@
         function waitForReady() {
             if (document.readyState === 'loading') {
                 events.addGlobalEventListener(document, 'DOMContentLoaded', () => {
-                    setTimeout(injectEmoteBar, state.CONFIG.INIT_DELAY);
+                    state.addTimer(setTimeout(injectEmoteBar, state.CONFIG.INIT_DELAY));
                 });
             } else {
-                setTimeout(injectEmoteBar, state.CONFIG.INIT_DELAY);
+                state.addTimer(setTimeout(injectEmoteBar, state.CONFIG.INIT_DELAY));
             }
 
             // Observe for iframe on parent page
@@ -199,13 +230,19 @@
         });
 
         // Initial check after delay
-        setTimeout(checkAndReinject, state.CONFIG.POLLING_CHECK_DELAY);
+        state.addTimer(setTimeout(checkAndReinject, state.CONFIG.POLLING_CHECK_DELAY));
 
         // Cleanup on unload
         events.addGlobalEventListener(window, 'unload', () => {
+            state.clearAllTimers();
             events.cleanupAllObservers();
             events.cleanupAllListeners();
             ui.cleanupBars(document);
+
+            // Cleanup send watcher on main document
+            if (document.__sneed_sendWatcher) {
+                document.__sneed_sendWatcher.destroy();
+            }
 
             // Try to cleanup iframe too
             const iframe = document.getElementById('rust-shim');
@@ -213,8 +250,12 @@
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     if (iframeDoc) {
+                        if (iframeDoc.__sneed_sendWatcher) {
+                            iframeDoc.__sneed_sendWatcher.destroy();
+                        }
                         ui.cleanupBars(iframeDoc);
                     }
+                    events.cleanupIframeObservers(iframe);
                 } catch (e) {
                     // Ignore cross-origin errors
                 }

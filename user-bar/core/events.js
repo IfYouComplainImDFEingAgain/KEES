@@ -13,6 +13,7 @@
 
     const eventListeners = new WeakMap();
     const globalListeners = [];
+    let listenerIdCounter = 0;
 
     /**
      * Add a managed event listener to an element
@@ -53,10 +54,26 @@
      * @param {string} event - Event type
      * @param {Function} handler - Event handler
      * @param {Object} options - Event options
+     * @returns {number} Listener ID for later removal
      */
     function addGlobalEventListener(element, event, handler, options) {
+        const id = ++listenerIdCounter;
         element.addEventListener(event, handler, options);
-        globalListeners.push({ element, event, handler, options });
+        globalListeners.push({ id, element, event, handler, options });
+        return id;
+    }
+
+    /**
+     * Remove a specific global event listener by ID
+     * @param {number} id - Listener ID returned by addGlobalEventListener
+     */
+    function removeGlobalEventListener(id) {
+        const idx = globalListeners.findIndex(l => l.id === id);
+        if (idx !== -1) {
+            const { element, event, handler, options } = globalListeners[idx];
+            element.removeEventListener(event, handler, options);
+            globalListeners.splice(idx, 1);
+        }
     }
 
     /**
@@ -76,6 +93,7 @@
     const observers = new WeakMap();
     const globalObservers = [];
     const resizeCache = new WeakMap();
+    const iframeObservers = new WeakMap(); // iframe element -> observer array
 
     /**
      * Add a managed observer
@@ -135,6 +153,38 @@
                 resizeCache.delete(element);
             }
         });
+    }
+
+    // ============================================
+    // IFRAME OBSERVER MANAGEMENT
+    // ============================================
+
+    /**
+     * Add an observer associated with an iframe
+     * @param {HTMLIFrameElement} iframe - The iframe element
+     * @param {MutationObserver} observer - Observer instance
+     */
+    function addIframeObserver(iframe, observer) {
+        if (!iframeObservers.has(iframe)) {
+            iframeObservers.set(iframe, []);
+        }
+        iframeObservers.get(iframe).push(observer);
+    }
+
+    /**
+     * Cleanup all observers associated with an iframe
+     * @param {HTMLIFrameElement} iframe - The iframe element
+     */
+    function cleanupIframeObservers(iframe) {
+        const obs = iframeObservers.get(iframe);
+        if (obs) {
+            obs.forEach(o => o.disconnect());
+            iframeObservers.delete(iframe);
+        }
+        // Also clear iframe-specific flags
+        if (iframe.__sneed_observed) {
+            delete iframe.__sneed_observed;
+        }
     }
 
     // ============================================
@@ -219,6 +269,11 @@
             clear() {
                 state.pending = null;
                 if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+            },
+            destroy() {
+                this.clear();
+                obs.disconnect();
+                delete doc.__sneed_sendWatcher;
             }
         };
         return doc.__sneed_sendWatcher;
@@ -234,12 +289,17 @@
         addManagedEventListener,
         removeElementListeners,
         addGlobalEventListener,
+        removeGlobalEventListener,
         cleanupAllListeners,
 
         // Observers
         addManagedObserver,
         removeElementObservers,
         cleanupAllObservers,
+
+        // Iframe observers
+        addIframeObserver,
+        cleanupIframeObservers,
 
         // Resize cache
         getResizeCache,
