@@ -1,33 +1,34 @@
 // ==UserScript==
 // @name         Sneedchat User Bar (Modular)
 // @namespace    http://tampermonkey.net/
-// @version      3.5.0
+// @version      master
 // @description  Adds a toggleable custom emote and format bar with image blacklist and emote management.
 // @author
 // @match        https://kiwifarms.st/chat/*
 // @match        https://kiwifarms.st/test-chat*
 // @match        https://kiwifarms.tw/chat/*
 // @match        https://kiwifarms.tw/test-chat*
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/namespace.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/util/dom.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/state.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/storage.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/core/events.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/ui/styles.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/ui/color-picker.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/ui/dialogs.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/ui/bars.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/features/formatting.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/features/input.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/features/blacklist-filter.js
-// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/user-bar-v3.5.0/user-bar/bootstrap.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/namespace.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/util/dom.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/state.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/storage.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/events.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/styles.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/color-picker.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/dialogs.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/bars.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/features/formatting.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/features/input.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/features/blacklist-filter.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/features/watched-users.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/bootstrap.js
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    const VERSION = 'user-bar-v3.5.0';
+    const VERSION = 'master';
 
     // Get the real page global
     const g = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
