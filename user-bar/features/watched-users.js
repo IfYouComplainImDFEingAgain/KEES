@@ -128,6 +128,62 @@
     }
 
     // ============================================
+    // CLICK-TO-MENTION
+    // ============================================
+
+    function insertMention(username, doc) {
+        const input = doc.getElementById('new-message-input');
+        if (!input) return;
+
+        const mention = `@${username} `;
+
+        // Insert at cursor or append
+        if (input.contentEditable === 'true') {
+            const win = doc.defaultView || window;
+            const selection = win.getSelection();
+
+            // Focus and get/create range
+            input.focus();
+
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(doc.createTextNode(mention));
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                input.textContent += mention;
+            }
+        } else {
+            input.value += mention;
+        }
+
+        // Trigger input event for any listeners
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function setupActivityClickToMention(chatActivity, doc) {
+        events.addManagedEventListener(chatActivity, 'click', (e) => {
+            // Check if clicked on a.user inside .activity
+            const userLink = e.target.closest('.activity a.user');
+            if (!userLink) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Get username from parent .activity's data-username or link text
+            const activityEl = userLink.closest('.activity');
+            const username = activityEl?.dataset?.username || userLink.textContent?.trim();
+
+            if (username) {
+                insertMention(username, doc);
+                log.info(`Inserted mention for: ${username}`);
+            }
+        });
+    }
+
+    // ============================================
     // INITIALIZATION
     // ============================================
 
@@ -142,6 +198,9 @@
 
         // Initial update
         updateWatchedUsersPanel(doc);
+
+        // Setup click-to-mention for activity users
+        setupActivityClickToMention(chatActivity, doc);
 
         // Debounced update
         let debounceTimer = null;
