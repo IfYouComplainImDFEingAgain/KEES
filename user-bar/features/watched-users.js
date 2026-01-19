@@ -13,28 +13,46 @@
     const DEFAULT_WATCHED_USERS = ['Null'];
     const STORAGE_KEY = 'sneedchat-watched-users';
 
+    // Cache for watched users
+    let watchedUsersCache = null;
+    let watchedUsersLowerCache = null;
+
     // ============================================
     // STORAGE
     // ============================================
 
     function getWatchedUsers() {
+        if (watchedUsersCache) return watchedUsersCache;
+
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
-                return JSON.parse(stored);
+                watchedUsersCache = JSON.parse(stored);
+                watchedUsersLowerCache = watchedUsersCache.map(u => u.toLowerCase());
+                return watchedUsersCache;
             }
         } catch (e) {
             log.error('Failed to load watched users:', e);
         }
-        return [...DEFAULT_WATCHED_USERS];
+        watchedUsersCache = [...DEFAULT_WATCHED_USERS];
+        watchedUsersLowerCache = watchedUsersCache.map(u => u.toLowerCase());
+        return watchedUsersCache;
     }
 
     function saveWatchedUsers(users) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+            // Invalidate cache
+            watchedUsersCache = users;
+            watchedUsersLowerCache = users.map(u => u.toLowerCase());
         } catch (e) {
             log.error('Failed to save watched users:', e);
         }
+    }
+
+    function isWatchedUser(username) {
+        if (!watchedUsersLowerCache) getWatchedUsers();
+        return watchedUsersLowerCache.includes(username.toLowerCase());
     }
 
     // ============================================
@@ -87,33 +105,32 @@
         const list = doc.getElementById('sneed-watched-users-list');
         if (!list) return;
 
-        const watchedUsers = getWatchedUsers();
-        const foundUsers = [];
+        // Ensure cache is loaded
+        getWatchedUsers();
 
-        // Find all user entries in chat-activity
-        const userEntries = chatActivity.querySelectorAll('#chat-activity-row, .activity-row, [class*="activity"] [class*="user"], [data-username]');
+        const foundUsernames = new Set();
+        const foundElements = [];
 
-        userEntries.forEach(entry => {
-            // Try to extract username from various possible structures
-            const usernameEl = entry.querySelector('.username, .user-name, [class*="username"]') || entry;
-            const username = entry.dataset?.username || usernameEl.textContent?.trim();
+        // Find all activity entries with data-username (more specific selector)
+        const userEntries = chatActivity.querySelectorAll('.activity[data-username]');
 
-            if (username && watchedUsers.some(w => w.toLowerCase() === username.toLowerCase())) {
-                if (!foundUsers.find(f => f.username.toLowerCase() === username.toLowerCase())) {
-                    foundUsers.push({
-                        username: username,
-                        element: entry.cloneNode(true)
-                    });
-                }
+        for (const entry of userEntries) {
+            const username = entry.dataset.username;
+            if (!username) continue;
+
+            const usernameLower = username.toLowerCase();
+            if (isWatchedUser(username) && !foundUsernames.has(usernameLower)) {
+                foundUsernames.add(usernameLower);
+                foundElements.push(entry.cloneNode(true));
             }
-        });
+        }
 
         // Update panel visibility and content
         list.innerHTML = '';
 
-        if (foundUsers.length > 0) {
+        if (foundElements.length > 0) {
             panel.style.display = 'block';
-            foundUsers.forEach(({ element }) => {
+            for (const element of foundElements) {
                 element.style.cssText = `
                     background: rgba(255, 200, 0, 0.1);
                     border-left: 2px solid rgba(255, 200, 0, 0.5);
@@ -121,7 +138,7 @@
                     margin: 0;
                 `;
                 list.appendChild(element);
-            });
+            }
         } else {
             panel.style.display = 'none';
         }
@@ -202,11 +219,12 @@
         // Setup click-to-mention for activity users
         setupActivityClickToMention(chatActivity, doc);
 
-        // Debounced update
+        // Debounced update with cleanup tracking
         let debounceTimer = null;
         const debouncedUpdate = () => {
             if (debounceTimer) clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
+                debounceTimer = null;
                 updateWatchedUsersPanel(doc);
             }, 250);
         };
@@ -216,8 +234,28 @@
         observer.observe(chatActivity, { childList: true });
         events.addManagedObserver(chatActivity, observer);
 
-        doc.__sneed_watchedUsers = true;
+        // Store cleanup function
+        doc.__sneed_watchedUsers = {
+            cleanup: () => {
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = null;
+                }
+                observer.disconnect();
+                const panel = doc.getElementById('sneed-watched-users');
+                if (panel) panel.remove();
+            }
+        };
+
         log.info('Watched users feature started');
+    }
+
+    function stopWatchedUsers(doc) {
+        if (doc.__sneed_watchedUsers && doc.__sneed_watchedUsers.cleanup) {
+            doc.__sneed_watchedUsers.cleanup();
+            doc.__sneed_watchedUsers = null;
+            log.info('Watched users feature stopped');
+        }
     }
 
     // ============================================
@@ -226,6 +264,7 @@
 
     SNEED.features = SNEED.features || {};
     SNEED.features.startWatchedUsers = startWatchedUsers;
+    SNEED.features.stopWatchedUsers = stopWatchedUsers;
     SNEED.features.getWatchedUsers = getWatchedUsers;
     SNEED.features.saveWatchedUsers = saveWatchedUsers;
     SNEED.features.updateWatchedUsersPanel = updateWatchedUsersPanel;
