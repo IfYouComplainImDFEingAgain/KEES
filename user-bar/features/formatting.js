@@ -72,6 +72,9 @@
             range = selection.getRangeAt(0);
         }
 
+        let textToInsert;
+        let hadSelectedText = false;
+
         // Handle WYSIWYG formatting for bold and italic
         if (tool.wysiwygCommand) {
             if (SNEED.state.isWysiwygMode()) {
@@ -89,9 +92,6 @@
                 hadSelectedText = !!selectedText;
             }
         }
-
-        let textToInsert;
-        let hadSelectedText = false;
 
         // Handle custom actions
         if (tool.customAction === 'bulletLines') {
