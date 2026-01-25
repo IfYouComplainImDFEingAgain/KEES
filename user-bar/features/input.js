@@ -24,7 +24,7 @@
         }
 
         // Check if there's any HTML formatting to convert
-        const hasFormatting = inputElement.querySelector('strong, b, em, i, span[data-bbcode-color]');
+        const hasFormatting = inputElement.querySelector('strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]');
         if (!hasFormatting) {
             return;
         }
@@ -84,7 +84,9 @@
                 raf = 0;
 
                 const txt = (inputElement.textContent || '').trim();
-                if (!txt) {
+                const hasImages = inputElement.querySelector('img');
+
+                if (!txt && !hasImages) {
                     inputElement.style.height = '';
                     baseHeight = 0;
                     return;

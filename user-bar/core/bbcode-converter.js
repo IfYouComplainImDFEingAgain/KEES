@@ -139,6 +139,15 @@
                 return childContent;
             }
 
+            case 'img': {
+                // Convert inline image back to BBCode
+                const src = node.getAttribute('src');
+                if (src) {
+                    return '[img]' + src + '[/img]';
+                }
+                return '';
+            }
+
             case 'br':
                 return '\n';
 

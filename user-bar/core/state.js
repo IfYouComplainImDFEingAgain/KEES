@@ -89,8 +89,7 @@
         {
             name: 'Image',
             symbol: '🖼',
-            startTag: '[img]',
-            endTag: '[/img]',
+            customAction: 'insertImage',
             title: 'Insert image'
         },
         {

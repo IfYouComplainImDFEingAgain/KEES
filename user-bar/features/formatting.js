@@ -72,6 +72,32 @@
             } else {
                 textToInsert = '• ';
             }
+        } else if (tool.customAction === 'insertImage') {
+            const selectedText = selection.toString().trim();
+            if (selectedText && /^https?:\/\/.+/i.test(selectedText)) {
+                // Selected text looks like a URL - insert inline image
+                const img = doc.createElement('img');
+                img.src = selectedText;
+                img.setAttribute('data-bbcode-img', 'true');
+                img.style.maxHeight = '150px';
+                img.style.maxWidth = '100%';
+                img.style.verticalAlign = 'middle';
+
+                range.deleteContents();
+                range.insertNode(img);
+                range.setStartAfter(img);
+                range.setEndAfter(img);
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // Trigger input event for resize
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                input.dispatchEvent(event);
+            } else {
+                // No URL selected - insert BBCode tags as placeholder
+                textToInsert = '[img][/img]';
+            }
+            if (!textToInsert) return;
         } else if (tool.customAction === 'colorPicker') {
             SNEED.ui.showColorPicker(input, selection, range, doc);
             return;
