@@ -148,6 +148,51 @@
     }
 
     // ============================================
+    // WYSIWYG MODE STORAGE
+    // ============================================
+
+    /**
+     * Load WYSIWYG mode setting from localStorage
+     * @returns {boolean} - true for WYSIWYG, false for raw BBCode
+     */
+    function getWysiwygMode() {
+        try {
+            const stored = localStorage.getItem(state.STORAGE_KEYS.WYSIWYG_MODE);
+            if (stored !== null) {
+                return stored === 'true';
+            }
+            return true; // Default to WYSIWYG mode
+        } catch (e) {
+            log.error('Failed to load WYSIWYG mode:', e);
+            return true;
+        }
+    }
+
+    /**
+     * Save WYSIWYG mode setting to localStorage
+     * @param {boolean} enabled - true for WYSIWYG, false for raw BBCode
+     * @returns {boolean} - Success status
+     */
+    function saveWysiwygMode(enabled) {
+        try {
+            localStorage.setItem(state.STORAGE_KEYS.WYSIWYG_MODE, String(enabled));
+            return true;
+        } catch (e) {
+            log.error('Failed to save WYSIWYG mode:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Initialize WYSIWYG mode from storage
+     */
+    function initWysiwygMode() {
+        const mode = getWysiwygMode();
+        state.setWysiwygMode(mode);
+        return mode;
+    }
+
+    // ============================================
     // EXPORT TO NAMESPACE
     // ============================================
 
@@ -165,7 +210,12 @@
         isBlacklisted,
         addToBlacklist,
         removeFromBlacklist,
-        clearBlacklist
+        clearBlacklist,
+
+        // WYSIWYG Mode
+        getWysiwygMode,
+        saveWysiwygMode,
+        initWysiwygMode
     };
 
 })();

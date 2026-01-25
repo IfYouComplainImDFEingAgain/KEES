@@ -151,7 +151,8 @@
 
     const STORAGE_KEYS = {
         EMOTES: 'sneedchat-custom-emotes',
-        BLACKLIST: 'sneedchat-image-blacklist'
+        BLACKLIST: 'sneedchat-image-blacklist',
+        WYSIWYG_MODE: 'sneedchat-wysiwyg-mode'
     };
 
     // ============================================

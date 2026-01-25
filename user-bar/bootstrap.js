@@ -211,6 +211,9 @@
         // Initialize emotes from storage
         storage.initEmotes();
 
+        // Initialize WYSIWYG mode from storage
+        storage.initWysiwygMode();
+
         // Wait for DOM ready
         function waitForReady() {
             if (document.readyState === 'loading') {

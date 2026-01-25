@@ -156,9 +156,10 @@
 
             // Special handling for WYSIWYG toggle button
             if (tool.isToggle && tool.customAction === 'toggleWysiwyg') {
-                // Start grayed out (WYSIWYG mode is default)
-                toolButton.style.opacity = '0.5';
-                toolButton.title = 'WYSIWYG mode (click for raw BBCode)';
+                // Set initial state based on stored mode
+                const isWysiwyg = state.isWysiwygMode();
+                toolButton.style.opacity = isWysiwyg ? '0.5' : '1';
+                toolButton.title = isWysiwyg ? 'WYSIWYG mode (click for raw BBCode)' : 'Raw BBCode mode (click for WYSIWYG)';
             }
 
             // Hover effects

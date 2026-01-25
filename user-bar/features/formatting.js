@@ -204,6 +204,11 @@
             const wasWysiwyg = SNEED.state.isWysiwygMode();
             const isWysiwyg = SNEED.state.toggleWysiwygMode();
 
+            // Save the new mode to storage
+            if (SNEED.core.storage && SNEED.core.storage.saveWysiwygMode) {
+                SNEED.core.storage.saveWysiwygMode(isWysiwyg);
+            }
+
             // Convert editor content
             if (SNEED.core.bbcode) {
                 if (wasWysiwyg && !isWysiwyg) {
