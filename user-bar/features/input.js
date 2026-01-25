@@ -20,27 +20,20 @@
      */
     function convertInputToBBCode(inputElement, doc) {
         if (!SNEED.core.bbcode) {
-            SNEED.log.warn('BBCode converter not loaded');
             return;
         }
-
-        const beforeHTML = inputElement.innerHTML;
-        SNEED.log.info('Before conversion - innerHTML:', beforeHTML);
 
         // Check if there's any HTML formatting to convert
         const hasFormatting = inputElement.querySelector('strong, b, em, i, span[data-bbcode-color]');
         if (!hasFormatting) {
-            SNEED.log.info('No formatting detected, skipping conversion');
             return;
         }
 
         // Convert HTML to BBCode
         const bbcode = SNEED.core.bbcode.convertToBBCode(inputElement);
-        SNEED.log.info('Converted BBCode:', bbcode);
 
         // Replace content with plain text BBCode
         inputElement.textContent = bbcode;
-        SNEED.log.info('After conversion - innerHTML:', inputElement.innerHTML);
 
         // Position cursor at end
         SNEED.util.positionCursorAtEnd(doc, inputElement);
