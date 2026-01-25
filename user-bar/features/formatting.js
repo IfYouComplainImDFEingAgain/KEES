@@ -21,6 +21,34 @@
         doc.execCommand(command, false, null);
     }
 
+    /**
+     * Convert HSL to hex color
+     * @param {number} h - Hue (0-360)
+     * @param {number} s - Saturation (0-100)
+     * @param {number} l - Lightness (0-100)
+     * @returns {string} - Hex color string
+     */
+    function hslToHex(h, s, l) {
+        s /= 100;
+        l /= 100;
+
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = l - c / 2;
+
+        let r = 0, g = 0, b = 0;
+
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
+
+        const toHex = (n) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+        return '#' + toHex(r) + toHex(g) + toHex(b);
+    }
+
     // ============================================
     // APPLY FORMATTING
     // ============================================
@@ -100,6 +128,46 @@
             if (!textToInsert) return;
         } else if (tool.customAction === 'colorPicker') {
             SNEED.ui.showColorPicker(input, selection, range, doc);
+            return;
+        } else if (tool.customAction === 'rainbowText') {
+            const selectedText = selection.toString();
+            if (!selectedText) return;
+
+            // Create a document fragment to hold the rainbow characters
+            const fragment = doc.createDocumentFragment();
+            const chars = [...selectedText]; // Handle unicode properly
+            const charCount = chars.filter(c => c.trim()).length; // Count non-whitespace
+
+            let colorIndex = 0;
+            for (let i = 0; i < chars.length; i++) {
+                const char = chars[i];
+
+                if (char.trim() === '') {
+                    // Preserve whitespace without coloring
+                    fragment.appendChild(doc.createTextNode(char));
+                } else {
+                    // Calculate hue (0-360) progressing through rainbow
+                    const hue = Math.floor((colorIndex / charCount) * 360);
+                    const hex = hslToHex(hue, 100, 50);
+
+                    const span = doc.createElement('span');
+                    span.style.color = hex;
+                    span.setAttribute('data-bbcode-color', hex);
+                    span.textContent = char;
+                    fragment.appendChild(span);
+                    colorIndex++;
+                }
+            }
+
+            range.deleteContents();
+            range.insertNode(fragment);
+
+            // Clear selection
+            selection.removeAllRanges();
+
+            // Trigger input event
+            const event = new Event('input', { bubbles: true, cancelable: true });
+            input.dispatchEvent(event);
             return;
         } else if (tool.customAction === 'blacklistManager') {
             SNEED.ui.showBlacklistManager(doc);

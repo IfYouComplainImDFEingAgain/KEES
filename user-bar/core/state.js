@@ -99,6 +99,12 @@
             title: 'Text color'
         },
         {
+            name: 'Rainbow',
+            symbol: '🌈',
+            customAction: 'rainbowText',
+            title: 'Rainbow text'
+        },
+        {
             name: 'Newline',
             symbol: '↵',
             insertText: '[br]',
