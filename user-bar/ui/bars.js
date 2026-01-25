@@ -152,6 +152,14 @@
             toolButton.style.cssText = stylesToString(STYLES.formatButton);
             toolButton.textContent = tool.symbol;
             toolButton.title = tool.title;
+            toolButton.setAttribute('data-tool', tool.name);
+
+            // Special handling for WYSIWYG toggle button
+            if (tool.isToggle && tool.customAction === 'toggleWysiwyg') {
+                // Start grayed out (WYSIWYG mode is default)
+                toolButton.style.opacity = '0.5';
+                toolButton.title = 'WYSIWYG mode (click for raw BBCode)';
+            }
 
             // Hover effects
             addManagedEventListener(toolButton, 'mouseenter', () => {
@@ -173,8 +181,8 @@
                 }
             });
 
-            // Right-align blacklist and emote manager buttons
-            if (tool.name === 'Blacklist' || tool.name === 'Emotes') {
+            // Right-align blacklist, emote manager, and wysiwyg toggle buttons
+            if (tool.name === 'Blacklist' || tool.name === 'Emotes' || tool.name === 'WysiwygToggle') {
                 rightTools.appendChild(toolButton);
             } else {
                 leftTools.appendChild(toolButton);

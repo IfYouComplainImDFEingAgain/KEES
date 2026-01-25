@@ -62,8 +62,34 @@
                 e.stopPropagation();
 
                 const selectedText = selection.toString();
+                const isWysiwyg = SNEED.state.isWysiwygMode();
 
-                if (selectedText) {
+                if (!isWysiwyg) {
+                    // Raw BBCode mode - insert color tags as text
+                    let textToInsert;
+                    if (selectedText) {
+                        textToInsert = `[color=${color.hex}]${selectedText}[/color]`;
+                    } else {
+                        textToInsert = `[color=${color.hex}][/color]`;
+                    }
+
+                    const textNode = doc.createTextNode(textToInsert);
+                    range.deleteContents();
+                    range.insertNode(textNode);
+
+                    // Position cursor
+                    if (!selectedText) {
+                        const position = `[color=${color.hex}]`.length;
+                        range.setStart(textNode, position);
+                        range.setEnd(textNode, position);
+                    } else {
+                        range.setStartAfter(textNode);
+                        range.setEndAfter(textNode);
+                    }
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else if (selectedText) {
+                    // WYSIWYG mode with selection
                     // Check if selection is inside a color span
                     const parentSpan = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
                         ? range.commonAncestorContainer.parentElement
@@ -96,7 +122,7 @@
                         selection.addRange(range);
                     }
                 } else {
-                    // No selection - create colored span with zero-width space to hold cursor
+                    // WYSIWYG mode, no selection - create colored span with zero-width space
                     const colorSpan = doc.createElement('span');
                     colorSpan.style.color = color.hex;
                     colorSpan.setAttribute('data-bbcode-color', color.hex);

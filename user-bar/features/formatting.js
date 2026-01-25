@@ -74,11 +74,20 @@
 
         // Handle WYSIWYG formatting for bold and italic
         if (tool.wysiwygCommand) {
-            applyWysiwygFormat(tool.wysiwygCommand, doc);
-            // Trigger input event
-            const event = new Event('input', { bubbles: true, cancelable: true });
-            input.dispatchEvent(event);
-            return;
+            if (SNEED.state.isWysiwygMode()) {
+                applyWysiwygFormat(tool.wysiwygCommand, doc);
+                // Trigger input event
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                input.dispatchEvent(event);
+                return;
+            } else {
+                // Raw mode - insert BBCode tags
+                const tagMap = { 'bold': 'b', 'italic': 'i' };
+                const tag = tagMap[tool.wysiwygCommand] || tool.wysiwygCommand;
+                const selectedText = selection.toString();
+                textToInsert = `[${tag}]${selectedText}[/${tag}]`;
+                hadSelectedText = !!selectedText;
+            }
         }
 
         let textToInsert;
@@ -102,8 +111,8 @@
             }
         } else if (tool.customAction === 'insertImage') {
             const selectedText = selection.toString().trim();
-            if (selectedText && /^https?:\/\/.+/i.test(selectedText)) {
-                // Selected text looks like a URL - insert inline image
+            if (SNEED.state.isWysiwygMode() && selectedText && /^https?:\/\/.+/i.test(selectedText)) {
+                // WYSIWYG mode with URL - insert inline image
                 const img = doc.createElement('img');
                 img.src = selectedText;
                 img.setAttribute('data-bbcode-img', 'true');
@@ -121,11 +130,12 @@
                 // Trigger input event for resize
                 const event = new Event('input', { bubbles: true, cancelable: true });
                 input.dispatchEvent(event);
+                return;
             } else {
-                // No URL selected - insert BBCode tags as placeholder
-                textToInsert = '[img][/img]';
+                // Raw mode or no URL - insert BBCode tags
+                textToInsert = selectedText ? `[img]${selectedText}[/img]` : '[img][/img]';
+                hadSelectedText = !!selectedText;
             }
-            if (!textToInsert) return;
         } else if (tool.customAction === 'colorPicker') {
             SNEED.ui.showColorPicker(input, selection, range, doc);
             return;
@@ -133,41 +143,71 @@
             const selectedText = selection.toString();
             if (!selectedText) return;
 
-            // Create a document fragment to hold the rainbow characters
-            const fragment = doc.createDocumentFragment();
             const chars = [...selectedText]; // Handle unicode properly
             const charCount = chars.filter(c => c.trim()).length; // Count non-whitespace
 
-            let colorIndex = 0;
-            for (let i = 0; i < chars.length; i++) {
-                const char = chars[i];
+            if (SNEED.state.isWysiwygMode()) {
+                // WYSIWYG mode - create colored spans
+                const fragment = doc.createDocumentFragment();
+                let colorIndex = 0;
 
-                if (char.trim() === '') {
-                    // Preserve whitespace without coloring
-                    fragment.appendChild(doc.createTextNode(char));
-                } else {
-                    // Calculate hue (0-360) progressing through rainbow
-                    const hue = Math.floor((colorIndex / charCount) * 360);
-                    const hex = hslToHex(hue, 100, 50);
+                for (let i = 0; i < chars.length; i++) {
+                    const char = chars[i];
 
-                    const span = doc.createElement('span');
-                    span.style.color = hex;
-                    span.setAttribute('data-bbcode-color', hex);
-                    span.textContent = char;
-                    fragment.appendChild(span);
-                    colorIndex++;
+                    if (char.trim() === '') {
+                        // Preserve whitespace without coloring
+                        fragment.appendChild(doc.createTextNode(char));
+                    } else {
+                        // Calculate hue (0-360) progressing through rainbow
+                        const hue = Math.floor((colorIndex / charCount) * 360);
+                        const hex = hslToHex(hue, 100, 50);
+
+                        const span = doc.createElement('span');
+                        span.style.color = hex;
+                        span.setAttribute('data-bbcode-color', hex);
+                        span.textContent = char;
+                        fragment.appendChild(span);
+                        colorIndex++;
+                    }
                 }
+
+                range.deleteContents();
+                range.insertNode(fragment);
+                selection.removeAllRanges();
+
+                // Trigger input event
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                input.dispatchEvent(event);
+                return;
+            } else {
+                // Raw mode - insert BBCode color tags
+                let result = '';
+                let colorIndex = 0;
+
+                for (let i = 0; i < chars.length; i++) {
+                    const char = chars[i];
+
+                    if (char.trim() === '') {
+                        result += char;
+                    } else {
+                        const hue = Math.floor((colorIndex / charCount) * 360);
+                        const hex = hslToHex(hue, 100, 50);
+                        result += `[color=${hex}]${char}[/color]`;
+                        colorIndex++;
+                    }
+                }
+
+                textToInsert = result;
+                hadSelectedText = true;
             }
-
-            range.deleteContents();
-            range.insertNode(fragment);
-
-            // Clear selection
-            selection.removeAllRanges();
-
-            // Trigger input event
-            const event = new Event('input', { bubbles: true, cancelable: true });
-            input.dispatchEvent(event);
+        } else if (tool.customAction === 'toggleWysiwyg') {
+            const isWysiwyg = SNEED.state.toggleWysiwygMode();
+            // Update button appearance
+            const toggleBtn = doc.querySelector('[data-tool="WysiwygToggle"]');
+            if (toggleBtn) {
+                toggleBtn.style.opacity = isWysiwyg ? '0.5' : '1';
+                toggleBtn.title = isWysiwyg ? 'WYSIWYG mode (click for raw BBCode)' : 'Raw BBCode mode (click for WYSIWYG)';
+            }
             return;
         } else if (tool.customAction === 'blacklistManager') {
             SNEED.ui.showBlacklistManager(doc);

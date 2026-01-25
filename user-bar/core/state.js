@@ -111,6 +111,13 @@
             title: 'Insert line break'
         },
         {
+            name: 'WysiwygToggle',
+            symbol: '<>',
+            customAction: 'toggleWysiwyg',
+            title: 'Toggle WYSIWYG mode',
+            isToggle: true
+        },
+        {
             name: 'Blacklist',
             symbol: '🚫',
             customAction: 'blacklistManager',
@@ -156,7 +163,8 @@
         reinjectAttempts: 0,
         emotes: null, // Will be loaded from storage
         initialized: false,
-        pendingTimers: new Set()
+        pendingTimers: new Set(),
+        wysiwygMode: true // true = rich/WYSIWYG, false = raw BBCode
     };
 
     // ============================================
@@ -223,6 +231,20 @@
         clearAllTimers() {
             runtimeState.pendingTimers.forEach(id => clearTimeout(id));
             runtimeState.pendingTimers.clear();
+        },
+
+        // WYSIWYG mode
+        isWysiwygMode() {
+            return runtimeState.wysiwygMode;
+        },
+
+        setWysiwygMode(enabled) {
+            runtimeState.wysiwygMode = enabled;
+        },
+
+        toggleWysiwygMode() {
+            runtimeState.wysiwygMode = !runtimeState.wysiwygMode;
+            return runtimeState.wysiwygMode;
         }
     });
 
