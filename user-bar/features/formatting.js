@@ -32,10 +32,12 @@
         }
 
         let textToInsert;
+        let hadSelectedText = false;
 
         // Handle custom actions
         if (tool.customAction === 'bulletLines') {
             const selectedText = selection.toString();
+            hadSelectedText = !!selectedText;
             if (selectedText) {
                 const lines = selectedText.split('\n');
                 textToInsert = lines.map(line => {
@@ -61,6 +63,7 @@
             textToInsert = tool.insertText;
         } else if (tool.startTag || tool.endTag) {
             const selectedText = selection.toString();
+            hadSelectedText = !!selectedText;
             const hasStartTag = !!tool.startTag;
             const hasEndTag = !!tool.endTag;
             const isPairedTag = hasStartTag && hasEndTag;
@@ -93,7 +96,8 @@
             range.insertNode(textNode);
 
             // Position cursor appropriately
-            if (tool.startTag && tool.endTag && !selection.toString()) {
+            // If paired tags with no selection, place cursor between tags (before end tag)
+            if (tool.startTag && tool.endTag && !hadSelectedText) {
                 const position = tool.startTag.length;
                 range.setStart(textNode, position);
                 range.setEnd(textNode, position);
