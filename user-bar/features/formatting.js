@@ -201,13 +201,38 @@
                 hadSelectedText = true;
             }
         } else if (tool.customAction === 'toggleWysiwyg') {
+            const wasWysiwyg = SNEED.state.isWysiwygMode();
             const isWysiwyg = SNEED.state.toggleWysiwygMode();
+
+            // Convert editor content
+            if (SNEED.core.bbcode) {
+                if (wasWysiwyg && !isWysiwyg) {
+                    // Was WYSIWYG, now Raw - convert HTML to BBCode
+                    const hasFormatting = input.querySelector('strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]');
+                    if (hasFormatting) {
+                        const bbcode = SNEED.core.bbcode.convertToBBCode(input);
+                        input.textContent = bbcode;
+                    }
+                } else if (!wasWysiwyg && isWysiwyg) {
+                    // Was Raw, now WYSIWYG - convert BBCode to HTML
+                    const text = input.textContent || '';
+                    if (/\[(b|i|color|img)\b/i.test(text)) {
+                        const html = SNEED.core.bbcode.convertToHTML(text);
+                        input.innerHTML = html;
+                    }
+                }
+            }
+
             // Update button appearance
             const toggleBtn = doc.querySelector('[data-tool="WysiwygToggle"]');
             if (toggleBtn) {
                 toggleBtn.style.opacity = isWysiwyg ? '0.5' : '1';
                 toggleBtn.title = isWysiwyg ? 'WYSIWYG mode (click for raw BBCode)' : 'Raw BBCode mode (click for WYSIWYG)';
             }
+
+            // Trigger input event for resize
+            const event = new Event('input', { bubbles: true, cancelable: true });
+            input.dispatchEvent(event);
             return;
         } else if (tool.customAction === 'blacklistManager') {
             SNEED.ui.showBlacklistManager(doc);

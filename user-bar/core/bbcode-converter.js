@@ -190,12 +190,44 @@
     }
 
     // ============================================
+    // BBCODE TO HTML CONVERSION
+    // ============================================
+
+    /**
+     * Convert BBCode to HTML for WYSIWYG display
+     * @param {string} text - BBCode text
+     * @returns {string} - HTML string
+     */
+    function convertToHTML(text) {
+        if (!text) return '';
+
+        let html = text;
+
+        // Convert [b]...[/b] to <strong>
+        html = html.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '<strong>$1</strong>');
+
+        // Convert [i]...[/i] to <em>
+        html = html.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<em>$1</em>');
+
+        // Convert [color=#hex]...[/color] to <span>
+        html = html.replace(/\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,
+            '<span style="color:$1" data-bbcode-color="$1">$2</span>');
+
+        // Convert [img]url[/img] to <img>
+        html = html.replace(/\[img\](https?:\/\/[^\[]+)\[\/img\]/gi,
+            '<img src="$1" data-bbcode-img="true" style="max-height:150px;max-width:100%;vertical-align:middle">');
+
+        return html;
+    }
+
+    // ============================================
     // EXPORT TO NAMESPACE
     // ============================================
 
     SNEED.core = SNEED.core || {};
     SNEED.core.bbcode = {
         convertToBBCode,
+        convertToHTML,
         normalizeColor,
         processNode
     };
