@@ -1,12 +1,25 @@
 /**
  * features/formatting.js - Text formatting and emote insertion
- * Handles BBCode formatting, bullet lists, and emote insertion.
+ * Handles WYSIWYG formatting, bullet lists, and emote insertion.
  */
 (function() {
     'use strict';
 
     const SNEED = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).SNEED;
     const { getSelectionAndRange } = SNEED.util;
+
+    // ============================================
+    // WYSIWYG FORMATTING HELPERS
+    // ============================================
+
+    /**
+     * Apply WYSIWYG formatting using execCommand
+     * @param {string} command - execCommand command (bold, italic)
+     * @param {Document} doc - Document context
+     */
+    function applyWysiwygFormat(command, doc) {
+        doc.execCommand(command, false, null);
+    }
 
     // ============================================
     // APPLY FORMATTING
@@ -29,6 +42,15 @@
             selection.addRange(range);
         } else {
             range = selection.getRangeAt(0);
+        }
+
+        // Handle WYSIWYG formatting for bold and italic
+        if (tool.wysiwygCommand) {
+            applyWysiwygFormat(tool.wysiwygCommand, doc);
+            // Trigger input event
+            const event = new Event('input', { bubbles: true, cancelable: true });
+            input.dispatchEvent(event);
+            return;
         }
 
         let textToInsert;

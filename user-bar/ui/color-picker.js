@@ -62,44 +62,55 @@
                 e.stopPropagation();
 
                 const selectedText = selection.toString();
-                let textToInsert;
 
                 if (selectedText) {
-                    // Check if text already has color tags
-                    const colorRegex = /^\[color=#[0-9a-fA-F]{6}\](.*)\[\/color\]$/;
-                    const match = selectedText.match(colorRegex);
+                    // Check if selection is inside a color span
+                    const parentSpan = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+                        ? range.commonAncestorContainer.parentElement
+                        : range.commonAncestorContainer;
 
-                    if (match) {
-                        // Remove existing color tags
-                        textToInsert = match[1];
+                    if (parentSpan && parentSpan.tagName === 'SPAN' && parentSpan.hasAttribute('data-bbcode-color')) {
+                        // Remove color - unwrap the span
+                        const parent = parentSpan.parentNode;
+                        while (parentSpan.firstChild) {
+                            parent.insertBefore(parentSpan.firstChild, parentSpan);
+                        }
+                        parent.removeChild(parentSpan);
+                        // Clear selection after removing
+                        selection.removeAllRanges();
                     } else {
-                        // Add color tags
-                        textToInsert = `[color=${color.hex}]${selectedText}[/color]`;
+                        // Wrap selection in colored span
+                        const colorSpan = doc.createElement('span');
+                        colorSpan.style.color = color.hex;
+                        colorSpan.setAttribute('data-bbcode-color', color.hex);
+
+                        // Extract and wrap selection
+                        const fragment = range.extractContents();
+                        colorSpan.appendChild(fragment);
+                        range.insertNode(colorSpan);
+
+                        // Position cursor after the span
+                        range.setStartAfter(colorSpan);
+                        range.setEndAfter(colorSpan);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
                     }
                 } else {
-                    // Insert empty color tags
-                    textToInsert = `[color=${color.hex}][/color]`;
+                    // No selection - create colored span with zero-width space to hold cursor
+                    const colorSpan = doc.createElement('span');
+                    colorSpan.style.color = color.hex;
+                    colorSpan.setAttribute('data-bbcode-color', color.hex);
+                    // Use zero-width space to allow cursor positioning
+                    colorSpan.textContent = '\u200B';
+                    range.insertNode(colorSpan);
+
+                    // Position cursor inside the span after the zero-width space
+                    const newRange = doc.createRange();
+                    newRange.setStart(colorSpan.firstChild, 1);
+                    newRange.setEnd(colorSpan.firstChild, 1);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
                 }
-
-                // Insert the text
-                const textNode = doc.createTextNode(textToInsert);
-                range.deleteContents();
-                range.insertNode(textNode);
-
-                // Position cursor appropriately
-                if (!selectedText) {
-                    // Position cursor between tags
-                    const position = `[color=${color.hex}]`.length;
-                    range.setStart(textNode, position);
-                    range.setEnd(textNode, position);
-                } else {
-                    // Position cursor after inserted text
-                    range.setStartAfter(textNode);
-                    range.setEndAfter(textNode);
-                }
-
-                selection.removeAllRanges();
-                selection.addRange(range);
 
                 // Trigger input event
                 const event = new Event('input', {

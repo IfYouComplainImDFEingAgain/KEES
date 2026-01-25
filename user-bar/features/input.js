@@ -1,6 +1,6 @@
 /**
  * features/input.js - Input handling
- * Input auto-resize, Shift+Enter for newlines, send failure handling.
+ * Input auto-resize, Shift+Enter for newlines, send failure handling, WYSIWYG conversion.
  */
 (function() {
     'use strict';
@@ -8,6 +8,69 @@
     const SNEED = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).SNEED;
     const state = SNEED.state;
     const { addManagedEventListener, addManagedObserver, ensureSendWatcher, setResizeCache, getResizeCache } = SNEED.core.events;
+
+    // ============================================
+    // WYSIWYG TO BBCODE CONVERSION
+    // ============================================
+
+    /**
+     * Convert input HTML content to BBCode before submission
+     * @param {HTMLElement} inputElement - The input element
+     * @param {Document} doc - Document context
+     */
+    function convertInputToBBCode(inputElement, doc) {
+        if (!SNEED.core.bbcode) {
+            SNEED.log.warn('BBCode converter not loaded');
+            return;
+        }
+
+        // Check if there's any HTML formatting to convert
+        const hasFormatting = inputElement.querySelector('strong, b, em, i, span[data-bbcode-color]');
+        if (!hasFormatting) {
+            // No formatting - just use textContent as-is
+            return;
+        }
+
+        // Convert HTML to BBCode
+        const bbcode = SNEED.core.bbcode.convertToBBCode(inputElement);
+
+        // Replace content with plain text BBCode
+        inputElement.textContent = bbcode;
+
+        // Position cursor at end
+        SNEED.util.positionCursorAtEnd(doc, inputElement);
+    }
+
+    /**
+     * Attach pre-submit conversion handlers
+     * @param {HTMLElement} inputElement - The input element
+     * @param {Document} doc - Document context
+     */
+    function attachPreSubmitHandlers(inputElement, doc) {
+        if (inputElement.hasAttribute('data-bbcode-convert-handler')) {
+            return;
+        }
+        inputElement.setAttribute('data-bbcode-convert-handler', 'true');
+
+        // Capture-phase Enter key handler (runs before chat.js handler)
+        addManagedEventListener(inputElement, 'keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                // Convert HTML to BBCode before the form submits
+                convertInputToBBCode(inputElement, doc);
+            }
+        }, true); // capture phase
+
+        // Capture-phase form submit handler
+        const messageForm = doc.getElementById('new-message-form');
+        if (messageForm && !messageForm.hasAttribute('data-bbcode-submit-handler')) {
+            messageForm.setAttribute('data-bbcode-submit-handler', 'true');
+
+            addManagedEventListener(messageForm, 'submit', (e) => {
+                // Convert HTML to BBCode before submission
+                convertInputToBBCode(inputElement, doc);
+            }, true); // capture phase
+        }
+    }
 
     // ============================================
     // OPTIMIZED INPUT RESIZER
@@ -274,6 +337,9 @@
         // Shift+Enter handler
         attachShiftEnterHandler(inputElement, doc);
 
+        // WYSIWYG to BBCode conversion handlers
+        attachPreSubmitHandlers(inputElement, doc);
+
         // Enter key handler - block send if over limit, resize after send
         if (!inputElement.hasAttribute('data-enter-resize-handler')) {
             inputElement.setAttribute('data-enter-resize-handler', 'true');
@@ -322,5 +388,7 @@
     SNEED.features.attachShiftEnterHandler = attachShiftEnterHandler;
     SNEED.features.showSendFailureIndicator = showSendFailureIndicator;
     SNEED.features.addEmoteToggleButton = addEmoteToggleButton;
+    SNEED.features.convertInputToBBCode = convertInputToBBCode;
+    SNEED.features.attachPreSubmitHandlers = attachPreSubmitHandlers;
 
 })();

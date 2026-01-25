@@ -71,15 +71,13 @@
         {
             name: 'Bold',
             symbol: 'B',
-            startTag: '[b]',
-            endTag: '[/b]',
+            wysiwygCommand: 'bold',
             title: 'Bold text'
         },
         {
             name: 'Italic',
             symbol: 'I',
-            startTag: '[i]',
-            endTag: '[/i]',
+            wysiwygCommand: 'italic',
             title: 'Italic text'
         },
         {

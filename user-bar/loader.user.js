@@ -13,6 +13,7 @@
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/state.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/storage.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/events.js
+// @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/core/bbcode-converter.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/styles.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/color-picker.js
 // @require      https://raw.githubusercontent.com/ClaudetteTheGreat/sneed-bar/master/user-bar/ui/dialogs.js
