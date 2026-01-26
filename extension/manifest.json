@@ -29,6 +29,15 @@
     },
     {
       "matches": [
+        "https://kiwifarms.st/threads/*",
+        "https://kiwifarms.tw/threads/*",
+        "https://kiwifarms.net/threads/*"
+      ],
+      "js": ["dist/forum-content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
         "https://kiwifarms.st/chat/*",
         "https://kiwifarms.st/test-chat*",
         "https://kiwifarms.tw/chat/*",

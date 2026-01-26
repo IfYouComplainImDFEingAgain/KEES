@@ -7,7 +7,7 @@
             box-sizing: border-box;
         }
         body {
-            width: 280px;
+            width: 300px;
             padding: 16px;
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -22,6 +22,14 @@
             color: #fff;
             border-bottom: 1px solid #333;
             padding-bottom: 8px;
+        }
+        h2 {
+            margin: 16px 0 10px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .setting {
             display: flex;
@@ -98,6 +106,89 @@
         .status.show {
             display: block;
         }
+
+        /* Muted users section */
+        .muted-users-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+        }
+        .muted-users-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #222;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .muted-users-list:empty::after {
+            content: "No muted users";
+            display: block;
+            padding: 12px;
+            color: #666;
+            text-align: center;
+            font-style: italic;
+        }
+        .muted-user {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .muted-user:last-child {
+            border-bottom: none;
+        }
+        .muted-user-name {
+            color: #ddd;
+            font-size: 12px;
+        }
+        .muted-user-remove {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 3px;
+            transition: all 0.15s;
+        }
+        .muted-user-remove:hover {
+            background: #c0392b;
+            color: #fff;
+        }
+        .add-muted-user {
+            display: flex;
+            gap: 8px;
+        }
+        .add-muted-user input {
+            flex: 1;
+            padding: 8px 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .add-muted-user input::placeholder {
+            color: #666;
+        }
+        .add-muted-user input:focus {
+            outline: none;
+            border-color: #666;
+        }
+        .add-muted-user button {
+            padding: 8px 12px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+        .add-muted-user button:hover {
+            background: #444;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +203,15 @@
             <input type="checkbox" id="disable-homepage-chat">
             <span class="toggle-slider"></span>
         </label>
+    </div>
+
+    <div class="muted-users-section">
+        <h2>Muted Users</h2>
+        <div id="muted-users-list" class="muted-users-list"></div>
+        <div class="add-muted-user">
+            <input type="text" id="muted-user-input" placeholder="Username to mute">
+            <button id="add-muted-user-btn">Add</button>
+        </div>
     </div>
 
     <div id="status" class="status">Settings saved!</div>
