@@ -13,6 +13,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Custom Emotes** - Add and manage your own custom emotes
 - **User Blacklist** - Filter messages from specific users
 - **Watched Users** - Highlight messages from users you're watching
+- **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
@@ -102,6 +103,7 @@ extension/
 │   ├── popup.html
 │   └── popup.js
 └── src/
+    ├── background.js      # Service worker for API calls
     ├── chat-content.js    # Chat page entry point
     ├── forum-content.js   # Forum thread entry point
     ├── homepage-content.js # Homepage entry point
