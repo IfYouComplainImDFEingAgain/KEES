@@ -268,6 +268,51 @@
     }
 
     // ============================================
+    // DISABLE HOMEPAGE CHAT STORAGE
+    // ============================================
+
+    /**
+     * Load disable homepage chat setting from storage
+     * @returns {Promise<boolean>}
+     */
+    async function getDisableHomepageChat() {
+        try {
+            const stored = await getStorageValue(state.STORAGE_KEYS.DISABLE_HOMEPAGE_CHAT);
+            if (stored !== undefined && stored !== null) {
+                return stored === true || stored === 'true';
+            }
+            return false; // Default to not disabled
+        } catch (e) {
+            log.error('Failed to load disable homepage chat setting:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Save disable homepage chat setting to storage
+     * @param {boolean} disabled
+     * @returns {Promise<boolean>}
+     */
+    async function saveDisableHomepageChat(disabled) {
+        try {
+            return await setStorageValue(state.STORAGE_KEYS.DISABLE_HOMEPAGE_CHAT, disabled);
+        } catch (e) {
+            log.error('Failed to save disable homepage chat setting:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Initialize disable homepage chat setting from storage
+     * @returns {Promise<boolean>}
+     */
+    async function initDisableHomepageChat() {
+        const disabled = await getDisableHomepageChat();
+        state.setDisableHomepageChat(disabled);
+        return disabled;
+    }
+
+    // ============================================
     // WATCHED USERS STORAGE
     // ============================================
 
@@ -313,7 +358,8 @@
         await Promise.all([
             initEmotes(),
             initWysiwygMode(),
-            initBlacklist()
+            initBlacklist(),
+            initDisableHomepageChat()
         ]);
     }
 
@@ -351,6 +397,11 @@
         // Watched Users
         getWatchedUsers,
         saveWatchedUsers,
+
+        // Disable Homepage Chat
+        getDisableHomepageChat,
+        saveDisableHomepageChat,
+        initDisableHomepageChat,
 
         // Init
         initAll
