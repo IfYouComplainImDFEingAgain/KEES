@@ -1,4 +1,4 @@
-# Sneedchat Enhancer
+# Kiwi Extra Enhancement Suite (KEES)
 
 A browser extension that adds enhanced features to Kiwi Farms chat and forum pages.
 
