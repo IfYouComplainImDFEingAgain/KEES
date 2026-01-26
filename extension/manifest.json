@@ -24,6 +24,7 @@
         "https://kiwifarms.tw/",
         "https://kiwifarms.net/"
       ],
+      "css": ["src/homepage-hide.css"],
       "js": ["dist/homepage-content.js"],
       "run_at": "document_start"
     },
