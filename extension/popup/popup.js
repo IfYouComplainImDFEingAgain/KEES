@@ -6,12 +6,21 @@
 
     const STORAGE_KEY_HOMEPAGE_CHAT = 'sneedchat-disable-homepage-chat';
     const STORAGE_KEY_MUTED_USERS = 'sneedchat-muted-users';
+    const STORAGE_KEY_REACTION_ENABLED = 'kees-reaction-filter-enabled';
+    const STORAGE_KEY_REACTION_MIN = 'kees-reaction-filter-min-reacts';
+    const STORAGE_KEY_REACTION_THRESHOLD = 'kees-reaction-filter-bad-threshold';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const statusDiv = document.getElementById('status');
     const mutedUsersList = document.getElementById('muted-users-list');
     const mutedUserInput = document.getElementById('muted-user-input');
     const addMutedUserBtn = document.getElementById('add-muted-user-btn');
+
+    // Reaction filter elements
+    const reactionFilterEnabled = document.getElementById('reaction-filter-enabled');
+    const reactionFilterOptions = document.getElementById('reaction-filter-options');
+    const reactionMinReacts = document.getElementById('reaction-min-reacts');
+    const reactionBadThreshold = document.getElementById('reaction-bad-threshold');
 
     // ============================================
     // STATUS MESSAGE
@@ -39,6 +48,54 @@
         const disabled = disableHomepageChatCheckbox.checked;
 
         chrome.storage.local.set({ [STORAGE_KEY_HOMEPAGE_CHAT]: disabled }, () => {
+            showStatus('Settings saved!');
+        });
+    });
+
+    // ============================================
+    // REACTION FILTER SETTINGS
+    // ============================================
+
+    // Load reaction filter settings
+    chrome.storage.local.get([
+        STORAGE_KEY_REACTION_ENABLED,
+        STORAGE_KEY_REACTION_MIN,
+        STORAGE_KEY_REACTION_THRESHOLD
+    ], (result) => {
+        reactionFilterEnabled.checked = result[STORAGE_KEY_REACTION_ENABLED] === true;
+        reactionMinReacts.value = result[STORAGE_KEY_REACTION_MIN] ?? 5;
+        reactionBadThreshold.value = result[STORAGE_KEY_REACTION_THRESHOLD] ?? 50;
+
+        // Show/hide options based on enabled state
+        reactionFilterOptions.style.display = reactionFilterEnabled.checked ? 'flex' : 'none';
+    });
+
+    // Toggle reaction filter
+    reactionFilterEnabled.addEventListener('change', () => {
+        const enabled = reactionFilterEnabled.checked;
+        reactionFilterOptions.style.display = enabled ? 'flex' : 'none';
+
+        chrome.storage.local.set({ [STORAGE_KEY_REACTION_ENABLED]: enabled }, () => {
+            showStatus(enabled ? 'Reaction filter enabled' : 'Reaction filter disabled');
+        });
+    });
+
+    // Save min reacts on change
+    reactionMinReacts.addEventListener('change', () => {
+        const value = parseInt(reactionMinReacts.value, 10) || 5;
+        reactionMinReacts.value = Math.max(1, Math.min(100, value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_REACTION_MIN]: reactionMinReacts.value }, () => {
+            showStatus('Settings saved!');
+        });
+    });
+
+    // Save threshold on change
+    reactionBadThreshold.addEventListener('change', () => {
+        const value = parseInt(reactionBadThreshold.value, 10) || 50;
+        reactionBadThreshold.value = Math.max(1, Math.min(100, value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_REACTION_THRESHOLD]: reactionBadThreshold.value }, () => {
             showStatus('Settings saved!');
         });
     });
