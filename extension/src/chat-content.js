@@ -22,6 +22,7 @@ import './features/formatting.js';
 import './features/input.js';
 import './features/blacklist-filter.js';
 import './features/watched-users.js';
+import './features/youtube-titles.js';
 
 // Bootstrap (must be last)
 import './bootstrap.js';

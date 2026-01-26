@@ -93,6 +93,11 @@
                                 features.startWatchedUsers(iframeDoc);
                             }
 
+                            // Start YouTube titles feature
+                            if (SNEED.features.youtubeTitles && SNEED.features.youtubeTitles.start) {
+                                SNEED.features.youtubeTitles.start(iframeDoc);
+                            }
+
                             log.info('Emote and format bars injected into iframe');
                         }
                     }
