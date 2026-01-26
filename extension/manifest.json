@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Sneedchat Enhancer",
+  "version": "4.0.0",
+  "description": "Enhanced features for Sneedchat and Kiwi Farms chat",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://kiwifarms.st/*",
+    "https://kiwifarms.tw/*",
+    "https://kiwifarms.net/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://kiwifarms.st/chat/*",
+        "https://kiwifarms.st/test-chat*",
+        "https://kiwifarms.tw/chat/*",
+        "https://kiwifarms.tw/test-chat*",
+        "https://kiwifarms.net/chat/*",
+        "https://kiwifarms.net/test-chat*"
+      ],
+      "js": ["dist/chat-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
