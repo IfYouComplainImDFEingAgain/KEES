@@ -1,0 +1,13 @@
+{
+  "name": "sneedchat-enhancer-extension",
+  "version": "4.0.0",
+  "description": "Browser extension for Sneedchat Enhancer",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
