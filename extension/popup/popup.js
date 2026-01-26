@@ -5,12 +5,14 @@
     'use strict';
 
     const STORAGE_KEY_HOMEPAGE_CHAT = 'sneedchat-disable-homepage-chat';
+    const STORAGE_KEY_SPONSORED = 'kees-disable-sponsored';
     const STORAGE_KEY_MUTED_USERS = 'sneedchat-muted-users';
     const STORAGE_KEY_REACTION_ENABLED = 'kees-reaction-filter-enabled';
     const STORAGE_KEY_REACTION_MIN = 'kees-reaction-filter-min-reacts';
     const STORAGE_KEY_REACTION_THRESHOLD = 'kees-reaction-filter-bad-threshold';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
+    const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
     const statusDiv = document.getElementById('status');
     const mutedUsersList = document.getElementById('muted-users-list');
     const mutedUserInput = document.getElementById('muted-user-input');
@@ -38,16 +40,26 @@
     // HOMEPAGE CHAT SETTING
     // ============================================
 
-    // Load current setting
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT], (result) => {
+    // Load current settings
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
+        disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
     });
 
-    // Save setting on change
+    // Save homepage chat setting on change
     disableHomepageChatCheckbox.addEventListener('change', () => {
         const disabled = disableHomepageChatCheckbox.checked;
 
         chrome.storage.local.set({ [STORAGE_KEY_HOMEPAGE_CHAT]: disabled }, () => {
+            showStatus('Settings saved!');
+        });
+    });
+
+    // Save sponsored content setting on change
+    disableSponsoredCheckbox.addEventListener('change', () => {
+        const disabled = disableSponsoredCheckbox.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_SPONSORED]: disabled }, () => {
             showStatus('Settings saved!');
         });
     });
