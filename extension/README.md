@@ -17,9 +17,14 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
 - **User Muting** - Hide posts from specific users with one click
+- **Reaction Filter** - Auto-hide posts with high negative reaction ratios (configurable threshold)
+
+### User Profile Features
+- **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results
 
 ### Homepage Features
-- **Disable Homepage Chat** - Option to hide the chat widget on the forum homepage
+- **Disable Homepage Chat** - Hide the chat widget on the forum homepage
+- **Remove Sponsored Content** - Hide sponsored banners on the homepage
 
 ## Installation
 
@@ -42,7 +47,8 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 
 ### Extension Popup
 Click the extension icon in your browser toolbar to access settings:
-- Toggle homepage chat visibility
+- Toggle homepage chat and sponsored content visibility
+- Configure reaction filter (enable/disable, thresholds)
 - Manage muted users list
 
 ### Chat Page
@@ -51,6 +57,10 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 ### Forum Threads
 - **Featured Posts** - Click the golden "Featured" button in the pagination area to collect featured posts from nearby pages
 - **Mute Users** - Click the "Mute" button next to any post to hide all posts from that user
+- **Reaction Filter** - Posts exceeding the negative reaction threshold are automatically collapsed
+
+### User Profiles
+- **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally)
 
 ## Development
 
@@ -83,7 +93,8 @@ extension/
 ├── dist/                  # Built output
 │   ├── chat-content.js
 │   ├── forum-content.js
-│   └── homepage-content.js
+│   ├── homepage-content.js
+│   └── member-content.js
 ├── icons/
 │   ├── icon-48.png
 │   └── icon-128.png
@@ -93,7 +104,9 @@ extension/
 └── src/
     ├── chat-content.js    # Chat page entry point
     ├── forum-content.js   # Forum thread entry point
-    ├── homepage-content.js
+    ├── homepage-content.js # Homepage entry point
+    ├── member-content.js  # User profile entry point
+    ├── homepage-hide.css  # CSS for instant content hiding
     ├── core/              # Core modules
     ├── ui/                # UI components
     ├── features/          # Feature modules
