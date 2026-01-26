@@ -98,6 +98,11 @@
                                 SNEED.features.youtubeTitles.start(iframeDoc);
                             }
 
+                            // Start double-click to edit feature
+                            if (SNEED.features.doubleClickEdit && SNEED.features.doubleClickEdit.start) {
+                                SNEED.features.doubleClickEdit.start(iframeDoc);
+                            }
+
                             log.info('Emote and format bars injected into iframe');
                         }
                     }
