@@ -1,6 +1,7 @@
 /**
  * homepage-content.js - Lightweight script for homepage cleanup
- * Runs on the forum homepage to optionally remove chat widget and sponsored content.
+ * CSS hides chat and sponsored content by default at document_start.
+ * This script shows them back if the user hasn't enabled hiding.
  */
 (function() {
     'use strict';
@@ -8,84 +9,52 @@
     const STORAGE_KEY_CHAT = 'sneedchat-disable-homepage-chat';
     const STORAGE_KEY_SPONSORED = 'kees-disable-sponsored';
 
-    let removedChat = false;
-    let removedSponsored = false;
-
     /**
-     * Remove the chat widget from the homepage
+     * Add class to document element to show content
+     * This overrides the CSS hiding
      */
-    function removeChatWidget() {
-        if (removedChat) return true;
-
-        const chatBlock = document.querySelector('.hb-chat--block-container');
-        if (chatBlock) {
-            chatBlock.remove();
-            removedChat = true;
-            console.log('[KEES] Homepage chat widget removed');
-            return true;
+    function showContent(showChat, showSponsored) {
+        function apply() {
+            const root = document.documentElement;
+            if (showChat) {
+                root.classList.add('kees-show-chat');
+            }
+            if (showSponsored) {
+                root.classList.add('kees-show-sponsored');
+            }
         }
-        return false;
+
+        // Apply immediately if possible, otherwise wait for documentElement
+        if (document.documentElement) {
+            apply();
+        } else {
+            // Very early - wait for documentElement
+            const observer = new MutationObserver(() => {
+                if (document.documentElement) {
+                    apply();
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document, { childList: true, subtree: true });
+        }
     }
 
     /**
-     * Remove sponsored content from the homepage
-     */
-    function removeSponsoredContent() {
-        if (removedSponsored) return true;
-
-        const sponsoredBlocks = document.querySelectorAll('.hb-sponsored');
-        if (sponsoredBlocks.length > 0) {
-            sponsoredBlocks.forEach(block => block.remove());
-            removedSponsored = true;
-            console.log(`[KEES] Removed ${sponsoredBlocks.length} sponsored block(s)`);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Initialize - check settings and remove content if enabled
+     * Initialize - check settings and show content if not hidden
      */
     function init() {
         chrome.storage.local.get([STORAGE_KEY_CHAT, STORAGE_KEY_SPONSORED], (result) => {
-            const removeChat = result[STORAGE_KEY_CHAT] === true;
-            const removeSponsored = result[STORAGE_KEY_SPONSORED] === true;
+            const hideChat = result[STORAGE_KEY_CHAT] === true;
+            const hideSponsored = result[STORAGE_KEY_SPONSORED] === true;
 
-            if (!removeChat && !removeSponsored) return;
+            // Show content that user doesn't want hidden
+            // (CSS hides everything by default for instant hiding)
+            showContent(!hideChat, !hideSponsored);
 
-            function tryRemove() {
-                let allDone = true;
-
-                if (removeChat && !removeChatWidget()) {
-                    allDone = false;
-                }
-                if (removeSponsored && !removeSponsoredContent()) {
-                    allDone = false;
-                }
-
-                return allDone;
-            }
-
-            // Try to remove immediately
-            if (!tryRemove()) {
-                // If not found yet, wait for DOM and try again
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', tryRemove);
-                } else {
-                    // Use MutationObserver as fallback for dynamically loaded content
-                    const observer = new MutationObserver((mutations, obs) => {
-                        if (tryRemove()) {
-                            obs.disconnect();
-                        }
-                    });
-                    observer.observe(document.body || document.documentElement, {
-                        childList: true,
-                        subtree: true
-                    });
-
-                    // Safety timeout - stop observing after 5 seconds
-                    setTimeout(() => observer.disconnect(), 5000);
-                }
+            if (hideChat || hideSponsored) {
+                console.log('[KEES] Homepage cleanup:',
+                    hideChat ? 'chat hidden' : '',
+                    hideSponsored ? 'sponsored hidden' : '');
             }
         });
     }

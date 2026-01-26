@@ -1,0 +1,15 @@
+/* Injected at document_start to hide elements before render */
+/* These are hidden by default, JS will show them if settings are off */
+.hb-sponsored {
+    display: none !important;
+}
+.hb-chat--block-container {
+    display: none !important;
+}
+/* Classes to restore visibility */
+.kees-show-sponsored .hb-sponsored {
+    display: block !important;
+}
+.kees-show-chat .hb-chat--block-container {
+    display: block !important;
+}
