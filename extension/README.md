@@ -14,6 +14,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **User Blacklist** - Filter messages from specific users
 - **Watched Users** - Highlight messages from users you're watching
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
+- **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
