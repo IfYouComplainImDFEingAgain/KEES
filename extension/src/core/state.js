@@ -153,7 +153,8 @@
         EMOTES: 'sneedchat-custom-emotes',
         BLACKLIST: 'sneedchat-image-blacklist',
         WYSIWYG_MODE: 'sneedchat-wysiwyg-mode',
-        WATCHED_USERS: 'sneedchat-watched-users'
+        WATCHED_USERS: 'sneedchat-watched-users',
+        DISABLE_HOMEPAGE_CHAT: 'sneedchat-disable-homepage-chat'
     };
 
     // ============================================
@@ -166,7 +167,8 @@
         emotes: null, // Will be loaded from storage
         initialized: false,
         pendingTimers: new Set(),
-        wysiwygMode: true // true = rich/WYSIWYG, false = raw BBCode
+        wysiwygMode: true, // true = rich/WYSIWYG, false = raw BBCode
+        disableHomepageChat: false // true = hide chat on homepage
     };
 
     // ============================================
@@ -247,6 +249,20 @@
         toggleWysiwygMode() {
             runtimeState.wysiwygMode = !runtimeState.wysiwygMode;
             return runtimeState.wysiwygMode;
+        },
+
+        // Disable homepage chat
+        isHomepageChatDisabled() {
+            return runtimeState.disableHomepageChat;
+        },
+
+        setDisableHomepageChat(disabled) {
+            runtimeState.disableHomepageChat = disabled;
+        },
+
+        toggleDisableHomepageChat() {
+            runtimeState.disableHomepageChat = !runtimeState.disableHomepageChat;
+            return runtimeState.disableHomepageChat;
         }
     });
 

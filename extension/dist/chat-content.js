@@ -254,7 +254,8 @@
       EMOTES: "sneedchat-custom-emotes",
       BLACKLIST: "sneedchat-image-blacklist",
       WYSIWYG_MODE: "sneedchat-wysiwyg-mode",
-      WATCHED_USERS: "sneedchat-watched-users"
+      WATCHED_USERS: "sneedchat-watched-users",
+      DISABLE_HOMEPAGE_CHAT: "sneedchat-disable-homepage-chat"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -263,8 +264,10 @@
       // Will be loaded from storage
       initialized: false,
       pendingTimers: /* @__PURE__ */ new Set(),
-      wysiwygMode: true
+      wysiwygMode: true,
       // true = rich/WYSIWYG, false = raw BBCode
+      disableHomepageChat: false
+      // true = hide chat on homepage
     };
     SNEED.state = SNEED.state || {};
     Object.assign(SNEED.state, {
@@ -325,6 +328,17 @@
       toggleWysiwygMode() {
         runtimeState.wysiwygMode = !runtimeState.wysiwygMode;
         return runtimeState.wysiwygMode;
+      },
+      // Disable homepage chat
+      isHomepageChatDisabled() {
+        return runtimeState.disableHomepageChat;
+      },
+      setDisableHomepageChat(disabled) {
+        runtimeState.disableHomepageChat = disabled;
+      },
+      toggleDisableHomepageChat() {
+        runtimeState.disableHomepageChat = !runtimeState.disableHomepageChat;
+        return runtimeState.disableHomepageChat;
       }
     });
   })();
@@ -479,6 +493,31 @@
       state.setWysiwygMode(mode);
       return mode;
     }
+    async function getDisableHomepageChat() {
+      try {
+        const stored = await getStorageValue(state.STORAGE_KEYS.DISABLE_HOMEPAGE_CHAT);
+        if (stored !== void 0 && stored !== null) {
+          return stored === true || stored === "true";
+        }
+        return false;
+      } catch (e) {
+        log.error("Failed to load disable homepage chat setting:", e);
+        return false;
+      }
+    }
+    async function saveDisableHomepageChat(disabled) {
+      try {
+        return await setStorageValue(state.STORAGE_KEYS.DISABLE_HOMEPAGE_CHAT, disabled);
+      } catch (e) {
+        log.error("Failed to save disable homepage chat setting:", e);
+        return false;
+      }
+    }
+    async function initDisableHomepageChat() {
+      const disabled = await getDisableHomepageChat();
+      state.setDisableHomepageChat(disabled);
+      return disabled;
+    }
     const DEFAULT_WATCHED_USERS = ["Null"];
     async function getWatchedUsers() {
       try {
@@ -501,7 +540,8 @@
       await Promise.all([
         initEmotes(),
         initWysiwygMode(),
-        initBlacklist()
+        initBlacklist(),
+        initDisableHomepageChat()
       ]);
     }
     SNEED.core = SNEED.core || {};
@@ -530,6 +570,10 @@
       // Watched Users
       getWatchedUsers,
       saveWatchedUsers,
+      // Disable Homepage Chat
+      getDisableHomepageChat,
+      saveDisableHomepageChat,
+      initDisableHomepageChat,
       // Init
       initAll
     };
