@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Sneedchat Enhancer",
+  "name": "Kiwi Extra Enhancement Suite (KEES)",
   "version": "4.0.0",
-  "description": "Enhanced features for Sneedchat and Kiwi Farms chat",
+  "description": "Enhanced features for Kiwi Farms chat and forums",
   "permissions": ["storage"],
   "host_permissions": [
     "https://kiwifarms.st/*",
@@ -15,7 +15,7 @@
       "48": "icons/icon-48.png",
       "128": "icons/icon-128.png"
     },
-    "default_title": "Sneedchat Enhancer Settings"
+    "default_title": "KEES Settings"
   },
   "content_scripts": [
     {
