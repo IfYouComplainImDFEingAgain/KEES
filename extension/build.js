@@ -27,17 +27,31 @@ const homepageBuildOptions = {
     logLevel: 'info'
 };
 
+// Forum content script (thread pages)
+const forumBuildOptions = {
+    entryPoints: [path.join(__dirname, 'src/forum-content.js')],
+    bundle: true,
+    outfile: path.join(__dirname, 'dist/forum-content.js'),
+    format: 'iife',
+    target: ['chrome90', 'firefox90'],
+    minify: false,
+    sourcemap: false,
+    logLevel: 'info'
+};
+
 async function build() {
     try {
         if (isWatch) {
             const chatCtx = await esbuild.context(chatBuildOptions);
             const homepageCtx = await esbuild.context(homepageBuildOptions);
-            await Promise.all([chatCtx.watch(), homepageCtx.watch()]);
+            const forumCtx = await esbuild.context(forumBuildOptions);
+            await Promise.all([chatCtx.watch(), homepageCtx.watch(), forumCtx.watch()]);
             console.log('Watching for changes...');
         } else {
             await Promise.all([
                 esbuild.build(chatBuildOptions),
-                esbuild.build(homepageBuildOptions)
+                esbuild.build(homepageBuildOptions),
+                esbuild.build(forumBuildOptions)
             ]);
             console.log('Build complete!');
         }
