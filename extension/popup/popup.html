@@ -307,7 +307,7 @@
             </label>
         </div>
 
-        <div class="setting" id="mention-body-setting" style="display: none; border-bottom: none;">
+        <div class="setting" id="mention-body-setting" style="display: none;">
             <div class="setting-label">
                 <span class="setting-title">Show Message Content</span>
                 <span class="setting-desc">Include the message text in the notification</span>
@@ -316,6 +316,16 @@
                 <input type="checkbox" id="mention-show-body">
                 <span class="toggle-slider"></span>
             </label>
+        </div>
+
+        <div class="setting" style="border-bottom: none;">
+            <div class="setting-label">
+                <span class="setting-title">Scrollback Limit</span>
+                <span class="setting-desc">Max messages to keep in chat history</span>
+            </div>
+            <div class="input-group" style="width: 80px; flex-shrink: 0;">
+                <input type="number" id="scrollback-limit" value="100" min="50" max="5000" style="text-align: center;">
+            </div>
         </div>
     </div>
 

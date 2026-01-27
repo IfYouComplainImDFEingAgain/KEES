@@ -25,24 +25,14 @@
     // ============================================
 
     function checkForMention(messageElement, doc) {
-        console.log('[KEES] Checking message for mention, enabled:', isEnabled);
-
         if (!isEnabled) return;
 
         // Skip if already processed
-        if (processedMessages.has(messageElement)) {
-            console.log('[KEES] Message already processed, skipping');
-            return;
-        }
+        if (processedMessages.has(messageElement)) return;
         processedMessages.add(messageElement);
 
         // Check if this message mentions the user (site adds this class)
-        if (!messageElement.classList.contains('chat-message--highlightYou')) {
-            console.log('[KEES] Message does not have highlightYou class');
-            return;
-        }
-
-        console.log('[KEES] Found mention message!');
+        if (!messageElement.classList.contains('chat-message--highlightYou')) return;
 
         // Get the message author - try multiple selectors
         let author = messageElement.querySelector('.chat-user-name')?.textContent?.trim()
@@ -55,9 +45,6 @@
             || messageElement.querySelector('.content')?.textContent?.trim()
             || messageElement.textContent?.trim() || '';
 
-        console.log('[KEES] Mention from:', author, 'content:', content.substring(0, 50));
-        console.log('[KEES] Message HTML:', messageElement.innerHTML.substring(0, 200));
-
         // Send notification
         sendNotification(author || 'Someone', content, doc);
     }
@@ -67,42 +54,26 @@
     // ============================================
 
     function sendNotification(author, content, doc) {
-        console.log('[KEES] sendNotification called, author:', author);
-
         // Check if notifications are supported and permitted
-        if (!('Notification' in window)) {
-            console.log('[KEES] Notifications not supported');
-            return;
-        }
-
-        console.log('[KEES] Notification permission:', Notification.permission);
+        if (!('Notification' in window)) return;
 
         // Request permission if needed
         if (Notification.permission === 'default') {
-            console.log('[KEES] Requesting notification permission');
             Notification.requestPermission();
             return;
         }
 
-        if (Notification.permission !== 'granted') {
-            console.log('[KEES] Notification permission denied');
-            return;
-        }
+        if (Notification.permission !== 'granted') return;
 
-        // Check focus state (disabled for testing - notifications will always show)
-        // const docHasFocus = doc.hasFocus();
-        // let parentHasFocus = false;
-        // try {
-        //     parentHasFocus = window.parent && window.parent.document.hasFocus();
-        // } catch (e) {
-        //     // Cross-origin
-        // }
-        // console.log('[KEES] Focus check - doc:', docHasFocus, 'parent:', parentHasFocus);
-        // if (docHasFocus || parentHasFocus) {
-        //     console.log('[KEES] Page is focused, skipping notification');
-        //     return;
-        // }
-        console.log('[KEES] Creating notification (focus check disabled for testing)');
+        // Don't notify if page is focused
+        const docHasFocus = doc.hasFocus();
+        let parentHasFocus = false;
+        try {
+            parentHasFocus = window.parent && window.parent.document.hasFocus();
+        } catch (e) {
+            // Cross-origin
+        }
+        if (docHasFocus || parentHasFocus) return;
 
         // Build notification body
         let body = '';
@@ -114,11 +85,9 @@
         const notification = new Notification(`${author} mentioned you in chat`, {
             body: body,
             icon: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
-            tag: 'kees-mention-' + Date.now(), // Unique tag to allow multiple notifications
+            tag: 'kees-mention-' + Date.now(),
             requireInteraction: false
         });
-
-        console.log('[KEES] Notification created for mention from:', author);
 
         // Focus window when notification is clicked
         notification.onclick = () => {
@@ -129,8 +98,6 @@
 
         // Auto-close after 5 seconds
         setTimeout(() => notification.close(), 5000);
-
-        console.log('[KEES] Mention notification sent for:', author);
     }
 
     // ============================================
@@ -144,6 +111,12 @@
             return;
         }
 
+        // Mark all existing messages as already processed to avoid
+        // notifying for initial message batch on connect/reconnect
+        const existingMessages = chatContainer.querySelectorAll('.chat-message');
+        existingMessages.forEach(msg => processedMessages.add(msg));
+        console.log('[KEES] Marked', existingMessages.length, 'existing messages as processed');
+
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
@@ -151,15 +124,11 @@
 
                     // Check if it's a chat message
                     if (node.matches && node.matches('.chat-message')) {
-                        console.log('[KEES] New chat message detected, classes:', node.className);
                         checkForMention(node, doc);
                     } else if (node.querySelectorAll) {
                         // Check for messages inside added node
                         const messages = node.querySelectorAll('.chat-message');
-                        if (messages.length > 0) {
-                            console.log('[KEES] Found', messages.length, 'messages in added node');
-                            messages.forEach(msg => checkForMention(msg, doc));
-                        }
+                        messages.forEach(msg => checkForMention(msg, doc));
                     }
                 }
             }

@@ -21,12 +21,6 @@
         emoteBar.id = 'custom-emote-bar';
         emoteBar.style.cssText = stylesToString(STYLES.emoteBar);
 
-        // Label
-        const label = doc.createElement('div');
-        label.textContent = 'Quick Emotes:';
-        label.style.cssText = stylesToString(STYLES.label);
-        emoteBar.appendChild(label);
-
         // Get emotes from state (already loaded during init)
         const emotes = state.getEmotes() || state.defaultEmotes;
         emotes.forEach(emote => {
@@ -131,12 +125,6 @@
         const formatBar = doc.createElement('div');
         formatBar.id = 'custom-format-bar';
         formatBar.style.cssText = stylesToString(STYLES.formatBar);
-
-        // Label
-        const label = doc.createElement('div');
-        label.textContent = 'Format:';
-        label.style.cssText = stylesToString(STYLES.formatLabel);
-        formatBar.appendChild(label);
 
         // Tool containers
         const leftTools = doc.createElement('div');

@@ -1801,10 +1801,6 @@
       const emoteBar = doc.createElement("div");
       emoteBar.id = "custom-emote-bar";
       emoteBar.style.cssText = stylesToString(STYLES.emoteBar);
-      const label = doc.createElement("div");
-      label.textContent = "Quick Emotes:";
-      label.style.cssText = stylesToString(STYLES.label);
-      emoteBar.appendChild(label);
       const emotes = state.getEmotes() || state.defaultEmotes;
       emotes.forEach((emote) => {
         const emoteButton = doc.createElement("button");
@@ -1884,10 +1880,6 @@
       const formatBar = doc.createElement("div");
       formatBar.id = "custom-format-bar";
       formatBar.style.cssText = stylesToString(STYLES.formatBar);
-      const label = doc.createElement("div");
-      label.textContent = "Format:";
-      label.style.cssText = stylesToString(STYLES.formatLabel);
-      formatBar.appendChild(label);
       const leftTools = doc.createElement("div");
       leftTools.style.cssText = "display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1;";
       const rightTools = doc.createElement("div");
@@ -3251,41 +3243,28 @@
     let showBody = false;
     function checkForMention(messageElement, doc) {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
-      console.log("[KEES] Checking message for mention, enabled:", isEnabled);
       if (!isEnabled) return;
-      if (processedMessages.has(messageElement)) {
-        console.log("[KEES] Message already processed, skipping");
-        return;
-      }
+      if (processedMessages.has(messageElement)) return;
       processedMessages.add(messageElement);
-      if (!messageElement.classList.contains("chat-message--highlightYou")) {
-        console.log("[KEES] Message does not have highlightYou class");
-        return;
-      }
-      console.log("[KEES] Found mention message!");
+      if (!messageElement.classList.contains("chat-message--highlightYou")) return;
       let author = ((_b = (_a = messageElement.querySelector(".chat-user-name")) == null ? void 0 : _a.textContent) == null ? void 0 : _b.trim()) || ((_d = (_c = messageElement.querySelector(".username")) == null ? void 0 : _c.textContent) == null ? void 0 : _d.trim()) || ((_f = (_e = messageElement.querySelector('[class*="user"]')) == null ? void 0 : _e.textContent) == null ? void 0 : _f.trim());
       let content = ((_h = (_g = messageElement.querySelector(".chat-message-content")) == null ? void 0 : _g.textContent) == null ? void 0 : _h.trim()) || ((_j = (_i = messageElement.querySelector(".message-content")) == null ? void 0 : _i.textContent) == null ? void 0 : _j.trim()) || ((_l = (_k = messageElement.querySelector(".content")) == null ? void 0 : _k.textContent) == null ? void 0 : _l.trim()) || ((_m = messageElement.textContent) == null ? void 0 : _m.trim()) || "";
-      console.log("[KEES] Mention from:", author, "content:", content.substring(0, 50));
-      console.log("[KEES] Message HTML:", messageElement.innerHTML.substring(0, 200));
       sendNotification(author || "Someone", content, doc);
     }
     function sendNotification(author, content, doc) {
-      console.log("[KEES] sendNotification called, author:", author);
-      if (!("Notification" in window)) {
-        console.log("[KEES] Notifications not supported");
-        return;
-      }
-      console.log("[KEES] Notification permission:", Notification.permission);
+      if (!("Notification" in window)) return;
       if (Notification.permission === "default") {
-        console.log("[KEES] Requesting notification permission");
         Notification.requestPermission();
         return;
       }
-      if (Notification.permission !== "granted") {
-        console.log("[KEES] Notification permission denied");
-        return;
+      if (Notification.permission !== "granted") return;
+      const docHasFocus = doc.hasFocus();
+      let parentHasFocus = false;
+      try {
+        parentHasFocus = window.parent && window.parent.document.hasFocus();
+      } catch (e) {
       }
-      console.log("[KEES] Creating notification (focus check disabled for testing)");
+      if (docHasFocus || parentHasFocus) return;
       let body = "";
       if (showBody && content) {
         body = content.length > 150 ? content.substring(0, 150) + "..." : content;
@@ -3294,17 +3273,14 @@
         body,
         icon: "https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png",
         tag: "kees-mention-" + Date.now(),
-        // Unique tag to allow multiple notifications
         requireInteraction: false
       });
-      console.log("[KEES] Notification created for mention from:", author);
       notification.onclick = () => {
         window.focus();
         if (window.parent) window.parent.focus();
         notification.close();
       };
       setTimeout(() => notification.close(), 5e3);
-      console.log("[KEES] Mention notification sent for:", author);
     }
     function setupObserver(doc) {
       const chatContainer = doc.querySelector(".chat-messages, .chat-box, #chat-messages");
@@ -3312,19 +3288,18 @@
         console.log("[KEES] Chat container not found for mention observer");
         return;
       }
+      const existingMessages = chatContainer.querySelectorAll(".chat-message");
+      existingMessages.forEach((msg) => processedMessages.add(msg));
+      console.log("[KEES] Marked", existingMessages.length, "existing messages as processed");
       const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
           for (const node of mutation.addedNodes) {
             if (node.nodeType !== Node.ELEMENT_NODE) continue;
             if (node.matches && node.matches(".chat-message")) {
-              console.log("[KEES] New chat message detected, classes:", node.className);
               checkForMention(node, doc);
             } else if (node.querySelectorAll) {
               const messages = node.querySelectorAll(".chat-message");
-              if (messages.length > 0) {
-                console.log("[KEES] Found", messages.length, "messages in added node");
-                messages.forEach((msg) => checkForMention(msg, doc));
-              }
+              messages.forEach((msg) => checkForMention(msg, doc));
             }
           }
         }

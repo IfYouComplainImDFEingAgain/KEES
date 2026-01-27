@@ -15,6 +15,7 @@
     const STORAGE_KEY_ZIPLINE_API_KEY = 'kees-zipline-api-key';
     const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
+    const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -39,6 +40,9 @@
     const mentionNotifications = document.getElementById('mention-notifications');
     const mentionShowBody = document.getElementById('mention-show-body');
     const mentionBodySetting = document.getElementById('mention-body-setting');
+
+    // Scrollback elements
+    const scrollbackLimit = document.getElementById('scrollback-limit');
 
     // ============================================
     // STATUS MESSAGE
@@ -99,6 +103,25 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // ============================================
+    // SCROLLBACK SETTINGS
+    // ============================================
+
+    // Load scrollback setting
+    chrome.storage.local.get([STORAGE_KEY_SCROLLBACK_LIMIT], (result) => {
+        scrollbackLimit.value = result[STORAGE_KEY_SCROLLBACK_LIMIT] ?? 100;
+    });
+
+    // Save scrollback limit on change
+    scrollbackLimit.addEventListener('change', () => {
+        const value = parseInt(scrollbackLimit.value, 10) || 100;
+        scrollbackLimit.value = Math.max(50, Math.min(5000, value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_SCROLLBACK_LIMIT]: scrollbackLimit.value }, () => {
+            showStatus('Scrollback limit saved');
         });
     });
 

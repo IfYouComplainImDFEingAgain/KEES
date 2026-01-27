@@ -17,6 +17,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
 - **Zipline Upload** - Upload media to your Zipline instance and insert the URL directly into chat
 - **Mention Notifications** - Browser notifications when someone mentions you in chat (with optional message preview)
+- **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view

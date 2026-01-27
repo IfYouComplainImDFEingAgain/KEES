@@ -55,6 +55,18 @@
         "https://kiwifarms.net/chat/*",
         "https://kiwifarms.net/test-chat*"
       ],
+      "js": ["src/features/scrollback.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/chat/*",
+        "https://kiwifarms.st/test-chat*",
+        "https://kiwifarms.tw/chat/*",
+        "https://kiwifarms.tw/test-chat*",
+        "https://kiwifarms.net/chat/*",
+        "https://kiwifarms.net/test-chat*"
+      ],
       "js": ["dist/chat-content.js"],
       "run_at": "document_idle"
     }
