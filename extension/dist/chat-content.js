@@ -3120,7 +3120,11 @@
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const response = await chrome.runtime.sendMessage({
+        const runtime = getRuntime();
+        if (!runtime || !runtime.sendMessage) {
+          throw new Error("Extension runtime not available. Try refreshing the page.");
+        }
+        const response = await runtime.sendMessage({
           type: "uploadToZipline",
           fileData: base64,
           fileName: file.name,
@@ -3165,10 +3169,25 @@
         uploadBtn.disabled = false;
       }
     }
+    function getRuntime() {
+      if (typeof chrome !== "undefined" && chrome.runtime) return chrome.runtime;
+      if (typeof browser !== "undefined" && browser.runtime) return browser.runtime;
+      return null;
+    }
+    function getStorage() {
+      if (typeof chrome !== "undefined" && chrome.storage) return chrome.storage;
+      if (typeof browser !== "undefined" && browser.storage) return browser.storage;
+      return null;
+    }
     async function start(doc) {
       if (!doc || initializedDocs.has(doc)) return;
+      const storage = getStorage();
+      if (!storage) {
+        console.log("[KEES] Storage API not available");
+        return;
+      }
       const settings = await new Promise((resolve) => {
-        chrome.storage.local.get([STORAGE_KEY_ENABLED], resolve);
+        storage.local.get([STORAGE_KEY_ENABLED], resolve);
       });
       if (!settings[STORAGE_KEY_ENABLED]) {
         console.log("[KEES] Zipline upload disabled");
@@ -3218,6 +3237,145 @@
     init();
   })();
 
+  // src/features/mention-notifications.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED || {};
+    window.SNEED = SNEED;
+    const STORAGE_KEY_ENABLED = "kees-mention-notifications";
+    const STORAGE_KEY_SHOW_BODY = "kees-mention-show-body";
+    const MENTION_SELECTOR = ".chat-message--highlightYou";
+    const initializedDocs = /* @__PURE__ */ new WeakSet();
+    const processedMessages = /* @__PURE__ */ new WeakSet();
+    let isEnabled = false;
+    let showBody = false;
+    function checkForMention(messageElement, doc) {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+      console.log("[KEES] Checking message for mention, enabled:", isEnabled);
+      if (!isEnabled) return;
+      if (processedMessages.has(messageElement)) {
+        console.log("[KEES] Message already processed, skipping");
+        return;
+      }
+      processedMessages.add(messageElement);
+      if (!messageElement.classList.contains("chat-message--highlightYou")) {
+        console.log("[KEES] Message does not have highlightYou class");
+        return;
+      }
+      console.log("[KEES] Found mention message!");
+      let author = ((_b = (_a = messageElement.querySelector(".chat-user-name")) == null ? void 0 : _a.textContent) == null ? void 0 : _b.trim()) || ((_d = (_c = messageElement.querySelector(".username")) == null ? void 0 : _c.textContent) == null ? void 0 : _d.trim()) || ((_f = (_e = messageElement.querySelector('[class*="user"]')) == null ? void 0 : _e.textContent) == null ? void 0 : _f.trim());
+      let content = ((_h = (_g = messageElement.querySelector(".chat-message-content")) == null ? void 0 : _g.textContent) == null ? void 0 : _h.trim()) || ((_j = (_i = messageElement.querySelector(".message-content")) == null ? void 0 : _i.textContent) == null ? void 0 : _j.trim()) || ((_l = (_k = messageElement.querySelector(".content")) == null ? void 0 : _k.textContent) == null ? void 0 : _l.trim()) || ((_m = messageElement.textContent) == null ? void 0 : _m.trim()) || "";
+      console.log("[KEES] Mention from:", author, "content:", content.substring(0, 50));
+      console.log("[KEES] Message HTML:", messageElement.innerHTML.substring(0, 200));
+      sendNotification(author || "Someone", content, doc);
+    }
+    function sendNotification(author, content, doc) {
+      console.log("[KEES] sendNotification called, author:", author);
+      if (!("Notification" in window)) {
+        console.log("[KEES] Notifications not supported");
+        return;
+      }
+      console.log("[KEES] Notification permission:", Notification.permission);
+      if (Notification.permission === "default") {
+        console.log("[KEES] Requesting notification permission");
+        Notification.requestPermission();
+        return;
+      }
+      if (Notification.permission !== "granted") {
+        console.log("[KEES] Notification permission denied");
+        return;
+      }
+      console.log("[KEES] Creating notification (focus check disabled for testing)");
+      let body = "";
+      if (showBody && content) {
+        body = content.length > 150 ? content.substring(0, 150) + "..." : content;
+      }
+      const notification = new Notification(`${author} mentioned you in chat`, {
+        body,
+        icon: "https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png",
+        tag: "kees-mention-" + Date.now(),
+        // Unique tag to allow multiple notifications
+        requireInteraction: false
+      });
+      console.log("[KEES] Notification created for mention from:", author);
+      notification.onclick = () => {
+        window.focus();
+        if (window.parent) window.parent.focus();
+        notification.close();
+      };
+      setTimeout(() => notification.close(), 5e3);
+      console.log("[KEES] Mention notification sent for:", author);
+    }
+    function setupObserver(doc) {
+      const chatContainer = doc.querySelector(".chat-messages, .chat-box, #chat-messages");
+      if (!chatContainer) {
+        console.log("[KEES] Chat container not found for mention observer");
+        return;
+      }
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            if (node.matches && node.matches(".chat-message")) {
+              console.log("[KEES] New chat message detected, classes:", node.className);
+              checkForMention(node, doc);
+            } else if (node.querySelectorAll) {
+              const messages = node.querySelectorAll(".chat-message");
+              if (messages.length > 0) {
+                console.log("[KEES] Found", messages.length, "messages in added node");
+                messages.forEach((msg) => checkForMention(msg, doc));
+              }
+            }
+          }
+        }
+      });
+      observer.observe(chatContainer, {
+        childList: true,
+        subtree: true
+      });
+      console.log("[KEES] Mention notification observer started");
+    }
+    async function start(doc) {
+      if (!doc || initializedDocs.has(doc)) return;
+      initializedDocs.add(doc);
+      const settings = await new Promise((resolve) => {
+        chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY], resolve);
+      });
+      isEnabled = settings[STORAGE_KEY_ENABLED] === true;
+      showBody = settings[STORAGE_KEY_SHOW_BODY] === true;
+      if (!isEnabled) {
+        console.log("[KEES] Mention notifications disabled");
+      } else {
+        console.log("[KEES] Mention notifications enabled, showBody:", showBody);
+      }
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      setupObserver(doc);
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === "local") {
+          if (changes[STORAGE_KEY_ENABLED]) {
+            isEnabled = changes[STORAGE_KEY_ENABLED].newValue === true;
+            console.log("[KEES] Mention notifications", isEnabled ? "enabled" : "disabled");
+          }
+          if (changes[STORAGE_KEY_SHOW_BODY]) {
+            showBody = changes[STORAGE_KEY_SHOW_BODY].newValue === true;
+            console.log("[KEES] Show body in notifications:", showBody);
+          }
+        }
+      });
+    }
+    function init() {
+      console.log("[KEES] Mention notifications module loaded");
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.mentionNotifications = {
+      init,
+      start
+    };
+    init();
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -3254,6 +3412,9 @@
           if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
             SNEED.features.ziplineUpload.start(document);
           }
+          if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
+            SNEED.features.mentionNotifications.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -3289,6 +3450,9 @@
                 }
                 if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
                   SNEED.features.ziplineUpload.start(iframeDoc);
+                }
+                if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
+                  SNEED.features.mentionNotifications.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }

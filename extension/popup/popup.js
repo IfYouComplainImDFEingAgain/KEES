@@ -13,6 +13,8 @@
     const STORAGE_KEY_ZIPLINE_ENABLED = 'kees-zipline-enabled';
     const STORAGE_KEY_ZIPLINE_URL = 'kees-zipline-url';
     const STORAGE_KEY_ZIPLINE_API_KEY = 'kees-zipline-api-key';
+    const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
+    const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -33,6 +35,11 @@
     const ziplineUrl = document.getElementById('zipline-url');
     const ziplineApiKey = document.getElementById('zipline-api-key');
 
+    // Mention notifications elements
+    const mentionNotifications = document.getElementById('mention-notifications');
+    const mentionShowBody = document.getElementById('mention-show-body');
+    const mentionBodySetting = document.getElementById('mention-body-setting');
+
     // ============================================
     // STATUS MESSAGE
     // ============================================
@@ -50,9 +57,12 @@
     // ============================================
 
     // Load current settings
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
+        mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
+        mentionShowBody.checked = result[STORAGE_KEY_MENTION_SHOW_BODY] === true;
+        mentionBodySetting.style.display = mentionNotifications.checked ? 'flex' : 'none';
     });
 
     // Save homepage chat setting on change
@@ -69,6 +79,25 @@
         const disabled = disableSponsoredCheckbox.checked;
 
         chrome.storage.local.set({ [STORAGE_KEY_SPONSORED]: disabled }, () => {
+            showStatus('Settings saved!');
+        });
+    });
+
+    // Save mention notifications setting on change
+    mentionNotifications.addEventListener('change', () => {
+        const enabled = mentionNotifications.checked;
+        mentionBodySetting.style.display = enabled ? 'flex' : 'none';
+
+        chrome.storage.local.set({ [STORAGE_KEY_MENTION_NOTIFICATIONS]: enabled }, () => {
+            showStatus(enabled ? 'Mention notifications enabled' : 'Mention notifications disabled');
+        });
+    });
+
+    // Save mention show body setting on change
+    mentionShowBody.addEventListener('change', () => {
+        const enabled = mentionShowBody.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
         });
     });

@@ -3,7 +3,7 @@
   "name": "Kiwi Extra Enhancement Suite (KEES)",
   "version": "4.0.0",
   "description": "Enhanced features for Kiwi Farms chat and forums",
-  "permissions": ["storage"],
+  "permissions": ["storage", "notifications"],
   "host_permissions": [
     "https://kiwifarms.st/*",
     "https://kiwifarms.tw/*",

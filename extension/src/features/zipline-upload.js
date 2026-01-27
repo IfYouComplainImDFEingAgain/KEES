@@ -107,7 +107,12 @@
             });
 
             // Send to background script for upload
-            const response = await chrome.runtime.sendMessage({
+            const runtime = getRuntime();
+            if (!runtime || !runtime.sendMessage) {
+                throw new Error('Extension runtime not available. Try refreshing the page.');
+            }
+
+            const response = await runtime.sendMessage({
                 type: 'uploadToZipline',
                 fileData: base64,
                 fileName: file.name,
@@ -167,12 +172,31 @@
     // INITIALIZATION
     // ============================================
 
+    // Get the chrome/browser runtime safely
+    function getRuntime() {
+        if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
+        if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
+        return null;
+    }
+
+    function getStorage() {
+        if (typeof chrome !== 'undefined' && chrome.storage) return chrome.storage;
+        if (typeof browser !== 'undefined' && browser.storage) return browser.storage;
+        return null;
+    }
+
     async function start(doc) {
         if (!doc || initializedDocs.has(doc)) return;
 
+        const storage = getStorage();
+        if (!storage) {
+            console.log('[KEES] Storage API not available');
+            return;
+        }
+
         // Check if Zipline is enabled
         const settings = await new Promise(resolve => {
-            chrome.storage.local.get([STORAGE_KEY_ENABLED], resolve);
+            storage.local.get([STORAGE_KEY_ENABLED], resolve);
         });
 
         if (!settings[STORAGE_KEY_ENABLED]) {
