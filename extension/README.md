@@ -15,6 +15,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Watched Users** - Highlight messages from users you're watching
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
+- **Zipline Upload** - Upload media to your Zipline instance and insert the URL directly into chat
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
@@ -51,6 +52,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 Click the extension icon in your browser toolbar to access settings:
 - Toggle homepage chat and sponsored content visibility
 - Configure reaction filter (enable/disable, thresholds)
+- Configure Zipline upload (URL and API key)
 - Manage muted users list
 
 ### Chat Page
