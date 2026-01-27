@@ -120,8 +120,10 @@
             });
 
             if (response.success) {
-                // Insert URL into chat input
+                // Insert URL into chat input, wrap images in [img] tags
                 const url = response.url;
+                const isImage = file.type.startsWith('image/');
+                const textToInsert = isImage ? `[img]${url}[/img] ` : `${url} `;
 
                 if (inputElement.contentEditable === 'true') {
                     // Focus and insert at cursor or end
@@ -139,7 +141,7 @@
                         range = selection.getRangeAt(0);
                     }
 
-                    const textNode = doc.createTextNode(url + ' ');
+                    const textNode = doc.createTextNode(textToInsert);
                     range.deleteContents();
                     range.insertNode(textNode);
                     range.setStartAfter(textNode);
@@ -150,10 +152,10 @@
                     // Trigger input event
                     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
                 } else {
-                    inputElement.value += url + ' ';
+                    inputElement.value += textToInsert;
                 }
 
-                console.log('[KEES] Zipline upload successful:', url);
+                console.log('[KEES] Zipline upload successful:', url, isImage ? '(image)' : '');
             } else {
                 console.error('[KEES] Zipline upload failed:', response.error);
                 alert('Upload failed: ' + response.error);
