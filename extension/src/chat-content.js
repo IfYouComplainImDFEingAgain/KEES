@@ -24,6 +24,7 @@ import './features/blacklist-filter.js';
 import './features/watched-users.js';
 import './features/youtube-titles.js';
 import './features/double-click-edit.js';
+import './features/zipline-upload.js';
 
 // Bootstrap (must be last)
 import './bootstrap.js';

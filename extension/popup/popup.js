@@ -10,6 +10,9 @@
     const STORAGE_KEY_REACTION_ENABLED = 'kees-reaction-filter-enabled';
     const STORAGE_KEY_REACTION_MIN = 'kees-reaction-filter-min-reacts';
     const STORAGE_KEY_REACTION_THRESHOLD = 'kees-reaction-filter-bad-threshold';
+    const STORAGE_KEY_ZIPLINE_ENABLED = 'kees-zipline-enabled';
+    const STORAGE_KEY_ZIPLINE_URL = 'kees-zipline-url';
+    const STORAGE_KEY_ZIPLINE_API_KEY = 'kees-zipline-api-key';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -23,6 +26,12 @@
     const reactionFilterOptions = document.getElementById('reaction-filter-options');
     const reactionMinReacts = document.getElementById('reaction-min-reacts');
     const reactionBadThreshold = document.getElementById('reaction-bad-threshold');
+
+    // Zipline elements
+    const ziplineEnabled = document.getElementById('zipline-enabled');
+    const ziplineOptions = document.getElementById('zipline-options');
+    const ziplineUrl = document.getElementById('zipline-url');
+    const ziplineApiKey = document.getElementById('zipline-api-key');
 
     // ============================================
     // STATUS MESSAGE
@@ -109,6 +118,47 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_REACTION_THRESHOLD]: reactionBadThreshold.value }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // ============================================
+    // ZIPLINE SETTINGS
+    // ============================================
+
+    // Load Zipline settings
+    chrome.storage.local.get([
+        STORAGE_KEY_ZIPLINE_ENABLED,
+        STORAGE_KEY_ZIPLINE_URL,
+        STORAGE_KEY_ZIPLINE_API_KEY
+    ], (result) => {
+        ziplineEnabled.checked = result[STORAGE_KEY_ZIPLINE_ENABLED] === true;
+        ziplineUrl.value = result[STORAGE_KEY_ZIPLINE_URL] || '';
+        ziplineApiKey.value = result[STORAGE_KEY_ZIPLINE_API_KEY] || '';
+
+        ziplineOptions.style.display = ziplineEnabled.checked ? 'block' : 'none';
+    });
+
+    // Toggle Zipline
+    ziplineEnabled.addEventListener('change', () => {
+        const enabled = ziplineEnabled.checked;
+        ziplineOptions.style.display = enabled ? 'block' : 'none';
+
+        chrome.storage.local.set({ [STORAGE_KEY_ZIPLINE_ENABLED]: enabled }, () => {
+            showStatus(enabled ? 'Zipline enabled' : 'Zipline disabled');
+        });
+    });
+
+    // Save Zipline URL
+    ziplineUrl.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_ZIPLINE_URL]: ziplineUrl.value.trim() }, () => {
+            showStatus('Zipline URL saved');
+        });
+    });
+
+    // Save Zipline API key
+    ziplineApiKey.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_ZIPLINE_API_KEY]: ziplineApiKey.value }, () => {
+            showStatus('API key saved');
         });
     });
 

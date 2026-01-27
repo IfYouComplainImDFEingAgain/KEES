@@ -53,6 +53,11 @@
                     features.startWatchedUsers(document);
                 }
 
+                // Start Zipline upload feature
+                if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
+                    SNEED.features.ziplineUpload.start(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -101,6 +106,11 @@
                             // Start double-click to edit feature
                             if (SNEED.features.doubleClickEdit && SNEED.features.doubleClickEdit.start) {
                                 SNEED.features.doubleClickEdit.start(iframeDoc);
+                            }
+
+                            // Start Zipline upload feature
+                            if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
+                                SNEED.features.ziplineUpload.start(iframeDoc);
                             }
 
                             log.info('Emote and format bars injected into iframe');

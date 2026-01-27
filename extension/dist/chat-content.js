@@ -3043,6 +3043,181 @@
     init();
   })();
 
+  // src/features/zipline-upload.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED || {};
+    window.SNEED = SNEED;
+    const STORAGE_KEY_ENABLED = "kees-zipline-enabled";
+    const initializedDocs = /* @__PURE__ */ new WeakSet();
+    function createUploadButton(doc) {
+      const btn = doc.createElement("button");
+      btn.id = "zipline-upload-button";
+      btn.type = "button";
+      btn.title = "Upload media to Zipline";
+      btn.style.cssText = `
+            background: transparent;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            margin-right: 4px;
+        `;
+      btn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #888;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+        `;
+      btn.addEventListener("mouseenter", () => {
+        btn.style.background = "rgba(255,255,255,0.1)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.background = "transparent";
+      });
+      return btn;
+    }
+    function createFileInput(doc) {
+      const input = doc.createElement("input");
+      input.type = "file";
+      input.id = "zipline-file-input";
+      input.accept = "image/*,video/*,audio/*";
+      input.style.display = "none";
+      return input;
+    }
+    async function handleFileSelect(file, doc) {
+      if (!file) return;
+      const inputElement = doc.getElementById("new-message-input");
+      if (!inputElement) return;
+      const uploadBtn = doc.getElementById("zipline-upload-button");
+      const originalHTML = uploadBtn.innerHTML;
+      uploadBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #888; animation: spin 1s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke-dasharray="30 60"/>
+            </svg>
+        `;
+      uploadBtn.disabled = true;
+      if (!doc.getElementById("kees-spin-style")) {
+        const style = doc.createElement("style");
+        style.id = "kees-spin-style";
+        style.textContent = "@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
+        doc.head.appendChild(style);
+      }
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            const base64Data = result.split(",")[1];
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const response = await chrome.runtime.sendMessage({
+          type: "uploadToZipline",
+          fileData: base64,
+          fileName: file.name,
+          mimeType: file.type
+        });
+        if (response.success) {
+          const url = response.url;
+          if (inputElement.contentEditable === "true") {
+            inputElement.focus();
+            const win = doc.defaultView || window;
+            const selection = win.getSelection();
+            let range;
+            if (selection.rangeCount === 0) {
+              range = doc.createRange();
+              range.selectNodeContents(inputElement);
+              range.collapse(false);
+              selection.addRange(range);
+            } else {
+              range = selection.getRangeAt(0);
+            }
+            const textNode = doc.createTextNode(url + " ");
+            range.deleteContents();
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+          } else {
+            inputElement.value += url + " ";
+          }
+          console.log("[KEES] Zipline upload successful:", url);
+        } else {
+          console.error("[KEES] Zipline upload failed:", response.error);
+          alert("Upload failed: " + response.error);
+        }
+      } catch (e) {
+        console.error("[KEES] Zipline upload error:", e);
+        alert("Upload failed: " + e.message);
+      } finally {
+        uploadBtn.innerHTML = originalHTML;
+        uploadBtn.disabled = false;
+      }
+    }
+    async function start(doc) {
+      if (!doc || initializedDocs.has(doc)) return;
+      const settings = await new Promise((resolve) => {
+        chrome.storage.local.get([STORAGE_KEY_ENABLED], resolve);
+      });
+      if (!settings[STORAGE_KEY_ENABLED]) {
+        console.log("[KEES] Zipline upload disabled");
+        return;
+      }
+      initializedDocs.add(doc);
+      const checkForInput = () => {
+        const inputElement = doc.getElementById("new-message-input");
+        const inputContainer = inputElement == null ? void 0 : inputElement.parentElement;
+        if (!inputContainer || doc.getElementById("zipline-upload-button")) {
+          return;
+        }
+        const uploadBtn = createUploadButton(doc);
+        const fileInput = createFileInput(doc);
+        uploadBtn.style.position = "absolute";
+        uploadBtn.style.right = "40px";
+        uploadBtn.style.top = "50%";
+        uploadBtn.style.transform = "translateY(-50%)";
+        uploadBtn.style.zIndex = "10";
+        uploadBtn.addEventListener("click", () => {
+          fileInput.click();
+        });
+        fileInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            handleFileSelect(file, doc);
+            fileInput.value = "";
+          }
+        });
+        inputContainer.appendChild(uploadBtn);
+        inputContainer.appendChild(fileInput);
+        inputElement.style.paddingRight = "80px";
+        console.log("[KEES] Zipline upload button added");
+      };
+      checkForInput();
+      setTimeout(checkForInput, 500);
+      setTimeout(checkForInput, 1e3);
+    }
+    function init() {
+      console.log("[KEES] Zipline upload module loaded");
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.ziplineUpload = {
+      init,
+      start
+    };
+    init();
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -3076,6 +3251,9 @@
           if (features.startWatchedUsers) {
             features.startWatchedUsers(document);
           }
+          if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
+            SNEED.features.ziplineUpload.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -3108,6 +3286,9 @@
                 }
                 if (SNEED.features.doubleClickEdit && SNEED.features.doubleClickEdit.start) {
                   SNEED.features.doubleClickEdit.start(iframeDoc);
+                }
+                if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
+                  SNEED.features.ziplineUpload.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }
