@@ -1363,42 +1363,45 @@
       const addSection = doc.createElement("div");
       addSection.style.cssText = "margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 4px;";
       const addLabel = doc.createElement("label");
-      addLabel.textContent = "Paste image URL to blacklist:";
+      addLabel.textContent = "Paste image URLs to blacklist (one per line):";
       addLabel.style.cssText = "color: rgba(255, 255, 255, 0.9); font-size: 12px; display: block; margin-bottom: 8px;";
       addSection.appendChild(addLabel);
-      const inputContainer = doc.createElement("div");
-      inputContainer.style.cssText = "display: flex; gap: 8px;";
-      const urlInput = doc.createElement("input");
-      urlInput.type = "text";
-      urlInput.placeholder = "https://example.com/image.png";
-      urlInput.style.cssText = stylesToString({ ...STYLES.input, flex: "1" });
-      const addUrlBtn = createStyledButton(doc, "Blacklist", "danger");
-      const doAddUrl = async () => {
-        const url = urlInput.value.trim();
-        if (url && await storage.addToBlacklist(url)) {
-          urlInput.value = "";
-          manager.remove();
-          showBlacklistManager(doc);
-          if (SNEED.ui.reloadEmoteBar) SNEED.ui.reloadEmoteBar(doc);
-          if (SNEED.features.rescanMessages) SNEED.features.rescanMessages(doc);
-        } else if (url) {
-          alert("URL is already blacklisted or invalid");
+      const urlInput = doc.createElement("textarea");
+      urlInput.placeholder = "https://example.com/image1.png\nhttps://example.com/image2.png";
+      urlInput.style.cssText = stylesToString({ ...STYLES.input, width: "100%", minHeight: "60px", resize: "vertical", marginBottom: "8px" });
+      const addUrlBtn = createStyledButton(doc, "Blacklist", "danger", { fullWidth: true });
+      const doAddUrls = async () => {
+        const text = urlInput.value.trim();
+        if (!text) return;
+        const urls = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+        if (urls.length === 0) return;
+        let addedCount = 0;
+        let duplicateCount = 0;
+        for (const url of urls) {
+          if (await storage.addToBlacklist(url)) {
+            addedCount++;
+          } else {
+            duplicateCount++;
+          }
+        }
+        urlInput.value = "";
+        manager.remove();
+        showBlacklistManager(doc);
+        if (SNEED.ui.reloadEmoteBar) SNEED.ui.reloadEmoteBar(doc);
+        if (SNEED.features.rescanMessages) SNEED.features.rescanMessages(doc);
+        if (duplicateCount > 0 && addedCount === 0) {
+          alert(`All ${duplicateCount} URL(s) were already blacklisted`);
+        } else if (duplicateCount > 0) {
+          alert(`Added ${addedCount} URL(s). ${duplicateCount} were already blacklisted.`);
         }
       };
       addManagedEventListener(addUrlBtn, "click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        doAddUrl();
+        doAddUrls();
       });
-      addManagedEventListener(urlInput, "keypress", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          doAddUrl();
-        }
-      });
-      inputContainer.appendChild(urlInput);
-      inputContainer.appendChild(addUrlBtn);
-      addSection.appendChild(inputContainer);
+      addSection.appendChild(urlInput);
+      addSection.appendChild(addUrlBtn);
       manager.appendChild(addSection);
       if (blacklist.length === 0) {
         const empty = doc.createElement("p");
