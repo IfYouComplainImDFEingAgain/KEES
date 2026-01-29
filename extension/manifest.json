@@ -76,8 +76,7 @@
     "128": "icons/icon-128.png"
   },
   "background": {
-    "service_worker": "src/background.js",
-    "scripts": ["src/background.js"]
+    "service_worker": "src/background.js"
   },
   "browser_specific_settings": {
     "gecko": {
