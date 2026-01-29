@@ -1,17 +1,22 @@
 /**
- * features/disruptive-guest-filter.js - Filter messages from disruptive guests
- * Hides messages from users marked as "Disruptive Guest" when enabled.
+ * features/disruptive-guest-filter.js - Filter posts from disruptive guests
+ * Hides posts from users marked as "Disruptive Guest" on forum thread pages.
  */
 (function() {
     'use strict';
 
-    const SNEED = window.SNEED;
-    const util = SNEED.util;
-    const log = SNEED.log;
+    const SNEED = window.SNEED || {};
+    window.SNEED = SNEED;
+
+    // ============================================
+    // CONFIGURATION
+    // ============================================
 
     const STORAGE_KEY = 'kees-mute-disruptive-guests';
+    const POST_SELECTOR = 'article.message';
+    const DISRUPTIVE_ICON_SELECTOR = 'i.disruptive-user';
 
-    // Cache the setting for synchronous checks
+    // Cache the setting
     let muteDisruptiveGuests = false;
 
     // Track if extension context is still valid
@@ -52,135 +57,140 @@
     }
 
     // ============================================
-    // MESSAGE FILTERING
+    // POST PROCESSING
     // ============================================
 
-    /**
-     * Check if a message element is from a disruptive guest
-     * @param {Element} element - Message element to check
-     * @returns {boolean}
-     */
-    function isDisruptiveGuest(element) {
-        // Look for the disruptive-user icon within the message
-        return element.querySelector('i.disruptive-user') !== null;
+    function isDisruptiveGuest(post) {
+        return post.querySelector(DISRUPTIVE_ICON_SELECTOR) !== null;
     }
 
-    /**
-     * Hide messages from disruptive guests in an element
-     * @param {Element} element - Element to scan for messages
-     */
-    function filterDisruptiveMessages(element) {
-        if (!element || element.nodeType !== 1) return;
-        if (!muteDisruptiveGuests) return;
+    function processPost(post) {
+        if (!isDisruptiveGuest(post)) return;
 
-        // Check if this element itself is a message with disruptive user
-        if (element.classList && element.classList.contains('message')) {
-            processMessage(element);
-        }
+        if (muteDisruptiveGuests) {
+            if (!post.dataset.keesDisruptiveHidden) {
+                post.dataset.keesDisruptiveHidden = 'true';
+                post.dataset.keesOriginalDisplay = post.style.display || '';
 
-        // Check child messages
-        const messages = element.querySelectorAll('.message');
-        messages.forEach(processMessage);
-    }
+                // Create collapsed placeholder
+                const placeholder = document.createElement('div');
+                placeholder.className = 'kees-disruptive-placeholder';
+                placeholder.style.cssText = `
+                    padding: 12px 16px;
+                    background: #1a1a1a;
+                    border: 1px solid #333;
+                    border-radius: 4px;
+                    margin-bottom: 8px;
+                    color: #666;
+                    font-size: 13px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                placeholder.innerHTML = `
+                    <i class="fa fa-triangle fa-rotate-180" style="color: #f39c12;"></i>
+                    <span>Post by <strong style="color: #888;">Disruptive Guest</strong> (hidden)</span>
+                    <span style="margin-left: auto; color: #555; font-size: 11px;">Click to reveal</span>
+                `;
 
-    /**
-     * Process a single message element
-     * @param {Element} msg - Message element
-     */
-    function processMessage(msg) {
-        if (msg.dataset.disruptiveChecked) return;
-        msg.dataset.disruptiveChecked = 'true';
+                placeholder.addEventListener('click', () => {
+                    post.style.display = post.dataset.keesOriginalDisplay;
+                    placeholder.style.display = 'none';
+                });
 
-        if (isDisruptiveGuest(msg)) {
-            if (muteDisruptiveGuests) {
-                msg.style.display = 'none';
-                msg.dataset.disruptiveHidden = 'true';
-                log.info('Filtered disruptive guest message');
+                post.parentNode.insertBefore(placeholder, post);
+                post.style.display = 'none';
+            }
+        } else {
+            // Setting disabled - restore hidden posts
+            if (post.dataset.keesDisruptiveHidden) {
+                delete post.dataset.keesDisruptiveHidden;
+                post.style.display = post.dataset.keesOriginalDisplay || '';
+                delete post.dataset.keesOriginalDisplay;
+
+                // Remove placeholder
+                const placeholder = post.previousElementSibling;
+                if (placeholder && placeholder.classList.contains('kees-disruptive-placeholder')) {
+                    placeholder.remove();
+                }
             }
         }
     }
 
-    /**
-     * Scan existing messages for disruptive guests
-     * @param {Document} doc - Document to scan
-     */
-    function scanExistingMessages(doc) {
-        const container = util.findMessageContainer(doc);
-        if (container) {
-            filterDisruptiveMessages(container);
-        }
+    function processAllPosts() {
+        const posts = document.querySelectorAll(POST_SELECTOR);
+        posts.forEach(processPost);
     }
 
-    /**
-     * Re-scan all messages (call after setting changes)
-     * @param {Document} doc - Document to rescan
-     */
-    function rescanMessages(doc) {
-        const container = util.findMessageContainer(doc);
-        if (!container) return;
-
-        // Reset all checked flags and rescan
-        const messages = container.querySelectorAll('.message[data-disruptive-checked]');
-        messages.forEach(msg => {
-            delete msg.dataset.disruptiveChecked;
-
-            if (isDisruptiveGuest(msg)) {
-                if (muteDisruptiveGuests) {
-                    msg.style.display = 'none';
-                    msg.dataset.disruptiveHidden = 'true';
-                } else if (msg.dataset.disruptiveHidden) {
-                    msg.style.display = '';
-                    delete msg.dataset.disruptiveHidden;
+    function refreshAllPosts() {
+        const posts = document.querySelectorAll(POST_SELECTOR);
+        posts.forEach(post => {
+            if (isDisruptiveGuest(post)) {
+                // Re-process to apply current setting
+                if (muteDisruptiveGuests && !post.dataset.keesDisruptiveHidden) {
+                    processPost(post);
+                } else if (!muteDisruptiveGuests && post.dataset.keesDisruptiveHidden) {
+                    processPost(post);
                 }
             }
         });
     }
 
-    /**
-     * Start observing for new messages and filter disruptive guests
-     * @param {Document} doc - Document to observe
-     */
-    function startDisruptiveFilter(doc) {
-        if (doc.__sneed_disruptiveFilter) return;
+    // ============================================
+    // MUTATION OBSERVER
+    // ============================================
 
-        const container = util.findMessageContainer(doc);
-        if (!container) {
-            log.warn('Could not find message container for disruptive guest filter');
-            return;
-        }
-
-        // Scan existing messages
-        scanExistingMessages(doc);
-
-        // Observe for new messages
+    function setupObserver() {
         const observer = new MutationObserver((mutations) => {
             if (!muteDisruptiveGuests) return;
 
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
-                    if (node.nodeType === 1) {
-                        filterDisruptiveMessages(node);
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.matches && node.matches(POST_SELECTOR)) {
+                            processPost(node);
+                        }
+                        // Check children
+                        const posts = node.querySelectorAll ? node.querySelectorAll(POST_SELECTOR) : [];
+                        posts.forEach(processPost);
                     }
                 }
             }
         });
 
-        observer.observe(container, { childList: true, subtree: true });
-        SNEED.core.events.addManagedObserver(container, observer);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
 
-        doc.__sneed_disruptiveFilter = true;
-        log.info('Disruptive guest filter started');
+        return observer;
     }
 
     // ============================================
     // INITIALIZATION
     // ============================================
 
-    async function init(doc) {
+    async function init() {
+        // Only run on thread pages
+        if (!window.location.pathname.includes('/threads/')) {
+            return;
+        }
+
         if (!isExtensionContextValid()) return;
 
         await loadSetting();
-        startDisruptiveFilter(doc);
+
+        // Process existing posts
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                processAllPosts();
+                setupObserver();
+            });
+        } else {
+            processAllPosts();
+            setupObserver();
+        }
 
         // Listen for setting changes
         try {
@@ -188,23 +198,25 @@
                 if (!isExtensionContextValid()) return;
                 if (areaName === 'local' && changes[STORAGE_KEY]) {
                     muteDisruptiveGuests = changes[STORAGE_KEY].newValue === true;
-                    rescanMessages(doc);
+                    refreshAllPosts();
                 }
             });
         } catch (e) {
             contextValid = false;
         }
+
+        console.log('[KEES] Disruptive guest filter initialized');
     }
 
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
-
+    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.disruptiveGuestFilter = {
         init,
-        startDisruptiveFilter,
-        rescanMessages
+        processAllPosts,
+        refreshAllPosts
     };
+
+    // Auto-init
+    init();
 
 })();

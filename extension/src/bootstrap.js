@@ -48,11 +48,6 @@
                     features.startBlacklistFilter(document);
                 }
 
-                // Start disruptive guest filter
-                if (SNEED.features.disruptiveGuestFilter && SNEED.features.disruptiveGuestFilter.init) {
-                    SNEED.features.disruptiveGuestFilter.init(document);
-                }
-
                 // Start watched users feature
                 if (features.startWatchedUsers) {
                     features.startWatchedUsers(document);
@@ -101,11 +96,6 @@
                             // Start blacklist filter for chat messages
                             if (features.startBlacklistFilter) {
                                 features.startBlacklistFilter(iframeDoc);
-                            }
-
-                            // Start disruptive guest filter
-                            if (SNEED.features.disruptiveGuestFilter && SNEED.features.disruptiveGuestFilter.init) {
-                                SNEED.features.disruptiveGuestFilter.init(iframeDoc);
                             }
 
                             // Start watched users feature

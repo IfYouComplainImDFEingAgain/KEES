@@ -2630,135 +2630,6 @@
     SNEED.features.rescanMessages = rescanMessages;
   })();
 
-  // src/features/disruptive-guest-filter.js
-  (function() {
-    "use strict";
-    const SNEED = window.SNEED;
-    const util = SNEED.util;
-    const log = SNEED.log;
-    const STORAGE_KEY = "kees-mute-disruptive-guests";
-    let muteDisruptiveGuests = false;
-    let contextValid = true;
-    function isExtensionContextValid() {
-      try {
-        return contextValid && chrome.runtime && !!chrome.runtime.id;
-      } catch (e) {
-        contextValid = false;
-        return false;
-      }
-    }
-    async function loadSetting() {
-      if (!isExtensionContextValid()) return false;
-      return new Promise((resolve) => {
-        try {
-          chrome.storage.local.get([STORAGE_KEY], (result) => {
-            if (chrome.runtime.lastError) {
-              contextValid = false;
-              resolve(false);
-              return;
-            }
-            muteDisruptiveGuests = result[STORAGE_KEY] === true;
-            resolve(muteDisruptiveGuests);
-          });
-        } catch (e) {
-          contextValid = false;
-          resolve(false);
-        }
-      });
-    }
-    function isDisruptiveGuest(element) {
-      return element.querySelector("i.disruptive-user") !== null;
-    }
-    function filterDisruptiveMessages(element) {
-      if (!element || element.nodeType !== 1) return;
-      if (!muteDisruptiveGuests) return;
-      if (element.classList && element.classList.contains("message")) {
-        processMessage(element);
-      }
-      const messages = element.querySelectorAll(".message");
-      messages.forEach(processMessage);
-    }
-    function processMessage(msg) {
-      if (msg.dataset.disruptiveChecked) return;
-      msg.dataset.disruptiveChecked = "true";
-      if (isDisruptiveGuest(msg)) {
-        if (muteDisruptiveGuests) {
-          msg.style.display = "none";
-          msg.dataset.disruptiveHidden = "true";
-          log.info("Filtered disruptive guest message");
-        }
-      }
-    }
-    function scanExistingMessages(doc) {
-      const container = util.findMessageContainer(doc);
-      if (container) {
-        filterDisruptiveMessages(container);
-      }
-    }
-    function rescanMessages(doc) {
-      const container = util.findMessageContainer(doc);
-      if (!container) return;
-      const messages = container.querySelectorAll(".message[data-disruptive-checked]");
-      messages.forEach((msg) => {
-        delete msg.dataset.disruptiveChecked;
-        if (isDisruptiveGuest(msg)) {
-          if (muteDisruptiveGuests) {
-            msg.style.display = "none";
-            msg.dataset.disruptiveHidden = "true";
-          } else if (msg.dataset.disruptiveHidden) {
-            msg.style.display = "";
-            delete msg.dataset.disruptiveHidden;
-          }
-        }
-      });
-    }
-    function startDisruptiveFilter(doc) {
-      if (doc.__sneed_disruptiveFilter) return;
-      const container = util.findMessageContainer(doc);
-      if (!container) {
-        log.warn("Could not find message container for disruptive guest filter");
-        return;
-      }
-      scanExistingMessages(doc);
-      const observer = new MutationObserver((mutations) => {
-        if (!muteDisruptiveGuests) return;
-        for (const mutation of mutations) {
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType === 1) {
-              filterDisruptiveMessages(node);
-            }
-          }
-        }
-      });
-      observer.observe(container, { childList: true, subtree: true });
-      SNEED.core.events.addManagedObserver(container, observer);
-      doc.__sneed_disruptiveFilter = true;
-      log.info("Disruptive guest filter started");
-    }
-    async function init(doc) {
-      if (!isExtensionContextValid()) return;
-      await loadSetting();
-      startDisruptiveFilter(doc);
-      try {
-        chrome.storage.onChanged.addListener((changes, areaName) => {
-          if (!isExtensionContextValid()) return;
-          if (areaName === "local" && changes[STORAGE_KEY]) {
-            muteDisruptiveGuests = changes[STORAGE_KEY].newValue === true;
-            rescanMessages(doc);
-          }
-        });
-      } catch (e) {
-        contextValid = false;
-      }
-    }
-    SNEED.features = SNEED.features || {};
-    SNEED.features.disruptiveGuestFilter = {
-      init,
-      startDisruptiveFilter,
-      rescanMessages
-    };
-  })();
-
   // src/features/watched-users.js
   (function() {
     "use strict";
@@ -3532,9 +3403,6 @@
           if (features.startBlacklistFilter) {
             features.startBlacklistFilter(document);
           }
-          if (SNEED.features.disruptiveGuestFilter && SNEED.features.disruptiveGuestFilter.init) {
-            SNEED.features.disruptiveGuestFilter.init(document);
-          }
           if (features.startWatchedUsers) {
             features.startWatchedUsers(document);
           }
@@ -3567,9 +3435,6 @@
                 }
                 if (features.startBlacklistFilter) {
                   features.startBlacklistFilter(iframeDoc);
-                }
-                if (SNEED.features.disruptiveGuestFilter && SNEED.features.disruptiveGuestFilter.init) {
-                  SNEED.features.disruptiveGuestFilter.init(iframeDoc);
                 }
                 if (features.startWatchedUsers) {
                   features.startWatchedUsers(iframeDoc);

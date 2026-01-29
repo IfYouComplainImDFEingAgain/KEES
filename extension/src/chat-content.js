@@ -21,7 +21,6 @@ import './ui/bars.js';
 import './features/formatting.js';
 import './features/input.js';
 import './features/blacklist-filter.js';
-import './features/disruptive-guest-filter.js';
 import './features/watched-users.js';
 import './features/youtube-titles.js';
 import './features/double-click-edit.js';

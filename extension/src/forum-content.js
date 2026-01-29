@@ -7,5 +7,6 @@
 import './features/featured-posts.js';
 import './features/user-muting.js';
 import './features/reaction-filter.js';
+import './features/disruptive-guest-filter.js';
 
 console.log('[SNEED] Forum content script loaded');
