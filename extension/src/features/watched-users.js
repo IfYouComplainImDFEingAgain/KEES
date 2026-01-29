@@ -143,6 +143,31 @@
     // CLICK-TO-MENTION
     // ============================================
 
+    // Store last known cursor position in the input
+    let lastCursorRange = null;
+
+    function trackCursorPosition(doc) {
+        const input = doc.getElementById('new-message-input');
+        if (!input) return;
+
+        // Save cursor position on selection change and blur
+        const saveCursor = () => {
+            const win = doc.defaultView || window;
+            const selection = win.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                // Only save if selection is within the input
+                if (input.contains(range.commonAncestorContainer) || input === range.commonAncestorContainer) {
+                    lastCursorRange = range.cloneRange();
+                }
+            }
+        };
+
+        events.addManagedEventListener(input, 'keyup', saveCursor);
+        events.addManagedEventListener(input, 'mouseup', saveCursor);
+        events.addManagedEventListener(input, 'blur', saveCursor);
+    }
+
     function insertMention(username, doc) {
         const input = doc.getElementById('new-message-input');
         if (!input) return;
@@ -154,17 +179,39 @@
             const win = doc.defaultView || window;
             const selection = win.getSelection();
 
-            // Focus and get/create range
             input.focus();
+
+            // Use saved cursor position if available
+            if (lastCursorRange) {
+                selection.removeAllRanges();
+                selection.addRange(lastCursorRange);
+            }
 
             if (selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
-                range.deleteContents();
-                range.insertNode(doc.createTextNode(mention));
-                range.collapse(false);
-                selection.removeAllRanges();
-                selection.addRange(range);
+                // Verify the range is within the input
+                if (input.contains(range.commonAncestorContainer) || input === range.commonAncestorContainer) {
+                    range.deleteContents();
+                    const textNode = doc.createTextNode(mention);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    // Update saved position
+                    lastCursorRange = range.cloneRange();
+                } else {
+                    // Fallback: append to end
+                    input.focus();
+                    const range = doc.createRange();
+                    range.selectNodeContents(input);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    doc.execCommand('insertText', false, mention);
+                }
             } else {
+                // No range, append to end
                 input.textContent += mention;
             }
         } else {
@@ -176,6 +223,9 @@
     }
 
     function setupActivityClickToMention(chatActivity, doc) {
+        // Start tracking cursor position
+        trackCursorPosition(doc);
+
         events.addManagedEventListener(chatActivity, 'click', (e) => {
             // Check if clicked on a.user inside .activity
             const userLink = e.target.closest('.activity a.user');

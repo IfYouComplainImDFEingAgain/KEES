@@ -2734,6 +2734,24 @@
         panel.style.display = "none";
       }
     }
+    let lastCursorRange = null;
+    function trackCursorPosition(doc) {
+      const input = doc.getElementById("new-message-input");
+      if (!input) return;
+      const saveCursor = () => {
+        const win = doc.defaultView || window;
+        const selection = win.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (input.contains(range.commonAncestorContainer) || input === range.commonAncestorContainer) {
+            lastCursorRange = range.cloneRange();
+          }
+        }
+      };
+      events.addManagedEventListener(input, "keyup", saveCursor);
+      events.addManagedEventListener(input, "mouseup", saveCursor);
+      events.addManagedEventListener(input, "blur", saveCursor);
+    }
     function insertMention(username, doc) {
       const input = doc.getElementById("new-message-input");
       if (!input) return;
@@ -2742,13 +2760,30 @@
         const win = doc.defaultView || window;
         const selection = win.getSelection();
         input.focus();
+        if (lastCursorRange) {
+          selection.removeAllRanges();
+          selection.addRange(lastCursorRange);
+        }
         if (selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
-          range.deleteContents();
-          range.insertNode(doc.createTextNode(mention));
-          range.collapse(false);
-          selection.removeAllRanges();
-          selection.addRange(range);
+          if (input.contains(range.commonAncestorContainer) || input === range.commonAncestorContainer) {
+            range.deleteContents();
+            const textNode = doc.createTextNode(mention);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            lastCursorRange = range.cloneRange();
+          } else {
+            input.focus();
+            const range2 = doc.createRange();
+            range2.selectNodeContents(input);
+            range2.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range2);
+            doc.execCommand("insertText", false, mention);
+          }
         } else {
           input.textContent += mention;
         }
@@ -2758,6 +2793,7 @@
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }
     function setupActivityClickToMention(chatActivity, doc) {
+      trackCursorPosition(doc);
       events.addManagedEventListener(chatActivity, "click", (e) => {
         var _a, _b;
         const userLink = e.target.closest(".activity a.user");
