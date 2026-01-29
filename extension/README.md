@@ -11,7 +11,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Rainbow Text** - Animated rainbow text effect
 - **WYSIWYG Editor** - Toggle between raw BBCode and visual editing mode
 - **Custom Emotes** - Add and manage your own custom emotes
-- **User Blacklist** - Filter messages from specific users
+- **Image Blacklist** - Filter images from chat (supports bulk adding multiple URLs)
 - **Watched Users** - Highlight messages from users you're watching
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
@@ -22,6 +22,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
 - **User Muting** - Hide posts from specific users with one click
+- **Mute Disruptive Guests** - Auto-hide posts from users marked as "Disruptive Guest"
 - **Reaction Filter** - Auto-hide posts with high negative reaction ratios (configurable threshold)
 
 ### User Profile Features
@@ -52,12 +53,11 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 
 ### Extension Popup
 Click the extension icon in your browser toolbar to access settings:
-- Toggle homepage chat and sponsored content visibility
-- Configure reaction filter (enable/disable, thresholds)
-- Enable mention notifications (with optional message content)
-- Configure Zipline upload (URL and API key)
-- Set chat scrollback limit (default 100)
-- Manage muted users list
+- **Cosmetics** - Toggle homepage chat and sponsored content visibility
+- **Post Settings** - Mute disruptive guests, configure reaction filter thresholds
+- **Chat Settings** - Mention notifications, scrollback limit
+- **Zipline Upload** - Configure URL and API key for image uploads
+- **Muted Users** - Manage your muted users list
 
 ### Chat Page
 The emote bar and format bar appear above the chat input when you're on a chat page.
@@ -65,6 +65,7 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 ### Forum Threads
 - **Featured Posts** - Click the golden "Featured" button in the pagination area to collect featured posts from nearby pages
 - **Mute Users** - Click the "Mute" button next to any post to hide all posts from that user
+- **Disruptive Guests** - Posts from disruptive guests are automatically hidden (click to reveal)
 - **Reaction Filter** - Posts exceeding the negative reaction threshold are automatically collapsed
 
 ### User Profiles
