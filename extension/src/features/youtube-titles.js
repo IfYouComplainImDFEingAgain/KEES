@@ -48,7 +48,24 @@
     // TITLE FETCHING
     // ============================================
 
+    // Track if extension context is still valid
+    let contextValid = true;
+
+    function isExtensionContextValid() {
+        try {
+            return contextValid && chrome.runtime && !!chrome.runtime.id;
+        } catch (e) {
+            contextValid = false;
+            return false;
+        }
+    }
+
     async function fetchVideoTitle(videoUrl) {
+        // Check if extension context is still valid
+        if (!isExtensionContextValid()) {
+            return null;
+        }
+
         // Check cache first
         if (titleCache.has(videoUrl)) {
             return titleCache.get(videoUrl);
@@ -69,7 +86,13 @@
                 return info;
             }
         } catch (e) {
-            console.error('[KEES] Failed to fetch YouTube title:', e);
+            // Check for extension context invalidated error
+            if (e.message && e.message.includes('Extension context invalidated')) {
+                contextValid = false;
+                console.log('[KEES] Extension was reloaded, YouTube titles disabled for this page');
+            } else {
+                console.error('[KEES] Failed to fetch YouTube title:', e);
+            }
         }
 
         return null;

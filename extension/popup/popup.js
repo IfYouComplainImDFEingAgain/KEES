@@ -16,6 +16,7 @@
     const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
+    const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -44,6 +45,9 @@
     // Scrollback elements
     const scrollbackLimit = document.getElementById('scrollback-limit');
 
+    // Disruptive guests element
+    const muteDisruptiveGuests = document.getElementById('mute-disruptive-guests');
+
     // ============================================
     // STATUS MESSAGE
     // ============================================
@@ -61,12 +65,13 @@
     // ============================================
 
     // Load current settings
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
         mentionShowBody.checked = result[STORAGE_KEY_MENTION_SHOW_BODY] === true;
         mentionBodySetting.style.display = mentionNotifications.checked ? 'flex' : 'none';
+        muteDisruptiveGuests.checked = result[STORAGE_KEY_MUTE_DISRUPTIVE] === true;
     });
 
     // Save homepage chat setting on change
@@ -84,6 +89,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_SPONSORED]: disabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Save mute disruptive guests setting on change
+    muteDisruptiveGuests.addEventListener('change', () => {
+        const enabled = muteDisruptiveGuests.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_MUTE_DISRUPTIVE]: enabled }, () => {
+            showStatus(enabled ? 'Disruptive guests muted' : 'Disruptive guests unmuted');
         });
     });
 
