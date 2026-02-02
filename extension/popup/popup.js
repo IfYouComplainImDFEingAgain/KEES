@@ -18,6 +18,7 @@
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
     const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
+    const STORAGE_KEY_ATTACHMENT_STRIP_EXIF = 'kees-attachment-strip-exif';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -50,6 +51,9 @@
     // Disruptive guests element
     const muteDisruptiveGuests = document.getElementById('mute-disruptive-guests');
 
+    // Attachment EXIF element
+    const attachmentStripExif = document.getElementById('attachment-strip-exif');
+
     // ============================================
     // STATUS MESSAGE
     // ============================================
@@ -67,13 +71,15 @@
     // ============================================
 
     // Load current settings
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
         mentionShowBody.checked = result[STORAGE_KEY_MENTION_SHOW_BODY] === true;
         mentionBodySetting.style.display = mentionNotifications.checked ? 'flex' : 'none';
         muteDisruptiveGuests.checked = result[STORAGE_KEY_MUTE_DISRUPTIVE] === true;
+        // Default to true for privacy
+        attachmentStripExif.checked = result[STORAGE_KEY_ATTACHMENT_STRIP_EXIF] !== false;
     });
 
     // Save homepage chat setting on change
@@ -100,6 +106,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MUTE_DISRUPTIVE]: enabled }, () => {
             showStatus(enabled ? 'Disruptive guests muted' : 'Disruptive guests unmuted');
+        });
+    });
+
+    // Save attachment EXIF strip setting on change
+    attachmentStripExif.addEventListener('change', () => {
+        const enabled = attachmentStripExif.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_ATTACHMENT_STRIP_EXIF]: enabled }, () => {
+            showStatus(enabled ? 'Attachment EXIF stripping enabled' : 'Attachment EXIF stripping disabled');
         });
     });
 

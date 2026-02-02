@@ -32,6 +32,24 @@
       "matches": [
         "https://kiwifarms.st/threads/*",
         "https://kiwifarms.tw/threads/*",
+        "https://kiwifarms.net/threads/*",
+        "https://kiwifarms.st/forums/*",
+        "https://kiwifarms.tw/forums/*",
+        "https://kiwifarms.net/forums/*",
+        "https://kiwifarms.st/conversations/*",
+        "https://kiwifarms.tw/conversations/*",
+        "https://kiwifarms.net/conversations/*",
+        "https://kiwifarms.st/direct-messages/*",
+        "https://kiwifarms.tw/direct-messages/*",
+        "https://kiwifarms.net/direct-messages/*"
+      ],
+      "js": ["src/attachment-exif-inject.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/threads/*",
+        "https://kiwifarms.tw/threads/*",
         "https://kiwifarms.net/threads/*"
       ],
       "js": ["dist/forum-content.js"],
@@ -79,6 +97,16 @@
     "service_worker": "src/background.js",
     "scripts": ["src/background.js"]
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/attachment-exif-page.js"],
+      "matches": [
+        "https://kiwifarms.st/*",
+        "https://kiwifarms.tw/*",
+        "https://kiwifarms.net/*"
+      ]
+    }
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "kees@kiwifarms.extension"
