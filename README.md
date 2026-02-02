@@ -1,8 +1,104 @@
-# Sneedchat Enhancer
+# Kiwi Extra Enhancement Suite (KEES)
+
+A browser extension that adds enhanced features to Kiwi Farms chat and forum pages.
+
+## Features
+
+**Chat:**
+- Emote bar, format bar, color picker, rainbow text
+- WYSIWYG editor for visual BBCode editing
+- Custom emotes and image blacklist
+- Watched users highlighting
+- YouTube link titles
+- Double-click to edit messages
+- Zipline upload integration (with EXIF stripping)
+- Mention notifications
+- Configurable scrollback limit (up to 5000 messages)
+
+**Forum:**
+- Featured posts consolidation
+- User muting
+- Disruptive guest auto-hiding
+- Reaction ratio filter
+- Attachment EXIF stripping
+
+**Profiles:**
+- Forum activity analysis
+
+**Homepage:**
+- Hide chat widget
+- Remove sponsored content
+
+## Installation
+
+**Chrome/Chromium:**
+1. Clone the repo
+2. Run `cd extension && npm install && npm run build`
+3. Open `chrome://extensions/`, enable Developer mode
+4. Click "Load unpacked" and select the `extension` folder
+
+**Firefox:**
+1. Clone the repo
+2. Run `cd extension && npm install && npm run build`
+3. Open `about:debugging#/runtime/this-firefox`
+4. Click "Load Temporary Add-on" and select `extension/manifest.json`
+
+## Supported Sites
+
+- kiwifarms.st
+- kiwifarms.tw
+- kiwifarms.net
+
+## Screenshots
+
+### Extension Settings
+
+![Settings Page 1](img/kees/settings-1.png)
+![Settings Page 2](img/kees/settings-2.png)
+![Settings Page 3](img/kees/settings-3.png)
+
+### Chat Features
+
+**WYSIWYG Editor:**
+![WYSIWYG Mode](img/kees/chat-wysiwyg.png)
+
+**Raw BBCode Mode:**
+![Raw Mode](img/kees/chat-raw.png)
+
+**Custom Emotes:**
+![Add Custom Emote](img/kees/chat-emote-add.png)
+
+**Image Bans, Custom Emotes, Bar Activation, & Zipline Upload:**
+![Right Menu Settings](img/kees/chat-right-menu-settings-upload.png)
+
+**YouTube Link Titles:**
+![YouTube Titles](img/kees/chat-youtube-title.png)
+
+### Forum Features
+
+**Disruptive Guest Blocking:**
+![Disruptive Guest Block](img/kees/disruptive-guest-block.png)
+
+### Featured Posts Consolidation
+
+![Featured Button](img/kees/featured-1.png)
+![Featured Loading](img/kees/featured-2.png)
+![Featured Progress](img/kees/featured-3.png)
+![Featured Results](img/kees/featured-4.png)
+
+### User Profile Analytics
+
+![Forum Activity Analysis](img/kees/user-analytics-1.png)
+
+---
+
+## Legacy: Sneedchat Enhancer (Tampermonkey Userscript)
+
+> **Note:** This userscript has been superseded by the KEES browser extension above, which includes all the same features plus many more. The userscript is no longer actively maintained.
 
 A Tampermonkey userscript that adds enhanced features to Sneedchat, including quick emote insertion, text formatting tools, and improved chat input functionality.
 
-## Features
+### Features
 
 - **Quick Emote Bar**: Easy access to frequently used emotes with single-click insertion
 - **Format Toolbar**: BBCode formatting buttons for text styling (bold, italic, underline, etc.)
@@ -10,24 +106,21 @@ A Tampermonkey userscript that adds enhanced features to Sneedchat, including qu
 - **Smart Input Resizing**: Auto-expanding chat input that adjusts to content
 - **Shift+Enter Support**: Send messages with Enter, add newlines with Shift+Enter
 - **Shift+Click Emotes**: Hold Shift while clicking emotes to insert without auto-sending
-- **Better Lost Connection Handling**: Helps prevent the client from eating messages when connecton is lost
-  
-
-
+- **Better Lost Connection Handling**: Helps prevent the client from eating messages when connection is lost
 
 ![Emote Picker](img/emote-picker.png)
 ![Text Editor](img/text-editor.png)
 ![Color Picker](img/color-picker.png)
 
-## Installation
+### Installation
 
-### Prerequisites
+#### Prerequisites
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/):
    - **Tampermonkey**: [Chrome/Edge/Brave](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) | [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089)
    - **Violentmonkey**: [Chrome/Edge](https://chrome.google.com/webstore/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/)
 
-### Quick Install (Recommended)
+#### Quick Install
 
 Click this link to install directly:
 
@@ -35,53 +128,40 @@ Click this link to install directly:
 
 Your userscript manager will prompt you to install. Click "Install" to confirm.
 
-### Manual Installation
+#### Manual Installation
 
 1. Open Tampermonkey/Violentmonkey dashboard
 2. Click the "+" tab to create a new script
 3. Delete any default content
 4. Copy the contents of [`user-bar/loader.user.js`](user-bar/loader.user.js) and paste it
-5. Click **File → Save** or press `Ctrl+S` (or `Cmd+S` on Mac)
+5. Click **File > Save** or press `Ctrl+S` (or `Cmd+S` on Mac)
 6. The script will automatically run on Sneedchat pages
 
-### How It Works
+### Usage
 
-The loader script uses `@require` directives to load modular components from GitHub. This means:
-- Smaller initial script size
-- Modules are cached by your userscript manager
-- Updates can be version-pinned for stability
-
-![install](img/install.png)
-
-Check for updates in the script settings.
-![updates](img/update.png)
-
-## Usage
-
-### Emote Bar
+#### Emote Bar
 - Click any emote to insert it into the chat input
 - If the input only contains the emote code, it will auto-send
 - Hold **Shift** while clicking to insert without auto-sending
 
-### Format Toolbar
+#### Format Toolbar
 - **B**: Bold text `[b]text[/b]`
 - **I**: Italic text `[i]text[/i]`
 - **U**: Underline text `[u]text[/u]`
 - **Color Palette**: Opens color picker for colored text
-- **↵**: Insert line break `[br]`
 
 Select text first to wrap it with formatting, or click to insert empty tags.
 
-### Keyboard Shortcuts
+#### Keyboard Shortcuts
 - **Enter**: Send message
 - **Shift+Enter**: Add new line without sending
 - **Escape**: Close color picker or cancel edit
 
-## Configuration
+### Configuration
 
-### Managing Emotes
+#### Managing Emotes
 
-Click the **gear icon** (⚙️) in the format bar to open the Emote Manager:
+Click the **gear icon** in the format bar to open the Emote Manager:
 
 - **Add**: Click "+ Add New Emote" to create custom emotes
 - **Edit**: Modify existing emotes (code, image URL, emoji, or text)
@@ -89,34 +169,11 @@ Click the **gear icon** (⚙️) in the format bar to open the Emote Manager:
 - **Import/Export**: Backup and restore your emote collection as JSON
 - **Reset**: Restore default emotes
 
-Emote types:
-- **Image URL**: Display an image thumbnail (e.g., `https://example.com/emote.png`)
-- **Emoji**: Display an emoji character (e.g., `🤡`)
-- **Text**: Display text label (e.g., `5`)
+#### Image Blacklist
 
-### Image Blacklist
+Click the **ban icon** to manage blacklisted images. Blacklisted image URLs won't appear in the emote bar.
 
-Click the **ban icon** (🚫) to manage blacklisted images. Blacklisted image URLs won't appear in the emote bar.
-
-## Updating
-
-The script automatically loads the latest modules from GitHub based on the version tag in the loader.
-
-To update to a new version:
-1. Open Tampermonkey/Violentmonkey dashboard
-2. Click on "Sneedchat User Bar"
-3. Replace the loader with the latest version from [`user-bar/loader.user.js`](user-bar/loader.user.js)
-4. Save the changes
-
-Or simply reinstall using the quick install link above.
-
-
-## Browser Compatibility
-
-- Chrome/Chromium-based browsers: Not tested. supported
-- Firefox: Fully supported
-- Safari: Not tested but supported with Tampermonkey
-- Firefox Mobile:  Limited support (requires mobile Tampermonkey)
+---
 
 ## Additional Scripts
 
