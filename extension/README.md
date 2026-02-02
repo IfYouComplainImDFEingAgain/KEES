@@ -15,7 +15,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Watched Users** - Highlight messages from users you're watching
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
-- **Zipline Upload** - Upload media to your Zipline instance (images auto-wrapped in [img] tags)
+- **Zipline Upload** - Upload media to your Zipline instance (images auto-wrapped in [img] tags, EXIF stripping enabled by default)
 - **Mention Notifications** - Browser notifications when someone mentions you in chat (with optional message preview)
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 
@@ -56,7 +56,7 @@ Click the extension icon in your browser toolbar to access settings:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
 - **Post Settings** - Mute disruptive guests, configure reaction filter thresholds
 - **Chat Settings** - Mention notifications, scrollback limit
-- **Zipline Upload** - Configure URL and API key for image uploads
+- **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
 - **Muted Users** - Manage your muted users list
 
 ### Chat Page
