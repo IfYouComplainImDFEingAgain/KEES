@@ -24,6 +24,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **User Muting** - Hide posts from specific users with one click
 - **Mute Disruptive Guests** - Auto-hide posts from users marked as "Disruptive Guest"
 - **Reaction Filter** - Auto-hide posts with high negative reaction ratios (configurable threshold)
+- **Attachment EXIF Stripping** - Automatically remove location/camera metadata from image attachments (enabled by default)
 
 ### User Profile Features
 - **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results
@@ -54,7 +55,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 ### Extension Popup
 Click the extension icon in your browser toolbar to access settings:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
-- **Post Settings** - Mute disruptive guests, configure reaction filter thresholds
+- **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
 - **Chat Settings** - Mention notifications, scrollback limit
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
 - **Muted Users** - Manage your muted users list
