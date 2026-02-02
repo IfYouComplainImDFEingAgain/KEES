@@ -2,11 +2,8 @@ name: Package Extension
 
 on:
   push:
-    branches: [master, kiwi-extension, dev]
     tags:
       - 'kees-v*'
-  pull_request:
-    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -49,6 +46,9 @@ jobs:
             dist/ \
             src/background.js \
             src/homepage-hide.css \
+            src/attachment-exif-inject.js \
+            src/attachment-exif-page.js \
+            src/features/scrollback.js \
             popup/ \
             icons/
 
