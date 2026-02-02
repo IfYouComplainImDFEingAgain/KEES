@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Kiwi Extra Enhancement Suite (KEES)",
   "version": "4.0.0",
-  "description": "Enhanced features for Kiwi Farms chat and forums",
+  "description": "Enhanced features for specific Xenforo chat and forums",
   "permissions": ["storage", "notifications"],
   "host_permissions": [
     "https://kiwifarms.st/*",

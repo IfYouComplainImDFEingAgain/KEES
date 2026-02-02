@@ -1,7 +1,7 @@
 {
-  "name": "sneedchat-enhancer-extension",
+  "name": "xenforo-enhancer-extension",
   "version": "4.0.0",
-  "description": "Browser extension for Sneedchat Enhancer",
+  "description": "Browser extension for xenforo sites",
   "private": true,
   "scripts": {
     "build": "node build.js",
