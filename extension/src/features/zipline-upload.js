@@ -9,9 +9,13 @@
     window.SNEED = SNEED;
 
     const STORAGE_KEY_ENABLED = 'kees-zipline-enabled';
+    const STORAGE_KEY_STRIP_EXIF = 'kees-zipline-strip-exif';
 
     // Track initialized documents
     const initializedDocs = new WeakSet();
+
+    // Cache settings
+    let stripExifEnabled = true; // Default to true for privacy
 
     // ============================================
     // UPLOAD BUTTON
@@ -65,6 +69,78 @@
     }
 
     // ============================================
+    // EXIF STRIPPING
+    // ============================================
+
+    /**
+     * Strip EXIF data from an image using Canvas API
+     * Canvas export naturally strips all metadata
+     * @param {File} file - Image file to process
+     * @returns {Promise<File>} - Processed file without EXIF
+     */
+    async function stripExifData(file) {
+        // Only process images, skip GIFs (preserve animation)
+        if (!file.type.startsWith('image/') || file.type === 'image/gif') {
+            return file;
+        }
+
+        try {
+            // Create image bitmap from file
+            const img = await createImageBitmap(file);
+
+            // Use OffscreenCanvas if available, fallback to regular canvas
+            let canvas, ctx;
+            if (typeof OffscreenCanvas !== 'undefined') {
+                canvas = new OffscreenCanvas(img.width, img.height);
+                ctx = canvas.getContext('2d');
+            } else {
+                canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx = canvas.getContext('2d');
+            }
+
+            // Draw image to canvas (this strips EXIF)
+            ctx.drawImage(img, 0, 0);
+
+            // Determine output format and quality
+            let outputType = file.type;
+            let quality = 0.92;
+
+            // Keep PNG as PNG, convert others to JPEG for smaller size
+            if (file.type === 'image/png') {
+                outputType = 'image/png';
+                quality = undefined; // PNG doesn't use quality
+            } else if (file.type === 'image/webp') {
+                outputType = 'image/webp';
+                quality = 0.92;
+            } else {
+                outputType = 'image/jpeg';
+                quality = 0.92;
+            }
+
+            // Convert canvas to blob
+            let blob;
+            if (canvas.convertToBlob) {
+                blob = await canvas.convertToBlob({ type: outputType, quality });
+            } else {
+                // Fallback for regular canvas
+                blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, outputType, quality);
+                });
+            }
+
+            // Create new file with same name
+            const newFile = new File([blob], file.name, { type: outputType });
+            console.log(`[KEES] Stripped EXIF: ${file.size} -> ${newFile.size} bytes`);
+            return newFile;
+        } catch (e) {
+            console.warn('[KEES] Failed to strip EXIF, using original:', e);
+            return file;
+        }
+    }
+
+    // ============================================
     // UPLOAD LOGIC
     // ============================================
 
@@ -93,6 +169,12 @@
         }
 
         try {
+            // Strip EXIF data if enabled
+            let processedFile = file;
+            if (stripExifEnabled && file.type.startsWith('image/')) {
+                processedFile = await stripExifData(file);
+            }
+
             // Read file as base64
             const base64 = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -103,7 +185,7 @@
                     resolve(base64Data);
                 };
                 reader.onerror = reject;
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(processedFile);
             });
 
             // Send to background script for upload
@@ -115,14 +197,14 @@
             const response = await runtime.sendMessage({
                 type: 'uploadToZipline',
                 fileData: base64,
-                fileName: file.name,
-                mimeType: file.type
+                fileName: processedFile.name,
+                mimeType: processedFile.type
             });
 
             if (response.success) {
                 // Insert URL into chat input, wrap images in [img] tags
                 const url = response.url;
-                const isImage = file.type.startsWith('image/');
+                const isImage = processedFile.type.startsWith('image/');
                 const textToInsert = isImage ? `[img]${url}[/img] ` : `${url} `;
 
                 if (inputElement.contentEditable === 'true') {
@@ -196,15 +278,25 @@
             return;
         }
 
-        // Check if Zipline is enabled
+        // Check if Zipline is enabled and load settings
         const settings = await new Promise(resolve => {
-            storage.local.get([STORAGE_KEY_ENABLED], resolve);
+            storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_STRIP_EXIF], resolve);
         });
 
         if (!settings[STORAGE_KEY_ENABLED]) {
             console.log('[KEES] Zipline upload disabled');
             return;
         }
+
+        // Load EXIF stripping setting (default to true for privacy)
+        stripExifEnabled = settings[STORAGE_KEY_STRIP_EXIF] !== false;
+
+        // Listen for setting changes
+        storage.onChanged.addListener((changes, areaName) => {
+            if (areaName === 'local' && changes[STORAGE_KEY_STRIP_EXIF]) {
+                stripExifEnabled = changes[STORAGE_KEY_STRIP_EXIF].newValue !== false;
+            }
+        });
 
         initializedDocs.add(doc);
 

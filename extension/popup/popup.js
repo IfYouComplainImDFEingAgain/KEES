@@ -13,6 +13,7 @@
     const STORAGE_KEY_ZIPLINE_ENABLED = 'kees-zipline-enabled';
     const STORAGE_KEY_ZIPLINE_URL = 'kees-zipline-url';
     const STORAGE_KEY_ZIPLINE_API_KEY = 'kees-zipline-api-key';
+    const STORAGE_KEY_ZIPLINE_STRIP_EXIF = 'kees-zipline-strip-exif';
     const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
@@ -36,6 +37,7 @@
     const ziplineOptions = document.getElementById('zipline-options');
     const ziplineUrl = document.getElementById('zipline-url');
     const ziplineApiKey = document.getElementById('zipline-api-key');
+    const ziplineStripExif = document.getElementById('zipline-strip-exif');
 
     // Mention notifications elements
     const mentionNotifications = document.getElementById('mention-notifications');
@@ -195,11 +197,14 @@
     chrome.storage.local.get([
         STORAGE_KEY_ZIPLINE_ENABLED,
         STORAGE_KEY_ZIPLINE_URL,
-        STORAGE_KEY_ZIPLINE_API_KEY
+        STORAGE_KEY_ZIPLINE_API_KEY,
+        STORAGE_KEY_ZIPLINE_STRIP_EXIF
     ], (result) => {
         ziplineEnabled.checked = result[STORAGE_KEY_ZIPLINE_ENABLED] === true;
         ziplineUrl.value = result[STORAGE_KEY_ZIPLINE_URL] || '';
         ziplineApiKey.value = result[STORAGE_KEY_ZIPLINE_API_KEY] || '';
+        // Default to true for privacy
+        ziplineStripExif.checked = result[STORAGE_KEY_ZIPLINE_STRIP_EXIF] !== false;
 
         ziplineOptions.style.display = ziplineEnabled.checked ? 'block' : 'none';
     });
@@ -225,6 +230,13 @@
     ziplineApiKey.addEventListener('change', () => {
         chrome.storage.local.set({ [STORAGE_KEY_ZIPLINE_API_KEY]: ziplineApiKey.value }, () => {
             showStatus('API key saved');
+        });
+    });
+
+    // Save Zipline strip EXIF setting
+    ziplineStripExif.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_ZIPLINE_STRIP_EXIF]: ziplineStripExif.checked }, () => {
+            showStatus(ziplineStripExif.checked ? 'EXIF stripping enabled' : 'EXIF stripping disabled');
         });
     });
 

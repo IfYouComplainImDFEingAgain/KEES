@@ -3097,7 +3097,9 @@
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
     const STORAGE_KEY_ENABLED = "kees-zipline-enabled";
+    const STORAGE_KEY_STRIP_EXIF = "kees-zipline-strip-exif";
     const initializedDocs = /* @__PURE__ */ new WeakSet();
+    let stripExifEnabled = true;
     function createUploadButton(doc) {
       const btn = doc.createElement("button");
       btn.id = "zipline-upload-button";
@@ -3139,6 +3141,51 @@
       input.style.display = "none";
       return input;
     }
+    async function stripExifData(file) {
+      if (!file.type.startsWith("image/") || file.type === "image/gif") {
+        return file;
+      }
+      try {
+        const img = await createImageBitmap(file);
+        let canvas, ctx;
+        if (typeof OffscreenCanvas !== "undefined") {
+          canvas = new OffscreenCanvas(img.width, img.height);
+          ctx = canvas.getContext("2d");
+        } else {
+          canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx = canvas.getContext("2d");
+        }
+        ctx.drawImage(img, 0, 0);
+        let outputType = file.type;
+        let quality = 0.92;
+        if (file.type === "image/png") {
+          outputType = "image/png";
+          quality = void 0;
+        } else if (file.type === "image/webp") {
+          outputType = "image/webp";
+          quality = 0.92;
+        } else {
+          outputType = "image/jpeg";
+          quality = 0.92;
+        }
+        let blob;
+        if (canvas.convertToBlob) {
+          blob = await canvas.convertToBlob({ type: outputType, quality });
+        } else {
+          blob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, outputType, quality);
+          });
+        }
+        const newFile = new File([blob], file.name, { type: outputType });
+        console.log(`[KEES] Stripped EXIF: ${file.size} -> ${newFile.size} bytes`);
+        return newFile;
+      } catch (e) {
+        console.warn("[KEES] Failed to strip EXIF, using original:", e);
+        return file;
+      }
+    }
     async function handleFileSelect(file, doc) {
       if (!file) return;
       const inputElement = doc.getElementById("new-message-input");
@@ -3158,6 +3205,10 @@
         doc.head.appendChild(style);
       }
       try {
+        let processedFile = file;
+        if (stripExifEnabled && file.type.startsWith("image/")) {
+          processedFile = await stripExifData(file);
+        }
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
@@ -3166,7 +3217,7 @@
             resolve(base64Data);
           };
           reader.onerror = reject;
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(processedFile);
         });
         const runtime = getRuntime();
         if (!runtime || !runtime.sendMessage) {
@@ -3175,12 +3226,12 @@
         const response = await runtime.sendMessage({
           type: "uploadToZipline",
           fileData: base64,
-          fileName: file.name,
-          mimeType: file.type
+          fileName: processedFile.name,
+          mimeType: processedFile.type
         });
         if (response.success) {
           const url = response.url;
-          const isImage = file.type.startsWith("image/");
+          const isImage = processedFile.type.startsWith("image/");
           const textToInsert = isImage ? `[img]${url}[/img] ` : `${url} `;
           if (inputElement.contentEditable === "true") {
             inputElement.focus();
@@ -3237,12 +3288,18 @@
         return;
       }
       const settings = await new Promise((resolve) => {
-        storage.local.get([STORAGE_KEY_ENABLED], resolve);
+        storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_STRIP_EXIF], resolve);
       });
       if (!settings[STORAGE_KEY_ENABLED]) {
         console.log("[KEES] Zipline upload disabled");
         return;
       }
+      stripExifEnabled = settings[STORAGE_KEY_STRIP_EXIF] !== false;
+      storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === "local" && changes[STORAGE_KEY_STRIP_EXIF]) {
+          stripExifEnabled = changes[STORAGE_KEY_STRIP_EXIF].newValue !== false;
+        }
+      });
       initializedDocs.add(doc);
       const checkForInput = () => {
         const inputElement = doc.getElementById("new-message-input");
