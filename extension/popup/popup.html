@@ -426,6 +426,35 @@
         </div>
     </div>
 
+    <div class="section">
+        <h2>Bot Column</h2>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Enable Bot Column</span>
+                <span class="setting-desc">Show bot messages in a separate column</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="bot-column-enabled">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Hide Bots from Main Chat</span>
+                <span class="setting-desc">Only show bot messages in the bot column</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="bot-column-hide-main">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div id="bot-users-list" class="muted-users-list"></div>
+        <div class="add-muted-user">
+            <input type="text" id="bot-user-input" placeholder="Bot username to add">
+            <button id="add-bot-user-btn">Add</button>
+        </div>
+    </div>
+
     <div class="muted-users-section">
         <h2>@everyone List</h2>
         <div class="setting" style="border-bottom: none; padding-bottom: 8px;">

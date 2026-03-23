@@ -205,7 +205,10 @@
         GLOBAL_CHAT: 'kees-global-chat',
         CHAT_WS_URL: 'kees-chat-ws-url',
         CHAT_LAST_ROOM: 'kees-chat-last-room',
-        CHAT_USER: 'kees-chat-user'
+        CHAT_USER: 'kees-chat-user',
+        BOT_USERS: 'kees-bot-users',
+        BOT_COLUMN_ENABLED: 'kees-bot-column-enabled',
+        BOT_COLUMN_HIDE_MAIN: 'kees-bot-column-hide-main'
     };
 
     // ============================================

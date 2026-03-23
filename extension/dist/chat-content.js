@@ -306,7 +306,10 @@
       GLOBAL_CHAT: "kees-global-chat",
       CHAT_WS_URL: "kees-chat-ws-url",
       CHAT_LAST_ROOM: "kees-chat-last-room",
-      CHAT_USER: "kees-chat-user"
+      CHAT_USER: "kees-chat-user",
+      BOT_USERS: "kees-bot-users",
+      BOT_COLUMN_ENABLED: "kees-bot-column-enabled",
+      BOT_COLUMN_HIDE_MAIN: "kees-bot-column-hide-main"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -1757,6 +1760,21 @@
         #sneed-whisper-box .whisper-tab .tab-close:hover {
             color: #ff4444;
         }
+        #sneed-whisper-box .whisper-tab .status-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+        #sneed-whisper-box .whisper-tab .status-dot.online {
+            background: #44cc44;
+            box-shadow: 0 0 3px #44cc44;
+        }
+        #sneed-whisper-box .whisper-tab .status-dot.offline {
+            background: #555;
+        }
         #sneed-whisper-box .whisper-tab .unread-badge {
             display: inline-block;
             background: #ff4444;
@@ -2276,14 +2294,18 @@
       });
       return box;
     }
-    function renderTabs(box, partners, activePartner, onTabClick, onTabClose) {
+    function renderTabs(box, partners, activePartner, onTabClick, onTabClose, isOnline) {
       const tabs = box.querySelector(".whisper-tabs");
       if (!tabs) return;
       tabs.innerHTML = "";
       partners.forEach((p) => {
         const tab = document.createElement("div");
         tab.className = "whisper-tab" + (p.username === activePartner ? " active" : "");
-        tab.textContent = p.username;
+        const dot = document.createElement("span");
+        const online = isOnline ? isOnline(p.username) : false;
+        dot.className = "status-dot " + (online ? "online" : "offline");
+        tab.appendChild(dot);
+        tab.appendChild(document.createTextNode(p.username));
         if (p.unread > 0) {
           const badge = document.createElement("span");
           badge.className = "unread-badge";
@@ -4936,6 +4958,14 @@
         }
         saveHistory();
         refreshUI();
+      }, (username) => {
+        if (!currentDoc) return false;
+        const lower = username.toLowerCase();
+        const activities = currentDoc.querySelectorAll("#chat-activity .activity[data-username]");
+        for (const el of activities) {
+          if ((el.dataset.username || "").toLowerCase() === lower) return true;
+        }
+        return false;
       });
       const msgs = activePartner && conversations[activePartner] ? conversations[activePartner].messages : [];
       SNEED.ui.whisperBox.renderMessages(boxElement, msgs);
@@ -5097,6 +5127,211 @@
     SNEED.features.whisperBox = { start };
   })();
 
+  // src/features/bot-column.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    let botUsersLower = [];
+    let enabled = false;
+    let hideFromMain = false;
+    const STYLES = `
+        .sneed-chat-columns {
+            display: flex !important;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .sneed-chat-columns > .sneed-main-col {
+            flex: 1;
+            min-width: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .sneed-chat-columns > .sneed-bot-col {
+            width: 300px;
+            min-width: 200px;
+            max-width: 50%;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            resize: horizontal;
+            overflow: auto;
+        }
+        .sneed-bot-col-header {
+            padding: 6px 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid #333;
+            color: #999;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sneed-bot-col-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .sneed-bot-col-messages .chat-message {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+    `;
+    function isBotUser(username) {
+      if (!username) return false;
+      return botUsersLower.includes(username.toLowerCase());
+    }
+    function getMessageAuthor(msgEl) {
+      const authorEl = msgEl.querySelector(".author");
+      if (authorEl) return authorEl.textContent.trim();
+      return null;
+    }
+    function injectStyles(doc) {
+      if (doc.getElementById("sneed-bot-column-styles")) return;
+      const style = doc.createElement("style");
+      style.id = "sneed-bot-column-styles";
+      style.textContent = STYLES;
+      (doc.head || doc.documentElement).appendChild(style);
+    }
+    function createColumn(doc) {
+      const col = doc.createElement("div");
+      col.className = "sneed-bot-col";
+      col.id = "sneed-bot-column";
+      const header = doc.createElement("div");
+      header.className = "sneed-bot-col-header";
+      header.textContent = "Bot Messages";
+      const messages = doc.createElement("div");
+      messages.className = "sneed-bot-col-messages";
+      col.appendChild(header);
+      col.appendChild(messages);
+      return col;
+    }
+    function start(doc) {
+      chrome.storage.local.get([
+        SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED,
+        SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN,
+        SNEED.state.STORAGE_KEYS.BOT_USERS
+      ], (result) => {
+        enabled = result[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED] === true;
+        hideFromMain = result[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN] === true;
+        const users = result[SNEED.state.STORAGE_KEYS.BOT_USERS] || [];
+        botUsersLower = users.map((u) => u.toLowerCase());
+        if (enabled && botUsersLower.length > 0) {
+          setupColumn(doc);
+        }
+        chrome.storage.onChanged.addListener((changes) => {
+          let needsRefresh = false;
+          if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED]) {
+            enabled = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED].newValue === true;
+            needsRefresh = true;
+          }
+          if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN]) {
+            hideFromMain = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN].newValue === true;
+          }
+          if (changes[SNEED.state.STORAGE_KEYS.BOT_USERS]) {
+            const users2 = changes[SNEED.state.STORAGE_KEYS.BOT_USERS].newValue || [];
+            botUsersLower = users2.map((u) => u.toLowerCase());
+            needsRefresh = true;
+          }
+          if (needsRefresh) {
+            teardownColumn(doc);
+            if (enabled && botUsersLower.length > 0) {
+              setupColumn(doc);
+            }
+          }
+        });
+      });
+    }
+    function setupColumn(doc) {
+      const chatMessages = doc.getElementById("chat-messages");
+      if (!chatMessages) return;
+      const scroller = chatMessages.closest("#chat-scroller") || chatMessages.parentElement;
+      if (!scroller || doc.getElementById("sneed-bot-column")) return;
+      injectStyles(doc);
+      const wrapper = doc.createElement("div");
+      wrapper.className = "sneed-chat-columns";
+      wrapper.id = "sneed-chat-columns";
+      const mainCol = doc.createElement("div");
+      mainCol.className = "sneed-main-col";
+      const parent = scroller.parentElement;
+      parent.insertBefore(wrapper, scroller);
+      wrapper.appendChild(scroller);
+      scroller.classList.add("sneed-main-col");
+      const botCol = createColumn(doc);
+      wrapper.appendChild(botCol);
+      const botMessages = botCol.querySelector(".sneed-bot-col-messages");
+      const existing = chatMessages.querySelectorAll(".chat-message");
+      existing.forEach((msg) => {
+        processMessage(msg, botMessages, doc);
+      });
+      const observer = new MutationObserver((mutations) => {
+        let added = false;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            if (node.classList && node.classList.contains("chat-message")) {
+              if (processMessage(node, botMessages, doc)) added = true;
+            }
+          }
+        }
+        if (added) {
+          botMessages.scrollTop = botMessages.scrollHeight;
+        }
+      });
+      observer.observe(chatMessages, { childList: true });
+      SNEED.core.events.addManagedObserver(chatMessages, observer);
+      doc.__sneed_botColumn = {
+        cleanup: () => {
+          observer.disconnect();
+          teardownColumn(doc);
+        }
+      };
+    }
+    function processMessage(msgEl, botContainer, doc) {
+      const author = getMessageAuthor(msgEl);
+      if (!author || !isBotUser(author)) return false;
+      const clone = msgEl.cloneNode(true);
+      botContainer.appendChild(clone);
+      if (hideFromMain) {
+        msgEl.style.display = "none";
+      }
+      return true;
+    }
+    function teardownColumn(doc) {
+      const wrapper = doc.getElementById("sneed-chat-columns");
+      if (wrapper) {
+        const scroller = wrapper.querySelector("#chat-scroller") || wrapper.querySelector(".sneed-main-col");
+        if (scroller) {
+          scroller.classList.remove("sneed-main-col");
+          wrapper.parentElement.insertBefore(scroller, wrapper);
+        }
+        wrapper.remove();
+      }
+      const botCol = doc.getElementById("sneed-bot-column");
+      if (botCol) botCol.remove();
+      const chatMessages = doc.getElementById("chat-messages");
+      if (chatMessages) {
+        chatMessages.querySelectorAll('.chat-message[style*="display: none"]').forEach((msg) => {
+          const author = getMessageAuthor(msg);
+          if (author && isBotUser(author)) {
+            msg.style.display = "";
+          }
+        });
+      }
+      if (doc.__sneed_botColumn) {
+        delete doc.__sneed_botColumn;
+      }
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.botColumn = { start };
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -5184,6 +5419,9 @@
           if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
             SNEED.features.whisperBox.start(document);
           }
+          if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
+            SNEED.features.botColumn.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -5229,6 +5467,9 @@
                 }
                 if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
                   SNEED.features.whisperBox.start(iframeDoc);
+                }
+                if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
+                  SNEED.features.botColumn.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }

@@ -246,6 +246,15 @@
             }
             saveHistory();
             refreshUI();
+        }, (username) => {
+            // Check activity panel for online status
+            if (!currentDoc) return false;
+            const lower = username.toLowerCase();
+            const activities = currentDoc.querySelectorAll('#chat-activity .activity[data-username]');
+            for (const el of activities) {
+                if ((el.dataset.username || '').toLowerCase() === lower) return true;
+            }
+            return false;
         });
 
         const msgs = activePartner && conversations[activePartner]

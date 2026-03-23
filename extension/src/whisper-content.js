@@ -44,6 +44,15 @@
     let chatReconnectTimer = null;
     let chatRooms = []; // [{ id, name }]
     const CHAT_MAX_MESSAGES = 200;
+    const onlineUsers = new Map(); // id -> username
+
+    function isUserOnline(username) {
+        const lower = username.toLowerCase();
+        for (const name of onlineUsers.values()) {
+            if (name.toLowerCase() === lower) return true;
+        }
+        return false;
+    }
 
     function scrapeWsUrl() {
         // Try to find chat_ws_url in inline scripts on any page
@@ -101,6 +110,7 @@
             });
 
             chatWs.addEventListener('close', () => {
+                onlineUsers.clear();
                 chatAddSystemMessage('Disconnected. Reconnecting...');
                 chatReconnectTimer = setTimeout(chatConnect, 3000);
             });
@@ -153,6 +163,28 @@
 
         if (parsed.whisper) {
             // Whispers are handled separately via storage
+        }
+
+        // Track user presence
+        let presenceChanged = false;
+        if (parsed.users) {
+            for (const [id, user] of Object.entries(parsed.users)) {
+                if (id !== '0' && user && user.username) {
+                    onlineUsers.set(id, user.username);
+                    presenceChanged = true;
+                }
+            }
+        }
+        if (parsed.user) {
+            for (const [id, user] of Object.entries(parsed.user)) {
+                if (user === false) {
+                    onlineUsers.delete(id);
+                    presenceChanged = true;
+                }
+            }
+        }
+        if (presenceChanged && viewMode === 'whispers') {
+            renderTabs();
         }
     }
 
@@ -286,6 +318,9 @@
             #sneed-whisper-box .whisper-tab { padding: 5px 10px; color: #999; font-size: 11px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; flex-shrink: 0; }
             #sneed-whisper-box .whisper-tab:hover { color: #ddd; background: rgba(255,255,255,0.05); }
             #sneed-whisper-box .whisper-tab.active { color: #fff; border-bottom-color: #4a9eff; }
+            #sneed-whisper-box .whisper-tab .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+            #sneed-whisper-box .whisper-tab .status-dot.online { background: #44cc44; box-shadow: 0 0 3px #44cc44; }
+            #sneed-whisper-box .whisper-tab .status-dot.offline { background: #555; }
             #sneed-whisper-box .whisper-tab .unread-badge { display: inline-block; background: #ff4444; color: #fff; font-size: 9px; font-weight: bold; border-radius: 50%; min-width: 14px; height: 14px; line-height: 14px; text-align: center; margin-left: 4px; padding: 0 3px; }
             #sneed-whisper-box .whisper-add-tab { background: none; border: none; border-left: 1px solid #333; color: #666; font-size: 16px; cursor: pointer; padding: 0 10px; transition: color 0.15s; flex-shrink: 0; }
             #sneed-whisper-box .whisper-add-tab:hover { color: #4a9eff; }
@@ -446,7 +481,12 @@
         getPartnerList().forEach(p => {
             const tab = document.createElement('div');
             tab.className = 'whisper-tab' + (p.username === activePartner ? ' active' : '');
-            tab.textContent = p.username;
+
+            const dot = document.createElement('span');
+            dot.className = 'status-dot ' + (isUserOnline(p.username) ? 'online' : 'offline');
+            tab.appendChild(dot);
+
+            tab.appendChild(document.createTextNode(p.username));
             if (p.unread > 0) {
                 const badge = document.createElement('span');
                 badge.className = 'unread-badge';

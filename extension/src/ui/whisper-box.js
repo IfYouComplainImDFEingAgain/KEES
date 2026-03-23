@@ -203,6 +203,21 @@
         #sneed-whisper-box .whisper-tab .tab-close:hover {
             color: #ff4444;
         }
+        #sneed-whisper-box .whisper-tab .status-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+        #sneed-whisper-box .whisper-tab .status-dot.online {
+            background: #44cc44;
+            box-shadow: 0 0 3px #44cc44;
+        }
+        #sneed-whisper-box .whisper-tab .status-dot.offline {
+            background: #555;
+        }
         #sneed-whisper-box .whisper-tab .unread-badge {
             display: inline-block;
             background: #ff4444;
@@ -817,8 +832,9 @@
      * @param {string} activePartner
      * @param {Function} onTabClick
      * @param {Function} onTabClose
+     * @param {Function} isOnline - optional, returns boolean for username
      */
-    function renderTabs(box, partners, activePartner, onTabClick, onTabClose) {
+    function renderTabs(box, partners, activePartner, onTabClick, onTabClose, isOnline) {
         const tabs = box.querySelector('.whisper-tabs');
         if (!tabs) return;
         tabs.innerHTML = '';
@@ -826,7 +842,13 @@
         partners.forEach(p => {
             const tab = document.createElement('div');
             tab.className = 'whisper-tab' + (p.username === activePartner ? ' active' : '');
-            tab.textContent = p.username;
+
+            const dot = document.createElement('span');
+            const online = isOnline ? isOnline(p.username) : false;
+            dot.className = 'status-dot ' + (online ? 'online' : 'offline');
+            tab.appendChild(dot);
+
+            tab.appendChild(document.createTextNode(p.username));
 
             if (p.unread > 0) {
                 const badge = document.createElement('span');

@@ -24,6 +24,9 @@
     const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
     const STORAGE_KEY_WHISPER_RETENTION = 'kees-whisper-retention';
     const STORAGE_KEY_GLOBAL_CHAT = 'kees-global-chat';
+    const STORAGE_KEY_BOT_USERS = 'kees-bot-users';
+    const STORAGE_KEY_BOT_COLUMN_ENABLED = 'kees-bot-column-enabled';
+    const STORAGE_KEY_BOT_COLUMN_HIDE_MAIN = 'kees-bot-column-hide-main';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -316,6 +319,87 @@
             showStatus(ziplineStripExif.checked ? 'EXIF stripping enabled' : 'EXIF stripping disabled');
         });
     });
+
+    // ============================================
+    // BOT COLUMN MANAGEMENT
+    // ============================================
+
+    const botColumnEnabled = document.getElementById('bot-column-enabled');
+    const botColumnHideMain = document.getElementById('bot-column-hide-main');
+    const botUsersList = document.getElementById('bot-users-list');
+    const botUserInput = document.getElementById('bot-user-input');
+    const addBotUserBtn = document.getElementById('add-bot-user-btn');
+
+    chrome.storage.local.get([STORAGE_KEY_BOT_COLUMN_ENABLED, STORAGE_KEY_BOT_COLUMN_HIDE_MAIN], (result) => {
+        botColumnEnabled.checked = result[STORAGE_KEY_BOT_COLUMN_ENABLED] === true;
+        botColumnHideMain.checked = result[STORAGE_KEY_BOT_COLUMN_HIDE_MAIN] === true;
+    });
+
+    botColumnEnabled.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_BOT_COLUMN_ENABLED]: botColumnEnabled.checked }, () => {
+            showStatus(botColumnEnabled.checked ? 'Bot column enabled' : 'Bot column disabled');
+        });
+    });
+
+    botColumnHideMain.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_BOT_COLUMN_HIDE_MAIN]: botColumnHideMain.checked }, () => {
+            showStatus(botColumnHideMain.checked ? 'Bots hidden from main chat' : 'Bots shown in main chat');
+        });
+    });
+
+    function renderBotUsers(users) {
+        botUsersList.innerHTML = '';
+        users.forEach(username => {
+            const item = document.createElement('div');
+            item.className = 'muted-user';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'muted-user-name';
+            nameSpan.textContent = username;
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'muted-user-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => removeBotUser(username));
+            item.appendChild(nameSpan);
+            item.appendChild(removeBtn);
+            botUsersList.appendChild(item);
+        });
+    }
+
+    function loadBotUsers() {
+        chrome.storage.local.get([STORAGE_KEY_BOT_USERS], (result) => {
+            renderBotUsers(result[STORAGE_KEY_BOT_USERS] || []);
+        });
+    }
+
+    function addBotUser(username) {
+        if (!username || !username.trim()) return;
+        username = username.trim();
+        chrome.storage.local.get([STORAGE_KEY_BOT_USERS], (result) => {
+            const users = result[STORAGE_KEY_BOT_USERS] || [];
+            if (users.includes(username)) { showStatus('User already in list'); return; }
+            users.push(username);
+            chrome.storage.local.set({ [STORAGE_KEY_BOT_USERS]: users }, () => {
+                renderBotUsers(users);
+                botUserInput.value = '';
+                showStatus(`Added ${username}`);
+            });
+        });
+    }
+
+    function removeBotUser(username) {
+        chrome.storage.local.get([STORAGE_KEY_BOT_USERS], (result) => {
+            let users = result[STORAGE_KEY_BOT_USERS] || [];
+            users = users.filter(u => u !== username);
+            chrome.storage.local.set({ [STORAGE_KEY_BOT_USERS]: users }, () => {
+                renderBotUsers(users);
+                showStatus(`Removed ${username}`);
+            });
+        });
+    }
+
+    addBotUserBtn.addEventListener('click', () => addBotUser(botUserInput.value));
+    botUserInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBotUser(botUserInput.value); });
+    loadBotUsers();
 
     // ============================================
     // @EVERYONE LIST MANAGEMENT

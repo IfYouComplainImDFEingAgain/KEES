@@ -30,6 +30,7 @@ import './features/zipline-upload.js';
 import './features/mention-notifications.js';
 import './features/mention-sort.js';
 import './features/whisper-box.js';
+import './features/bot-column.js';
 
 // Bootstrap (must be last)
 import './bootstrap.js';
