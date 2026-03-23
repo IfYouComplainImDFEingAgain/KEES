@@ -17,6 +17,10 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - @everyone expansion (configurable user list in settings)
 - Mention autocomplete sorted by recent activity
 - Hides official chat toolbar (replaced by extension's enhanced toolbar)
+- Whisper box with per-user conversation tabs, unread badges, and draggable/resizable UI
+- Global whisper box across all site pages (sends via background relay to chat tab)
+- Whisper persistence with configurable retention (messages per conversation)
+- Option to hide whispers from main chat
 - Configurable scrollback limit (up to 5000 messages)
 
 **Forum:**

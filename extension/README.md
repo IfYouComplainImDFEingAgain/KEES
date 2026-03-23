@@ -20,6 +20,10 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Mention Notifications** - Browser notifications when someone mentions you in chat (with optional message preview)
 - **Mention Sort** - @mention autocomplete sorted by recent chat activity instead of alphabetical
 - **@everyone Expansion** - Type `@everyone` to mention all users in your configured list
+- **Whisper Box** - Floating draggable/resizable whisper window with per-user conversation tabs, unread badges, time separators, and user autocomplete
+- **Global Whisper Box** - Whisper box available on all site pages (forum, threads, profiles, etc.) with whispers relayed from the chat tab
+- **Whisper Persistence** - Save whisper history with configurable retention per conversation
+- **Hide Whispers in Main Chat** - Only show whispers in the whisper box (enabled by default)
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 
 ### Forum Features
@@ -59,7 +63,7 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 Click the extension icon in your browser toolbar to access settings:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
-- **Chat Settings** - Mention notifications, scrollback limit
+- **Chat Settings** - Mention notifications, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
 - **@everyone List** - Manage usernames for @everyone expansion
 - **Muted Users** - Manage your muted users list
