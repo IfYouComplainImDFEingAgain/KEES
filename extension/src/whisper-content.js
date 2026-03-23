@@ -256,6 +256,7 @@
             if (savedPosition.width) boxElement.style.width = savedPosition.width + 'px';
             if (savedPosition.height) boxElement.style.height = savedPosition.height + 'px';
         }
+        adjustOrientation();
     }
 
     function savePositionDebounced() {
@@ -271,6 +272,41 @@
             };
             storageSet(STORAGE_KEYS.WHISPER_POSITION, savedPosition);
         }, 300);
+    }
+
+    function adjustOrientation() {
+        if (!boxElement) return;
+        requestAnimationFrame(() => {
+            const rect = boxElement.getBoundingClientRect();
+            const vh = window.innerHeight;
+            const vw = window.innerWidth;
+            const nearBottom = rect.top > vh * 0.5;
+
+            if (nearBottom) {
+                boxElement.style.flexDirection = 'column-reverse';
+                boxElement.style.borderRadius = '0 0 8px 8px';
+            } else {
+                boxElement.style.flexDirection = 'column';
+                boxElement.style.borderRadius = '8px 8px 0 0';
+            }
+
+            // Clamp to viewport
+            let changed = false;
+            let top = rect.top;
+            let left = rect.left;
+
+            if (rect.bottom > vh) { top = vh - rect.height; changed = true; }
+            if (top < 0) { top = 0; changed = true; }
+            if (rect.right > vw) { left = vw - rect.width; changed = true; }
+            if (left < 0) { left = 0; changed = true; }
+
+            if (changed) {
+                boxElement.style.top = top + 'px';
+                boxElement.style.left = left + 'px';
+                boxElement.style.bottom = 'auto';
+                boxElement.style.right = 'auto';
+            }
+        });
     }
 
     function sendWhisper(text) {
@@ -432,7 +468,10 @@
             isDragging = false;
             document.removeEventListener('mousemove', onDrag);
             document.removeEventListener('mouseup', onDragEnd);
-            if (hasDragged) savePositionDebounced();
+            if (hasDragged) {
+                savePositionDebounced();
+                adjustOrientation();
+            }
         }
 
         // Resize save
@@ -448,10 +487,18 @@
             body.classList.toggle('collapsed');
             arrow.classList.toggle('collapsed');
             if (collapsing) {
+                const rect = boxElement.getBoundingClientRect();
                 boxElement.dataset.prevHeight = boxElement.style.height || '';
                 boxElement.dataset.prevWidth = boxElement.style.width || '';
+                boxElement.dataset.prevBottom = String(rect.bottom);
                 boxElement.style.height = '';
                 boxElement.classList.remove('expanded');
+
+                if (boxElement.style.flexDirection === 'column-reverse') {
+                    const headerHeight = header.offsetHeight || 32;
+                    boxElement.style.top = (rect.bottom - headerHeight) + 'px';
+                    boxElement.style.bottom = 'auto';
+                }
             } else {
                 boxElement.classList.add('expanded');
                 if (boxElement.dataset.prevHeight) {
@@ -459,6 +506,14 @@
                 } else if (savedPosition && savedPosition.height) {
                     boxElement.style.height = savedPosition.height + 'px';
                 }
+
+                if (boxElement.style.flexDirection === 'column-reverse' && boxElement.dataset.prevBottom) {
+                    const newHeight = boxElement.offsetHeight;
+                    const prevBottom = parseFloat(boxElement.dataset.prevBottom);
+                    boxElement.style.top = (prevBottom - newHeight) + 'px';
+                    boxElement.style.bottom = 'auto';
+                }
+                adjustOrientation();
             }
             savedCollapsed = collapsing;
             saveState();
@@ -524,6 +579,7 @@
                 if (savedPosition && savedPosition.height) {
                     boxElement.style.height = savedPosition.height + 'px';
                 }
+                adjustOrientation();
             }
         }
 
@@ -565,6 +621,7 @@
                     if (savedPosition && savedPosition.height) {
                         boxElement.style.height = savedPosition.height + 'px';
                     }
+                    adjustOrientation();
                 }
 
                 refreshUI();

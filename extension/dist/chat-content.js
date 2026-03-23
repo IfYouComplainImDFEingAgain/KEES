@@ -2088,6 +2088,7 @@
         doc.removeEventListener("mouseup", onMouseUp);
         if (hasDragged) {
           saveBoxLayout();
+          adjustOrientation(box);
         }
       }
       function saveBoxLayout() {
@@ -2119,14 +2120,28 @@
         body.classList.toggle("collapsed");
         arrow.classList.toggle("collapsed");
         if (isCollapsing) {
+          const rect = box.getBoundingClientRect();
           box.dataset.prevHeight = box.style.height || "";
+          box.dataset.prevBottom = String(rect.bottom);
           box.style.height = "";
           box.classList.remove("expanded");
+          if (box.style.flexDirection === "column-reverse") {
+            const headerHeight = header.offsetHeight || 32;
+            box.style.top = rect.bottom - headerHeight + "px";
+            box.style.bottom = "auto";
+          }
         } else {
           box.classList.add("expanded");
           if (box.dataset.prevHeight) {
             box.style.height = box.dataset.prevHeight;
           }
+          if (box.style.flexDirection === "column-reverse" && box.dataset.prevBottom) {
+            const newHeight = box.offsetHeight;
+            const prevBottom = parseFloat(box.dataset.prevBottom);
+            box.style.top = prevBottom - newHeight + "px";
+            box.style.bottom = "auto";
+          }
+          adjustOrientation(box);
         }
         if (callbacks.onToggle) callbacks.onToggle(!isCollapsing);
       });
@@ -2226,6 +2241,7 @@
         if (pos.width) box.style.width = pos.width + "px";
         if (pos.height) box.style.height = pos.height + "px";
       }
+      adjustOrientation(box);
     }
     function expand(box) {
       const body = box.querySelector(".whisper-body");
@@ -2236,6 +2252,48 @@
       if (box.dataset.prevHeight) {
         box.style.height = box.dataset.prevHeight;
       }
+      adjustOrientation(box);
+    }
+    function adjustOrientation(box) {
+      requestAnimationFrame(() => {
+        const win = box.ownerDocument.defaultView || window;
+        const rect = box.getBoundingClientRect();
+        const vh = win.innerHeight;
+        const vw = win.innerWidth;
+        const nearBottom = rect.top > vh * 0.5;
+        if (nearBottom) {
+          box.style.flexDirection = "column-reverse";
+          box.style.borderRadius = "0 0 8px 8px";
+        } else {
+          box.style.flexDirection = "column";
+          box.style.borderRadius = "8px 8px 0 0";
+        }
+        let changed = false;
+        let top = rect.top;
+        let left = rect.left;
+        if (rect.bottom > vh) {
+          top = vh - rect.height;
+          changed = true;
+        }
+        if (top < 0) {
+          top = 0;
+          changed = true;
+        }
+        if (rect.right > vw) {
+          left = vw - rect.width;
+          changed = true;
+        }
+        if (left < 0) {
+          left = 0;
+          changed = true;
+        }
+        if (changed) {
+          box.style.top = top + "px";
+          box.style.left = left + "px";
+          box.style.bottom = "auto";
+          box.style.right = "auto";
+        }
+      });
     }
     SNEED.ui = SNEED.ui || {};
     SNEED.ui.whisperBox = {
@@ -2243,6 +2301,7 @@
       renderTabs,
       renderMessages,
       applyPosition,
+      adjustOrientation,
       expand
     };
   })();
