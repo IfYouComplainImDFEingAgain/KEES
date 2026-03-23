@@ -293,7 +293,11 @@
       WYSIWYG_MODE: "sneedchat-wysiwyg-mode",
       WATCHED_USERS: "sneedchat-watched-users",
       DISABLE_HOMEPAGE_CHAT: "sneedchat-disable-homepage-chat",
-      EVERYONE_LIST: "sneedchat-everyone-list"
+      EVERYONE_LIST: "sneedchat-everyone-list",
+      WHISPER_PERSISTENCE: "kees-whisper-persistence",
+      WHISPER_HISTORY: "kees-whisper-history",
+      WHISPER_POSITION: "kees-whisper-position",
+      WHISPER_HIDE_MAIN: "kees-whisper-hide-main"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -1542,6 +1546,685 @@
       setTimeout(() => doc.addEventListener("click", clickOutside), 0);
     }
     SNEED.ui.showSizePicker = showSizePicker;
+  })();
+
+  // src/ui/whisper-box.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    const WHISPER_STYLES = `
+        #sneed-whisper-box {
+            position: fixed;
+            bottom: 0;
+            right: 16px;
+            width: 340px;
+            min-width: 250px;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 -2px 16px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+        }
+        #sneed-whisper-box.expanded {
+            min-height: 80px;
+            resize: both;
+            overflow: auto;
+        }
+        #sneed-whisper-box .whisper-header {
+            display: flex;
+            align-items: center;
+            background: #1a1a2e;
+            padding: 6px 8px;
+            cursor: grab;
+            user-select: none;
+            border-bottom: 1px solid #333;
+            min-height: 32px;
+        }
+        #sneed-whisper-box .whisper-header:active {
+            cursor: grabbing;
+        }
+        #sneed-whisper-box .whisper-header-title {
+            color: #ccc;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: auto;
+        }
+        #sneed-whisper-box .whisper-toggle-arrow {
+            color: #aaa;
+            font-size: 14px;
+            margin-right: 6px;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        #sneed-whisper-box .whisper-toggle-arrow.collapsed {
+            transform: rotate(180deg);
+        }
+        #sneed-whisper-box .whisper-close-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        #sneed-whisper-box .whisper-close-btn:hover {
+            color: #ff4444;
+        }
+        #sneed-whisper-box .whisper-body {
+            display: flex;
+            flex-direction: column;
+            background: #0f0f1a;
+            flex: 1;
+            overflow: hidden;
+        }
+        #sneed-whisper-box .whisper-body.collapsed {
+            display: none;
+        }
+        #sneed-whisper-box .whisper-tab {
+            padding: 5px 10px;
+            color: #999;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        #sneed-whisper-box .whisper-tab:hover {
+            color: #ddd;
+            background: rgba(255,255,255,0.05);
+        }
+        #sneed-whisper-box .whisper-tab.active {
+            color: #fff;
+            border-bottom-color: #4a9eff;
+        }
+        #sneed-whisper-box .whisper-tabs-row {
+            display: flex;
+            background: #16162a;
+            border-bottom: 1px solid #333;
+            min-height: 30px;
+        }
+        #sneed-whisper-box .whisper-tabs {
+            display: flex;
+            overflow-x: auto;
+            flex: 1;
+            min-height: 30px;
+            scrollbar-width: thin;
+        }
+        #sneed-whisper-box .whisper-tabs::-webkit-scrollbar {
+            height: 3px;
+        }
+        #sneed-whisper-box .whisper-tabs::-webkit-scrollbar-thumb {
+            background: #444;
+        }
+        #sneed-whisper-box .whisper-add-tab {
+            background: none;
+            border: none;
+            border-left: 1px solid #333;
+            color: #666;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0 10px;
+            transition: color 0.15s;
+            flex-shrink: 0;
+        }
+        #sneed-whisper-box .whisper-add-tab:hover {
+            color: #4a9eff;
+        }
+        #sneed-whisper-box .whisper-new-user-row {
+            display: flex;
+            gap: 4px;
+            padding: 6px;
+            background: #16162a;
+            border-bottom: 1px solid #333;
+        }
+        #sneed-whisper-box .whisper-new-user-input {
+            flex: 1;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #eee;
+            padding: 4px 8px;
+            font-size: 11px;
+            outline: none;
+            font-family: inherit;
+        }
+        #sneed-whisper-box .whisper-new-user-input:focus {
+            border-color: #4a9eff;
+        }
+        #sneed-whisper-box .whisper-new-user-input::placeholder {
+            color: #555;
+        }
+        #sneed-whisper-box .whisper-new-user-ok {
+            background: #4a9eff;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        #sneed-whisper-box .whisper-new-user-ok:hover {
+            background: #3a8eef;
+        }
+        #sneed-whisper-box .whisper-autocomplete {
+            position: absolute;
+            bottom: 100%;
+            left: 6px;
+            right: 6px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px 4px 0 0;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 10;
+            scrollbar-width: thin;
+        }
+        #sneed-whisper-box .whisper-autocomplete-item {
+            padding: 5px 10px;
+            color: #ccc;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        #sneed-whisper-box .whisper-autocomplete-item:hover,
+        #sneed-whisper-box .whisper-autocomplete-item.active {
+            background: rgba(74, 158, 255, 0.2);
+            color: #fff;
+        }
+        #sneed-whisper-box .whisper-tab .unread-badge {
+            display: inline-block;
+            background: #ff4444;
+            color: #fff;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 50%;
+            min-width: 14px;
+            height: 14px;
+            line-height: 14px;
+            text-align: center;
+            margin-left: 4px;
+            padding: 0 3px;
+        }
+        #sneed-whisper-box .whisper-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            min-height: 80px;
+            scrollbar-width: thin;
+            display: flex;
+            flex-direction: column;
+        }
+        #sneed-whisper-box .whisper-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        #sneed-whisper-box .whisper-messages::-webkit-scrollbar-thumb {
+            background: #444;
+        }
+        #sneed-whisper-box .whisper-msg {
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            max-width: 85%;
+            word-wrap: break-word;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        #sneed-whisper-box .whisper-msg.incoming {
+            background: #2a1a2a;
+            color: #ddd;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        #sneed-whisper-box .whisper-msg.outgoing {
+            background: #1a2a3a;
+            color: #eee;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        #sneed-whisper-box .whisper-time-separator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            color: #555;
+            font-size: 10px;
+        }
+        #sneed-whisper-box .whisper-time-separator::before,
+        #sneed-whisper-box .whisper-time-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #333;
+        }
+        #sneed-whisper-box .whisper-msg .whisper-msg-time {
+            font-size: 9px;
+            color: #666;
+            margin-top: 2px;
+        }
+        #sneed-whisper-box .whisper-msg .whisper-msg-author {
+            font-size: 10px;
+            color: #4a9eff;
+            font-weight: 600;
+            margin-bottom: 1px;
+        }
+        #sneed-whisper-box .whisper-empty {
+            color: #555;
+            font-style: italic;
+            text-align: center;
+            padding: 40px 16px;
+            font-size: 12px;
+        }
+        #sneed-whisper-box .whisper-input-row {
+            display: flex;
+            padding: 6px;
+            background: #16162a;
+            border-top: 1px solid #333;
+            gap: 4px;
+        }
+        #sneed-whisper-box .whisper-input {
+            flex: 1;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #eee;
+            padding: 6px 8px;
+            font-size: 12px;
+            outline: none;
+            font-family: inherit;
+        }
+        #sneed-whisper-box .whisper-input:focus {
+            border-color: #4a9eff;
+        }
+        #sneed-whisper-box .whisper-input::placeholder {
+            color: #555;
+        }
+        #sneed-whisper-box .whisper-send {
+            background: #4a9eff;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        #sneed-whisper-box .whisper-send:hover {
+            background: #3a8eef;
+        }
+    `;
+    function injectStyles(doc) {
+      if (doc.getElementById("sneed-whisper-styles")) return;
+      const style = doc.createElement("style");
+      style.id = "sneed-whisper-styles";
+      style.textContent = WHISPER_STYLES;
+      (doc.head || doc.documentElement).appendChild(style);
+    }
+    function createWhisperBox(doc, callbacks) {
+      injectStyles(doc);
+      const box = doc.createElement("div");
+      box.id = "sneed-whisper-box";
+      box.classList.add("expanded");
+      const header = doc.createElement("div");
+      header.className = "whisper-header";
+      const arrow = doc.createElement("span");
+      arrow.className = "whisper-toggle-arrow";
+      arrow.textContent = "\u25BC";
+      const title = doc.createElement("span");
+      title.className = "whisper-header-title";
+      title.textContent = "Whispers";
+      const closeBtn = doc.createElement("button");
+      closeBtn.className = "whisper-close-btn";
+      closeBtn.textContent = "\xD7";
+      closeBtn.title = "Close whisper box";
+      header.appendChild(arrow);
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      const body = doc.createElement("div");
+      body.className = "whisper-body";
+      const tabsRow = doc.createElement("div");
+      tabsRow.className = "whisper-tabs-row";
+      const tabs = doc.createElement("div");
+      tabs.className = "whisper-tabs";
+      const addTabBtn = doc.createElement("button");
+      addTabBtn.className = "whisper-add-tab";
+      addTabBtn.textContent = "+";
+      addTabBtn.title = "New whisper conversation";
+      tabsRow.appendChild(tabs);
+      tabsRow.appendChild(addTabBtn);
+      const newUserRow = doc.createElement("div");
+      newUserRow.className = "whisper-new-user-row";
+      newUserRow.style.display = "none";
+      newUserRow.style.position = "relative";
+      const newUserInput = doc.createElement("input");
+      newUserInput.className = "whisper-new-user-input";
+      newUserInput.type = "text";
+      newUserInput.placeholder = "Username...";
+      const newUserOk = doc.createElement("button");
+      newUserOk.className = "whisper-new-user-ok";
+      newUserOk.textContent = "Start";
+      newUserRow.appendChild(newUserInput);
+      newUserRow.appendChild(newUserOk);
+      let acDropdown = null;
+      let acIndex = -1;
+      function getChatUsers() {
+        const users = [];
+        const activities = doc.querySelectorAll("#chat-activity .activity");
+        activities.forEach((el) => {
+          const name = el.dataset.username;
+          if (name) users.push(name);
+        });
+        return users;
+      }
+      function closeAutocomplete() {
+        if (acDropdown) {
+          acDropdown.remove();
+          acDropdown = null;
+        }
+        acIndex = -1;
+      }
+      function showAutocomplete(filter) {
+        closeAutocomplete();
+        const query = filter.toLowerCase();
+        const users = getChatUsers().filter((u) => u.toLowerCase().startsWith(query));
+        if (users.length === 0 || !query) return;
+        acDropdown = doc.createElement("div");
+        acDropdown.className = "whisper-autocomplete";
+        users.slice(0, 10).forEach((username, i) => {
+          const item = doc.createElement("div");
+          item.className = "whisper-autocomplete-item";
+          item.textContent = username;
+          item.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            newUserInput.value = username;
+            closeAutocomplete();
+          });
+          acDropdown.appendChild(item);
+        });
+        newUserRow.appendChild(acDropdown);
+      }
+      function highlightAcItem() {
+        if (!acDropdown) return;
+        const items = acDropdown.querySelectorAll(".whisper-autocomplete-item");
+        items.forEach((item, i) => {
+          item.classList.toggle("active", i === acIndex);
+        });
+      }
+      function submitNewUser() {
+        closeAutocomplete();
+        const username = newUserInput.value.trim();
+        if (username && callbacks.onNewConversation) {
+          callbacks.onNewConversation(username);
+          newUserInput.value = "";
+          newUserRow.style.display = "none";
+        }
+      }
+      addTabBtn.addEventListener("click", () => {
+        const visible = newUserRow.style.display !== "none";
+        newUserRow.style.display = visible ? "none" : "flex";
+        if (visible) {
+          closeAutocomplete();
+        } else {
+          newUserInput.focus();
+        }
+      });
+      newUserOk.addEventListener("click", submitNewUser);
+      newUserInput.addEventListener("input", () => {
+        const val = newUserInput.value.trim();
+        if (val) {
+          showAutocomplete(val);
+        } else {
+          closeAutocomplete();
+        }
+      });
+      newUserInput.addEventListener("keydown", (e) => {
+        if (acDropdown) {
+          const items = acDropdown.querySelectorAll(".whisper-autocomplete-item");
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            acIndex = Math.min(acIndex + 1, items.length - 1);
+            highlightAcItem();
+            return;
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            acIndex = Math.max(acIndex - 1, 0);
+            highlightAcItem();
+            return;
+          } else if ((e.key === "Enter" || e.key === "Tab") && acIndex >= 0 && items[acIndex]) {
+            e.preventDefault();
+            newUserInput.value = items[acIndex].textContent;
+            closeAutocomplete();
+            return;
+          }
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitNewUser();
+        } else if (e.key === "Escape") {
+          if (acDropdown) {
+            closeAutocomplete();
+          } else {
+            newUserRow.style.display = "none";
+          }
+        }
+      });
+      newUserInput.addEventListener("blur", () => {
+        setTimeout(closeAutocomplete, 150);
+      });
+      const messages = doc.createElement("div");
+      messages.className = "whisper-messages";
+      const empty = doc.createElement("div");
+      empty.className = "whisper-empty";
+      empty.textContent = "No whispers yet";
+      messages.appendChild(empty);
+      const inputRow = doc.createElement("div");
+      inputRow.className = "whisper-input-row";
+      const input = doc.createElement("input");
+      input.className = "whisper-input";
+      input.type = "text";
+      input.placeholder = "Type a whisper...";
+      const sendBtn = doc.createElement("button");
+      sendBtn.className = "whisper-send";
+      sendBtn.textContent = "Send";
+      inputRow.appendChild(input);
+      inputRow.appendChild(sendBtn);
+      body.appendChild(tabsRow);
+      body.appendChild(newUserRow);
+      body.appendChild(messages);
+      body.appendChild(inputRow);
+      box.appendChild(header);
+      box.appendChild(body);
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let boxStartX = 0;
+      let boxStartY = 0;
+      let hasDragged = false;
+      let savePositionTimer = null;
+      function onMouseDown(e) {
+        if (e.target === closeBtn) return;
+        isDragging = true;
+        hasDragged = false;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        const rect = box.getBoundingClientRect();
+        boxStartX = rect.left;
+        boxStartY = rect.top;
+        doc.addEventListener("mousemove", onMouseMove);
+        doc.addEventListener("mouseup", onMouseUp);
+        e.preventDefault();
+      }
+      function onMouseMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          hasDragged = true;
+        }
+        let newX = boxStartX + dx;
+        let newY = boxStartY + dy;
+        const win = doc.defaultView || window;
+        newX = Math.max(0, Math.min(win.innerWidth - box.offsetWidth, newX));
+        newY = Math.max(0, Math.min(win.innerHeight - 32, newY));
+        box.style.bottom = "auto";
+        box.style.right = "auto";
+        box.style.left = newX + "px";
+        box.style.top = newY + "px";
+      }
+      function onMouseUp() {
+        if (!isDragging) return;
+        isDragging = false;
+        doc.removeEventListener("mousemove", onMouseMove);
+        doc.removeEventListener("mouseup", onMouseUp);
+        if (hasDragged) {
+          if (savePositionTimer) clearTimeout(savePositionTimer);
+          savePositionTimer = setTimeout(() => {
+            const rect = box.getBoundingClientRect();
+            const win = doc.defaultView || window;
+            if (callbacks.onPositionChange) {
+              callbacks.onPositionChange({
+                x: rect.left / win.innerWidth,
+                y: rect.top / win.innerHeight
+              });
+            }
+          }, 300);
+        }
+      }
+      header.addEventListener("mousedown", onMouseDown);
+      header.addEventListener("click", (e) => {
+        if (e.target === closeBtn) return;
+        if (hasDragged) return;
+        const isCollapsing = !body.classList.contains("collapsed");
+        body.classList.toggle("collapsed");
+        arrow.classList.toggle("collapsed");
+        if (isCollapsing) {
+          box.dataset.prevHeight = box.style.height || "";
+          box.style.height = "";
+          box.classList.remove("expanded");
+        } else {
+          box.classList.add("expanded");
+          if (box.dataset.prevHeight) {
+            box.style.height = box.dataset.prevHeight;
+          }
+        }
+        if (callbacks.onToggle) callbacks.onToggle(!isCollapsing);
+      });
+      closeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (callbacks.onClose) callbacks.onClose();
+      });
+      sendBtn.addEventListener("click", () => {
+        const text = input.value.trim();
+        if (text && callbacks.onSend) {
+          callbacks.onSend(text);
+          input.value = "";
+        }
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const text = input.value.trim();
+          if (text && callbacks.onSend) {
+            callbacks.onSend(text);
+            input.value = "";
+          }
+        }
+      });
+      return box;
+    }
+    function renderTabs(box, partners, activePartner, onTabClick) {
+      const tabs = box.querySelector(".whisper-tabs");
+      if (!tabs) return;
+      tabs.innerHTML = "";
+      partners.forEach((p) => {
+        const tab = document.createElement("div");
+        tab.className = "whisper-tab" + (p.username === activePartner ? " active" : "");
+        tab.textContent = p.username;
+        if (p.unread > 0) {
+          const badge = document.createElement("span");
+          badge.className = "unread-badge";
+          badge.textContent = p.unread > 9 ? "9+" : String(p.unread);
+          tab.appendChild(badge);
+        }
+        tab.addEventListener("click", () => {
+          if (onTabClick) onTabClick(p.username);
+        });
+        tabs.appendChild(tab);
+      });
+    }
+    function renderMessages(box, msgs) {
+      const container = box.querySelector(".whisper-messages");
+      if (!container) return;
+      container.innerHTML = "";
+      if (!msgs || msgs.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "whisper-empty";
+        empty.textContent = "No messages in this conversation";
+        container.appendChild(empty);
+        return;
+      }
+      const ONE_HOUR = 3600;
+      let lastTimestamp = 0;
+      msgs.forEach((msg) => {
+        if (lastTimestamp > 0 && msg.timestamp - lastTimestamp > ONE_HOUR) {
+          const sep = document.createElement("div");
+          sep.className = "whisper-time-separator";
+          const sepDate = new Date(msg.timestamp * 1e3);
+          sep.textContent = sepDate.toLocaleString();
+          container.appendChild(sep);
+        }
+        lastTimestamp = msg.timestamp;
+        const el = document.createElement("div");
+        el.className = "whisper-msg " + (msg.direction === "out" ? "outgoing" : "incoming");
+        const author = document.createElement("div");
+        author.className = "whisper-msg-author";
+        author.textContent = msg.author;
+        const content = document.createElement("div");
+        content.innerHTML = msg.html;
+        const time = document.createElement("div");
+        time.className = "whisper-msg-time";
+        const d = new Date(msg.timestamp * 1e3);
+        time.textContent = d.toLocaleTimeString();
+        el.appendChild(author);
+        el.appendChild(content);
+        el.appendChild(time);
+        container.appendChild(el);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+    function applyPosition(box, pos, doc) {
+      if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return;
+      const win = doc.defaultView || window;
+      const x = Math.max(0, Math.min(win.innerWidth - box.offsetWidth, pos.x * win.innerWidth));
+      const y = Math.max(0, Math.min(win.innerHeight - 32, pos.y * win.innerHeight));
+      box.style.bottom = "auto";
+      box.style.right = "auto";
+      box.style.left = x + "px";
+      box.style.top = y + "px";
+    }
+    function expand(box) {
+      const body = box.querySelector(".whisper-body");
+      const arrow = box.querySelector(".whisper-toggle-arrow");
+      if (body) body.classList.remove("collapsed");
+      if (arrow) arrow.classList.remove("collapsed");
+      box.classList.add("expanded");
+      if (box.dataset.prevHeight) {
+        box.style.height = box.dataset.prevHeight;
+      }
+    }
+    SNEED.ui = SNEED.ui || {};
+    SNEED.ui.whisperBox = {
+      createWhisperBox,
+      renderTabs,
+      renderMessages,
+      applyPosition,
+      expand
+    };
   })();
 
   // src/ui/dialogs.js
@@ -3858,6 +4541,266 @@
     SNEED.features.mentionSort = { start };
   })();
 
+  // src/features/whisper-box.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    const MAX_HISTORY_PER_PARTNER = 100;
+    const conversations = {};
+    let activePartner = null;
+    let boxElement = null;
+    let currentDoc = null;
+    let closed = false;
+    let persistenceEnabled = false;
+    let hideMainChat = true;
+    let saveDebounceTimer = null;
+    let savedPosition = null;
+    async function loadPosition() {
+      try {
+        const pos = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_POSITION);
+        if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
+          savedPosition = pos;
+        }
+      } catch (e) {
+      }
+    }
+    function savePosition(pos) {
+      savedPosition = pos;
+      SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_POSITION, pos);
+    }
+    async function loadPersistenceState() {
+      try {
+        const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE);
+        persistenceEnabled = result === true;
+      } catch (e) {
+        persistenceEnabled = false;
+      }
+    }
+    async function loadHideMainState() {
+      try {
+        const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN);
+        hideMainChat = result !== false;
+      } catch (e) {
+        hideMainChat = true;
+      }
+    }
+    async function loadHistory() {
+      if (!persistenceEnabled) return;
+      try {
+        const history = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY);
+        if (history && typeof history === "object") {
+          for (const [partner, data] of Object.entries(history)) {
+            if (!conversations[partner]) {
+              conversations[partner] = { partnerId: data.partnerId || 0, messages: [], unread: 0 };
+            }
+            conversations[partner].messages = data.messages || [];
+            conversations[partner].partnerId = data.partnerId || conversations[partner].partnerId;
+          }
+        }
+      } catch (e) {
+        SNEED.log.error("Failed to load whisper history:", e);
+      }
+    }
+    function saveHistory() {
+      if (!persistenceEnabled) return;
+      if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(() => {
+        const serialized = {};
+        for (const [partner, data] of Object.entries(conversations)) {
+          serialized[partner] = {
+            partnerId: data.partnerId,
+            messages: data.messages.slice(-MAX_HISTORY_PER_PARTNER)
+          };
+        }
+        SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY, serialized);
+      }, 1e3);
+    }
+    function addMessage(partnerUsername, partnerId, msg) {
+      if (!conversations[partnerUsername]) {
+        conversations[partnerUsername] = { partnerId, messages: [], unread: 0 };
+      }
+      const convo = conversations[partnerUsername];
+      convo.partnerId = partnerId;
+      convo.messages.push(msg);
+      if (convo.messages.length > MAX_HISTORY_PER_PARTNER) {
+        convo.messages = convo.messages.slice(-MAX_HISTORY_PER_PARTNER);
+      }
+      if (partnerUsername !== activePartner) {
+        convo.unread++;
+      }
+      saveHistory();
+    }
+    function markRead(partner) {
+      if (conversations[partner]) {
+        conversations[partner].unread = 0;
+      }
+    }
+    function getPartnerList() {
+      return Object.entries(conversations).map(([username, data]) => ({
+        username,
+        unread: data.unread
+      }));
+    }
+    function ensureBox(doc) {
+      if (boxElement && doc.getElementById("sneed-whisper-box")) return;
+      boxElement = SNEED.ui.whisperBox.createWhisperBox(doc, {
+        onToggle: () => {
+        },
+        onClose: () => {
+          if (boxElement) {
+            boxElement.remove();
+            boxElement = null;
+          }
+          closed = true;
+        },
+        onTabClick: (username) => {
+          activePartner = username;
+          markRead(username);
+          refreshUI();
+        },
+        onSend: (text) => {
+          if (!activePartner) return;
+          sendWhisper(activePartner, text, doc);
+        },
+        onNewConversation: (username) => {
+          if (!conversations[username]) {
+            conversations[username] = { partnerId: 0, messages: [], unread: 0 };
+          }
+          activePartner = username;
+          refreshUI();
+        },
+        onPositionChange: (pos) => {
+          savePosition(pos);
+        }
+      });
+      doc.body.appendChild(boxElement);
+      if (savedPosition) {
+        SNEED.ui.whisperBox.applyPosition(boxElement, savedPosition, doc);
+      }
+      currentDoc = doc;
+    }
+    function refreshUI() {
+      if (!boxElement) return;
+      const partners = getPartnerList();
+      SNEED.ui.whisperBox.renderTabs(boxElement, partners, activePartner, (username) => {
+        activePartner = username;
+        markRead(username);
+        refreshUI();
+      });
+      const msgs = activePartner && conversations[activePartner] ? conversations[activePartner].messages : [];
+      SNEED.ui.whisperBox.renderMessages(boxElement, msgs);
+      const input = boxElement.querySelector(".whisper-input");
+      if (input) {
+        input.placeholder = activePartner ? `Whisper to ${activePartner}...` : "Type a whisper...";
+      }
+    }
+    function sendWhisper(partner, text, doc) {
+      const chatInput = doc.getElementById("new-message-input");
+      if (!chatInput) return;
+      chatInput.textContent = `/w @${partner}, ${text}`;
+      if (SNEED.util.positionCursorAtEnd) {
+        SNEED.util.positionCursorAtEnd(doc, chatInput);
+      }
+      const enterEvent = new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        keyCode: 13,
+        which: 13,
+        bubbles: true,
+        cancelable: true
+      });
+      chatInput.dispatchEvent(enterEvent);
+    }
+    function extractWhisper(node) {
+      if (!node.classList || !node.classList.contains("chat-message--whisper")) return null;
+      const partner = node.dataset.whisperPartner;
+      const partnerId = parseInt(node.dataset.whisperPartnerId || "0", 10);
+      const authorId = parseInt(node.dataset.author || "0", 10);
+      const timestamp = parseInt(node.dataset.timestamp || "0", 10);
+      const messageEl = node.querySelector(".message");
+      const html = messageEl ? messageEl.innerHTML : "";
+      const directionEl = node.querySelector(".whisper-direction");
+      const directionText = directionEl ? directionEl.textContent.trim().toLowerCase() : "";
+      const direction = directionText === "to" ? "out" : "in";
+      const authorEl = node.querySelector(".author");
+      const authorName = direction === "out" ? "You" : partner;
+      if (!partner) return null;
+      return {
+        partner,
+        partnerId,
+        authorId,
+        direction,
+        author: authorName,
+        html,
+        timestamp
+      };
+    }
+    async function start(doc) {
+      await loadPersistenceState();
+      await loadHideMainState();
+      await loadPosition();
+      await loadHistory();
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE]) {
+          persistenceEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE].newValue === true;
+        }
+        if (changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN]) {
+          hideMainChat = changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN].newValue !== false;
+        }
+      });
+      const container = SNEED.util.findMessageContainer(doc);
+      if (!container) return;
+      const observer = new MutationObserver((mutations) => {
+        let newWhispers = false;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            const whisper = extractWhisper(node);
+            if (!whisper) continue;
+            if (hideMainChat) {
+              node.style.display = "none";
+            }
+            addMessage(whisper.partner, whisper.partnerId, {
+              direction: whisper.direction,
+              author: whisper.author,
+              html: whisper.html,
+              timestamp: whisper.timestamp
+            });
+            newWhispers = true;
+            if (!activePartner) {
+              activePartner = whisper.partner;
+              markRead(whisper.partner);
+            }
+          }
+        }
+        if (newWhispers) {
+          if (closed) {
+            closed = false;
+          }
+          ensureBox(doc);
+          SNEED.ui.whisperBox.expand(boxElement);
+          refreshUI();
+        }
+      });
+      observer.observe(container, { childList: true, subtree: true });
+      SNEED.core.events.addManagedObserver(container, observer);
+      if (Object.keys(conversations).length > 0) {
+        if (!activePartner) {
+          activePartner = Object.keys(conversations)[0];
+        }
+        ensureBox(doc);
+        refreshUI();
+        const body = boxElement.querySelector(".whisper-body");
+        const arrow = boxElement.querySelector(".whisper-toggle-arrow");
+        if (body) body.classList.add("collapsed");
+        if (arrow) arrow.classList.add("collapsed");
+        boxElement.classList.remove("expanded");
+      }
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.whisperBox = { start };
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -3908,6 +4851,9 @@
           if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
             SNEED.features.mentionSort.start(document);
           }
+          if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
+            SNEED.features.whisperBox.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -3950,6 +4896,9 @@
                 }
                 if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
                   SNEED.features.mentionSort.start(iframeDoc);
+                }
+                if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
+                  SNEED.features.whisperBox.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }

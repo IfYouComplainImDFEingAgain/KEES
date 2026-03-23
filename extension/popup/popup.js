@@ -20,6 +20,8 @@
     const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
     const STORAGE_KEY_ATTACHMENT_STRIP_EXIF = 'kees-attachment-strip-exif';
     const STORAGE_KEY_EVERYONE_LIST = 'sneedchat-everyone-list';
+    const STORAGE_KEY_WHISPER_PERSISTENCE = 'kees-whisper-persistence';
+    const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -72,7 +74,11 @@
     // ============================================
 
     // Load current settings
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF], (result) => {
+    // Whisper elements
+    const whisperPersistence = document.getElementById('whisper-persistence');
+    const whisperHideMain = document.getElementById('whisper-hide-main');
+
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_PERSISTENCE, STORAGE_KEY_WHISPER_HIDE_MAIN], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -81,6 +87,9 @@
         muteDisruptiveGuests.checked = result[STORAGE_KEY_MUTE_DISRUPTIVE] === true;
         // Default to true for privacy
         attachmentStripExif.checked = result[STORAGE_KEY_ATTACHMENT_STRIP_EXIF] !== false;
+        whisperPersistence.checked = result[STORAGE_KEY_WHISPER_PERSISTENCE] === true;
+        // Default to true
+        whisperHideMain.checked = result[STORAGE_KEY_WHISPER_HIDE_MAIN] !== false;
     });
 
     // Save homepage chat setting on change
@@ -135,6 +144,24 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Save whisper persistence setting on change
+    whisperPersistence.addEventListener('change', () => {
+        const enabled = whisperPersistence.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_WHISPER_PERSISTENCE]: enabled }, () => {
+            showStatus(enabled ? 'Whisper persistence enabled' : 'Whisper persistence disabled');
+        });
+    });
+
+    // Save whisper hide main setting on change
+    whisperHideMain.addEventListener('change', () => {
+        const enabled = whisperHideMain.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_WHISPER_HIDE_MAIN]: enabled }, () => {
+            showStatus(enabled ? 'Whispers hidden from main chat' : 'Whispers shown in main chat');
         });
     });
 

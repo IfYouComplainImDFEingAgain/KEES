@@ -82,6 +82,11 @@
                     SNEED.features.mentionSort.start(document);
                 }
 
+                // Start whisper box feature
+                if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
+                    SNEED.features.whisperBox.start(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -147,6 +152,11 @@
                             // Start mention sort feature
                             if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
                                 SNEED.features.mentionSort.start(iframeDoc);
+                            }
+
+                            // Start whisper box feature
+                            if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
+                                SNEED.features.whisperBox.start(iframeDoc);
                             }
 
                             log.info('Emote and format bars injected into iframe');
