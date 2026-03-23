@@ -148,6 +148,42 @@
             } else {
                 textToInsert = '[url][/url]';
             }
+        } else if (tool.customAction === 'centerText') {
+            const selectedText = selection.toString();
+            if (SNEED.state.isWysiwygMode()) {
+                if (selectedText) {
+                    const div = doc.createElement('div');
+                    div.style.textAlign = 'center';
+                    div.setAttribute('data-bbcode-center', 'true');
+                    const fragment = range.extractContents();
+                    div.appendChild(fragment);
+                    range.insertNode(div);
+                    range.setStartAfter(div);
+                    range.setEndAfter(div);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else {
+                    const div = doc.createElement('div');
+                    div.style.textAlign = 'center';
+                    div.setAttribute('data-bbcode-center', 'true');
+                    div.textContent = '\u200B';
+                    range.insertNode(div);
+                    const newRange = doc.createRange();
+                    newRange.setStart(div.firstChild, 1);
+                    newRange.setEnd(div.firstChild, 1);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                }
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                input.dispatchEvent(event);
+                return;
+            } else {
+                hadSelectedText = !!selectedText;
+                textToInsert = selectedText ? `[center]${selectedText}[/center]` : '[center][/center]';
+            }
+        } else if (tool.customAction === 'sizePicker') {
+            SNEED.ui.showSizePicker(input, selection, range, doc);
+            return;
         } else if (tool.customAction === 'colorPicker') {
             SNEED.ui.showColorPicker(input, selection, range, doc);
             return;
@@ -225,7 +261,7 @@
             if (SNEED.core.bbcode) {
                 if (wasWysiwyg && !isWysiwyg) {
                     // Was WYSIWYG, now Raw - convert HTML to BBCode
-                    const hasFormatting = input.querySelector('strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]');
+                    const hasFormatting = input.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]');
                     if (hasFormatting) {
                         const bbcode = SNEED.core.bbcode.convertToBBCode(input);
                         input.textContent = bbcode;
@@ -233,7 +269,7 @@
                 } else if (!wasWysiwyg && isWysiwyg) {
                     // Was Raw, now WYSIWYG - convert BBCode to HTML
                     const text = input.textContent || '';
-                    if (/\[(b|i|u|s|code|color|img)\b/i.test(text)) {
+                    if (/\[(b|i|u|s|code|center|size|color|img)\b/i.test(text)) {
                         const html = SNEED.core.bbcode.convertToHTML(text);
                         input.innerHTML = html;
                     }

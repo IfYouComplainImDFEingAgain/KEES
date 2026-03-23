@@ -123,6 +123,12 @@
                 return '[code]' + childContent + '[/code]';
 
             case 'span': {
+                // Check for size styling
+                const dataSize = node.getAttribute('data-bbcode-size');
+                if (dataSize) {
+                    return '[size=' + dataSize + ']' + childContent + '[/size]';
+                }
+
                 // Check for color styling
                 const style = node.getAttribute('style') || '';
                 const dataColor = node.getAttribute('data-bbcode-color');
@@ -163,6 +169,16 @@
                 return '\n';
 
             case 'div':
+                // Check for center
+                if (node.hasAttribute('data-bbcode-center')) {
+                    return '[center]' + childContent + '[/center]';
+                }
+                // Block elements get newlines
+                if (childContent) {
+                    return childContent + '\n';
+                }
+                return '\n';
+
             case 'p':
                 // Block elements get newlines
                 if (childContent) {
@@ -228,6 +244,14 @@
 
         // Convert [code]...[/code] to <code>
         html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, '<code>$1</code>');
+
+        // Convert [center]...[/center] to <div>
+        html = html.replace(/\[center\]([\s\S]*?)\[\/center\]/gi,
+            '<div style="text-align:center" data-bbcode-center="true">$1</div>');
+
+        // Convert [size=N]...[/size] to <span>
+        html = html.replace(/\[size=(\d+)\]([\s\S]*?)\[\/size\]/gi,
+            '<span style="font-size:$1px" data-bbcode-size="$1">$2</span>');
 
         // Convert [color=#hex]...[/color] to <span>
         html = html.replace(/\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,

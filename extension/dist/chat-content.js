@@ -205,9 +205,14 @@
       {
         name: "Center",
         symbol: "Center",
-        startTag: "[center]",
-        endTag: "[/center]",
+        customAction: "centerText",
         title: "Center text"
+      },
+      {
+        name: "Size",
+        symbol: "Size",
+        customAction: "sizePicker",
+        title: "Text size"
       },
       {
         name: "Code",
@@ -919,6 +924,10 @@
         case "code":
           return "[code]" + childContent + "[/code]";
         case "span": {
+          const dataSize = node.getAttribute("data-bbcode-size");
+          if (dataSize) {
+            return "[size=" + dataSize + "]" + childContent + "[/size]";
+          }
           const style = node.getAttribute("style") || "";
           const dataColor = node.getAttribute("data-bbcode-color");
           let color = null;
@@ -946,6 +955,13 @@
         case "br":
           return "\n";
         case "div":
+          if (node.hasAttribute("data-bbcode-center")) {
+            return "[center]" + childContent + "[/center]";
+          }
+          if (childContent) {
+            return childContent + "\n";
+          }
+          return "\n";
         case "p":
           if (childContent) {
             return childContent + "\n";
@@ -973,6 +989,14 @@
       html = html.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>");
       html = html.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>");
       html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<code>$1</code>");
+      html = html.replace(
+        /\[center\]([\s\S]*?)\[\/center\]/gi,
+        '<div style="text-align:center" data-bbcode-center="true">$1</div>'
+      );
+      html = html.replace(
+        /\[size=(\d+)\]([\s\S]*?)\[\/size\]/gi,
+        '<span style="font-size:$1px" data-bbcode-size="$1">$2</span>'
+      );
       html = html.replace(
         /\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,
         '<span style="color:$1" data-bbcode-color="$1">$2</span>'
@@ -1373,6 +1397,151 @@
       setTimeout(() => doc.addEventListener("click", clickOutside), 0);
     }
     SNEED.ui.showColorPicker = showColorPicker;
+  })();
+
+  // src/ui/size-picker.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    const { stylesToString } = SNEED.util;
+    const { addManagedEventListener, removeElementListeners } = SNEED.core.events;
+    const { STYLES } = SNEED.ui;
+    const SIZES = [
+      { label: "Tiny", value: 1 },
+      { label: "Small", value: 3 },
+      { label: "Normal", value: 5 },
+      { label: "Large", value: 7 },
+      { label: "Huge", value: 50 },
+      { label: "Max", value: 190 }
+    ];
+    function showSizePicker(input, selection, range, doc) {
+      const existing = doc.getElementById("size-picker-popup");
+      if (existing) {
+        existing.remove();
+        return;
+      }
+      const picker = doc.createElement("div");
+      picker.id = "size-picker-popup";
+      picker.style.cssText = stylesToString({
+        position: "absolute",
+        background: "rgba(0, 0, 0, 0.9)",
+        border: "1px solid rgba(255, 255, 255, 0.3)",
+        borderRadius: "8px",
+        padding: "8px",
+        zIndex: "1000",
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.5)"
+      });
+      const inputRect = input.getBoundingClientRect();
+      picker.style.left = inputRect.left + 20 + "px";
+      picker.style.top = inputRect.top - 160 + "px";
+      SIZES.forEach((size) => {
+        const btn = doc.createElement("button");
+        btn.type = "button";
+        btn.textContent = size.label;
+        btn.style.cssText = stylesToString({
+          background: "rgba(255, 255, 255, 0.1)",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          padding: "6px 16px",
+          cursor: "pointer",
+          borderRadius: "3px",
+          color: "rgba(255, 255, 255, 0.9)",
+          fontSize: "12px",
+          textAlign: "left",
+          transition: "all 0.2s ease",
+          outline: "none"
+        });
+        addManagedEventListener(btn, "mouseenter", () => {
+          btn.style.background = "rgba(255, 255, 255, 0.2)";
+          btn.style.borderColor = "rgba(255, 255, 255, 0.4)";
+        });
+        addManagedEventListener(btn, "mouseleave", () => {
+          btn.style.background = "rgba(255, 255, 255, 0.1)";
+          btn.style.borderColor = "rgba(255, 255, 255, 0.2)";
+        });
+        addManagedEventListener(btn, "click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const selectedText = selection.toString();
+          const isWysiwyg = SNEED.state.isWysiwygMode();
+          if (isWysiwyg) {
+            if (selectedText) {
+              const span = doc.createElement("span");
+              span.style.fontSize = size.value + "px";
+              span.setAttribute("data-bbcode-size", String(size.value));
+              const fragment = range.extractContents();
+              span.appendChild(fragment);
+              range.insertNode(span);
+              range.setStartAfter(span);
+              range.setEndAfter(span);
+              selection.removeAllRanges();
+              selection.addRange(range);
+            } else {
+              const span = doc.createElement("span");
+              span.style.fontSize = size.value + "px";
+              span.setAttribute("data-bbcode-size", String(size.value));
+              span.textContent = "\u200B";
+              range.insertNode(span);
+              const newRange = doc.createRange();
+              newRange.setStart(span.firstChild, 1);
+              newRange.setEnd(span.firstChild, 1);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            }
+          } else {
+            let textToInsert;
+            if (selectedText) {
+              textToInsert = `[size=${size.value}]${selectedText}[/size]`;
+            } else {
+              textToInsert = `[size=${size.value}][/size]`;
+            }
+            const textNode = doc.createTextNode(textToInsert);
+            range.deleteContents();
+            range.insertNode(textNode);
+            if (!selectedText) {
+              const position = `[size=${size.value}]`.length;
+              range.setStart(textNode, position);
+              range.setEnd(textNode, position);
+            } else {
+              range.setStartAfter(textNode);
+              range.setEndAfter(textNode);
+            }
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+          const event = new Event("input", { bubbles: true, cancelable: true });
+          input.dispatchEvent(event);
+          picker.remove();
+          removeElementListeners(picker);
+          input.focus();
+        });
+        picker.appendChild(btn);
+      });
+      const closeButton = doc.createElement("button");
+      closeButton.type = "button";
+      closeButton.textContent = "\xD7";
+      closeButton.style.cssText = stylesToString(STYLES.colorPickerCloseButton);
+      addManagedEventListener(closeButton, "click", (e) => {
+        e.preventDefault();
+        picker.remove();
+        removeElementListeners(picker);
+        input.focus();
+      });
+      picker.appendChild(closeButton);
+      const clickOutside = (e) => {
+        if (!picker.contains(e.target)) {
+          picker.remove();
+          removeElementListeners(picker);
+          doc.removeEventListener("click", clickOutside);
+          input.focus();
+        }
+      };
+      doc.body.appendChild(picker);
+      setTimeout(() => doc.addEventListener("click", clickOutside), 0);
+    }
+    SNEED.ui.showSizePicker = showSizePicker;
   })();
 
   // src/ui/dialogs.js
@@ -2209,6 +2378,42 @@
         } else {
           textToInsert = "[url][/url]";
         }
+      } else if (tool.customAction === "centerText") {
+        const selectedText = selection.toString();
+        if (SNEED.state.isWysiwygMode()) {
+          if (selectedText) {
+            const div = doc.createElement("div");
+            div.style.textAlign = "center";
+            div.setAttribute("data-bbcode-center", "true");
+            const fragment = range.extractContents();
+            div.appendChild(fragment);
+            range.insertNode(div);
+            range.setStartAfter(div);
+            range.setEndAfter(div);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } else {
+            const div = doc.createElement("div");
+            div.style.textAlign = "center";
+            div.setAttribute("data-bbcode-center", "true");
+            div.textContent = "\u200B";
+            range.insertNode(div);
+            const newRange = doc.createRange();
+            newRange.setStart(div.firstChild, 1);
+            newRange.setEnd(div.firstChild, 1);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
+          const event = new Event("input", { bubbles: true, cancelable: true });
+          input.dispatchEvent(event);
+          return;
+        } else {
+          hadSelectedText = !!selectedText;
+          textToInsert = selectedText ? `[center]${selectedText}[/center]` : "[center][/center]";
+        }
+      } else if (tool.customAction === "sizePicker") {
+        SNEED.ui.showSizePicker(input, selection, range, doc);
+        return;
       } else if (tool.customAction === "colorPicker") {
         SNEED.ui.showColorPicker(input, selection, range, doc);
         return;
@@ -2266,14 +2471,14 @@
         }
         if (SNEED.core.bbcode) {
           if (wasWysiwyg && !isWysiwyg) {
-            const hasFormatting = input.querySelector("strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]");
+            const hasFormatting = input.querySelector("strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]");
             if (hasFormatting) {
               const bbcode = SNEED.core.bbcode.convertToBBCode(input);
               input.textContent = bbcode;
             }
           } else if (!wasWysiwyg && isWysiwyg) {
             const text = input.textContent || "";
-            if (/\[(b|i|u|s|code|color|img)\b/i.test(text)) {
+            if (/\[(b|i|u|s|code|center|size|color|img)\b/i.test(text)) {
               const html = SNEED.core.bbcode.convertToHTML(text);
               input.innerHTML = html;
             }
@@ -2399,7 +2604,7 @@
       if (!SNEED.core.bbcode) {
         return;
       }
-      const hasFormatting = inputElement.querySelector("strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]");
+      const hasFormatting = inputElement.querySelector("strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]");
       if (!hasFormatting) {
         return;
       }
@@ -3581,6 +3786,78 @@
     init();
   })();
 
+  // src/features/mention-sort.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    let sorting = false;
+    let pendingSort = false;
+    function buildActivityMap(doc) {
+      const activity = {};
+      const messages = doc.querySelectorAll(".chat-message");
+      messages.forEach((msg, i) => {
+        const authorEl = msg.querySelector(".author");
+        if (authorEl) {
+          const username = (authorEl.textContent || "").trim().toLowerCase();
+          if (username) {
+            activity[username] = i;
+          }
+        }
+      });
+      return activity;
+    }
+    function resortDropdown(dropdown, activity) {
+      if (sorting) return;
+      sorting = true;
+      try {
+        const items = Array.from(dropdown.querySelectorAll(".mention-item"));
+        if (items.length <= 1) return;
+        items.sort((a, b) => {
+          const userA = (a.dataset.username || "").toLowerCase();
+          const userB = (b.dataset.username || "").toLowerCase();
+          const timeA = activity[userA] ?? -1;
+          const timeB = activity[userB] ?? -1;
+          if (timeA !== timeB) return timeB - timeA;
+          return userA.localeCompare(userB);
+        });
+        items.forEach((item) => dropdown.appendChild(item));
+        items.forEach((item, i) => {
+          item.classList.toggle("active", i === 0);
+        });
+      } finally {
+        sorting = false;
+      }
+    }
+    function sortWhenReady(doc, activity, attempts) {
+      const dropdown = doc.querySelector(".mention-dropdown");
+      if (dropdown && dropdown.children.length > 1) {
+        resortDropdown(dropdown, activity);
+        pendingSort = false;
+      } else if (attempts < 5) {
+        setTimeout(() => sortWhenReady(doc, activity, attempts + 1), 30);
+      } else {
+        pendingSort = false;
+      }
+    }
+    function start(doc) {
+      const input = doc.getElementById("new-message-input");
+      if (!input) return;
+      SNEED.core.events.addManagedEventListener(input, "input", () => {
+        if (pendingSort) return;
+        const text = input.textContent || "";
+        const atIdx = text.lastIndexOf("@");
+        if (atIdx === -1) return;
+        const afterAt = text.slice(atIdx + 1);
+        if (afterAt.includes(" ")) return;
+        pendingSort = true;
+        const activity = buildActivityMap(doc);
+        sortWhenReady(doc, activity, 0);
+      });
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.mentionSort = { start };
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -3628,6 +3905,9 @@
           if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
             SNEED.features.mentionNotifications.start(document);
           }
+          if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
+            SNEED.features.mentionSort.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -3667,6 +3947,9 @@
                 }
                 if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
                   SNEED.features.mentionNotifications.start(iframeDoc);
+                }
+                if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
+                  SNEED.features.mentionSort.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }

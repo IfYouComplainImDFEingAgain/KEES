@@ -77,6 +77,11 @@
                     SNEED.features.mentionNotifications.start(document);
                 }
 
+                // Start mention sort feature
+                if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
+                    SNEED.features.mentionSort.start(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -137,6 +142,11 @@
                             // Start mention notifications feature
                             if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
                                 SNEED.features.mentionNotifications.start(iframeDoc);
+                            }
+
+                            // Start mention sort feature
+                            if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
+                                SNEED.features.mentionSort.start(iframeDoc);
                             }
 
                             log.info('Emote and format bars injected into iframe');

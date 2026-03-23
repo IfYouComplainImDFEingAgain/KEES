@@ -95,9 +95,14 @@
         {
             name: 'Center',
             symbol: 'Center',
-            startTag: '[center]',
-            endTag: '[/center]',
+            customAction: 'centerText',
             title: 'Center text'
+        },
+        {
+            name: 'Size',
+            symbol: 'Size',
+            customAction: 'sizePicker',
+            title: 'Text size'
         },
         {
             name: 'Code',

@@ -50,7 +50,7 @@
         }
 
         // Check if there's any HTML formatting to convert
-        const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]');
+        const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]');
         if (!hasFormatting) {
             return;
         }

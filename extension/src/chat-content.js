@@ -14,6 +14,7 @@ import './core/bbcode-converter.js';
 // UI modules
 import './ui/styles.js';
 import './ui/color-picker.js';
+import './ui/size-picker.js';
 import './ui/dialogs.js';
 import './ui/bars.js';
 
@@ -26,6 +27,7 @@ import './features/youtube-titles.js';
 import './features/double-click-edit.js';
 import './features/zipline-upload.js';
 import './features/mention-notifications.js';
+import './features/mention-sort.js';
 
 // Bootstrap (must be last)
 import './bootstrap.js';
