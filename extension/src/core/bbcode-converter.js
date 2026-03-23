@@ -111,6 +111,17 @@
             case 'i':
                 return '[i]' + childContent + '[/i]';
 
+            case 'u':
+                return '[u]' + childContent + '[/u]';
+
+            case 's':
+            case 'strike':
+            case 'del':
+                return '[s]' + childContent + '[/s]';
+
+            case 'code':
+                return '[code]' + childContent + '[/code]';
+
             case 'span': {
                 // Check for color styling
                 const style = node.getAttribute('style') || '';
@@ -208,6 +219,15 @@
 
         // Convert [i]...[/i] to <em>
         html = html.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<em>$1</em>');
+
+        // Convert [u]...[/u] to <u>
+        html = html.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '<u>$1</u>');
+
+        // Convert [s]...[/s] to <s>
+        html = html.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, '<s>$1</s>');
+
+        // Convert [code]...[/code] to <code>
+        html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, '<code>$1</code>');
 
         // Convert [color=#hex]...[/color] to <span>
         html = html.replace(/\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,

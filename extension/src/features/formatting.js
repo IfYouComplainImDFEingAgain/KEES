@@ -85,7 +85,7 @@
                 return;
             } else {
                 // Raw mode - insert BBCode tags
-                const tagMap = { 'bold': 'b', 'italic': 'i' };
+                const tagMap = { 'bold': 'b', 'italic': 'i', 'underline': 'u', 'strikeThrough': 's' };
                 const tag = tagMap[tool.wysiwygCommand] || tool.wysiwygCommand;
                 const selectedText = selection.toString();
                 textToInsert = `[${tag}]${selectedText}[/${tag}]`;
@@ -135,6 +135,18 @@
                 // Raw mode or no URL - insert BBCode tags
                 textToInsert = selectedText ? `[img]${selectedText}[/img]` : '[img][/img]';
                 hadSelectedText = !!selectedText;
+            }
+        } else if (tool.customAction === 'insertUrl') {
+            const selectedText = selection.toString().trim();
+            hadSelectedText = !!selectedText;
+            if (selectedText && /^https?:\/\/.+/i.test(selectedText)) {
+                // Selected text is a URL - wrap it
+                textToInsert = `[url]${selectedText}[/url]`;
+            } else if (selectedText) {
+                // Selected text is link text - insert tag with placeholder
+                textToInsert = `[url=]${selectedText}[/url]`;
+            } else {
+                textToInsert = '[url][/url]';
             }
         } else if (tool.customAction === 'colorPicker') {
             SNEED.ui.showColorPicker(input, selection, range, doc);
@@ -213,7 +225,7 @@
             if (SNEED.core.bbcode) {
                 if (wasWysiwyg && !isWysiwyg) {
                     // Was WYSIWYG, now Raw - convert HTML to BBCode
-                    const hasFormatting = input.querySelector('strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]');
+                    const hasFormatting = input.querySelector('strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]');
                     if (hasFormatting) {
                         const bbcode = SNEED.core.bbcode.convertToBBCode(input);
                         input.textContent = bbcode;
@@ -221,7 +233,7 @@
                 } else if (!wasWysiwyg && isWysiwyg) {
                     // Was Raw, now WYSIWYG - convert BBCode to HTML
                     const text = input.textContent || '';
-                    if (/\[(b|i|color|img)\b/i.test(text)) {
+                    if (/\[(b|i|u|s|code|color|img)\b/i.test(text)) {
                         const html = SNEED.core.bbcode.convertToHTML(text);
                         input.innerHTML = html;
                     }

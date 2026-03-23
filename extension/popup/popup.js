@@ -19,6 +19,7 @@
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
     const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
     const STORAGE_KEY_ATTACHMENT_STRIP_EXIF = 'kees-attachment-strip-exif';
+    const STORAGE_KEY_EVERYONE_LIST = 'sneedchat-everyone-list';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -254,6 +255,84 @@
             showStatus(ziplineStripExif.checked ? 'EXIF stripping enabled' : 'EXIF stripping disabled');
         });
     });
+
+    // ============================================
+    // @EVERYONE LIST MANAGEMENT
+    // ============================================
+
+    const everyoneList = document.getElementById('everyone-list');
+    const everyoneUserInput = document.getElementById('everyone-user-input');
+    const addEveryoneUserBtn = document.getElementById('add-everyone-user-btn');
+
+    function renderEveryoneList(users) {
+        everyoneList.innerHTML = '';
+        users.forEach(username => {
+            const item = document.createElement('div');
+            item.className = 'muted-user';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'muted-user-name';
+            nameSpan.textContent = username;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'muted-user-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => removeEveryoneUser(username));
+
+            item.appendChild(nameSpan);
+            item.appendChild(removeBtn);
+            everyoneList.appendChild(item);
+        });
+    }
+
+    function loadEveryoneList() {
+        chrome.storage.local.get([STORAGE_KEY_EVERYONE_LIST], (result) => {
+            const users = result[STORAGE_KEY_EVERYONE_LIST] || [];
+            renderEveryoneList(users);
+        });
+    }
+
+    function addEveryoneUser(username) {
+        if (!username || !username.trim()) return;
+        username = username.trim();
+
+        chrome.storage.local.get([STORAGE_KEY_EVERYONE_LIST], (result) => {
+            const users = result[STORAGE_KEY_EVERYONE_LIST] || [];
+            if (users.includes(username)) {
+                showStatus('User already in list');
+                return;
+            }
+            users.push(username);
+            chrome.storage.local.set({ [STORAGE_KEY_EVERYONE_LIST]: users }, () => {
+                renderEveryoneList(users);
+                everyoneUserInput.value = '';
+                showStatus(`Added ${username}`);
+            });
+        });
+    }
+
+    function removeEveryoneUser(username) {
+        chrome.storage.local.get([STORAGE_KEY_EVERYONE_LIST], (result) => {
+            let users = result[STORAGE_KEY_EVERYONE_LIST] || [];
+            users = users.filter(u => u !== username);
+            chrome.storage.local.set({ [STORAGE_KEY_EVERYONE_LIST]: users }, () => {
+                renderEveryoneList(users);
+                showStatus(`Removed ${username}`);
+            });
+        });
+    }
+
+    addEveryoneUserBtn.addEventListener('click', () => {
+        addEveryoneUser(everyoneUserInput.value);
+    });
+
+    everyoneUserInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addEveryoneUser(everyoneUserInput.value);
+        }
+    });
+
+    loadEveryoneList();
 
     // ============================================
     // MUTED USERS MANAGEMENT

@@ -347,6 +347,52 @@
     }
 
     // ============================================
+    // EVERYONE LIST STORAGE
+    // ============================================
+
+    /**
+     * Load @everyone list from storage
+     * @returns {Promise<Array>}
+     */
+    async function getEveryoneList() {
+        try {
+            const stored = await getStorageValue(state.STORAGE_KEYS.EVERYONE_LIST);
+            return stored || [];
+        } catch (e) {
+            log.error('Failed to load @everyone list:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Save @everyone list to storage
+     * @param {Array} users - Array of usernames
+     * @returns {Promise<boolean>}
+     */
+    async function saveEveryoneList(users) {
+        try {
+            const success = await setStorageValue(state.STORAGE_KEYS.EVERYONE_LIST, users);
+            if (success) {
+                state.setEveryoneList(users);
+            }
+            return success;
+        } catch (e) {
+            log.error('Failed to save @everyone list:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Initialize @everyone list from storage
+     * @returns {Promise<Array>}
+     */
+    async function initEveryoneList() {
+        const list = await getEveryoneList();
+        state.setEveryoneList(list);
+        return list;
+    }
+
+    // ============================================
     // INITIALIZATION
     // ============================================
 
@@ -359,8 +405,16 @@
             initEmotes(),
             initWysiwygMode(),
             initBlacklist(),
-            initDisableHomepageChat()
+            initDisableHomepageChat(),
+            initEveryoneList()
         ]);
+
+        // Keep caches in sync when storage changes (e.g. from popup)
+        chrome.storage.onChanged.addListener((changes) => {
+            if (changes[state.STORAGE_KEYS.EVERYONE_LIST]) {
+                state.setEveryoneList(changes[state.STORAGE_KEYS.EVERYONE_LIST].newValue || []);
+            }
+        });
     }
 
     // ============================================
@@ -402,6 +456,11 @@
         getDisableHomepageChat,
         saveDisableHomepageChat,
         initDisableHomepageChat,
+
+        // Everyone List
+        getEveryoneList,
+        saveEveryoneList,
+        initEveryoneList,
 
         // Init
         initAll

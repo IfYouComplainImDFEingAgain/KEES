@@ -191,6 +191,38 @@
         title: "Italic text"
       },
       {
+        name: "Underline",
+        symbol: "U",
+        wysiwygCommand: "underline",
+        title: "Underline text"
+      },
+      {
+        name: "Strikethrough",
+        symbol: "S",
+        wysiwygCommand: "strikeThrough",
+        title: "Strikethrough text"
+      },
+      {
+        name: "Center",
+        symbol: "Center",
+        startTag: "[center]",
+        endTag: "[/center]",
+        title: "Center text"
+      },
+      {
+        name: "Code",
+        symbol: "{ }",
+        startTag: "[code]",
+        endTag: "[/code]",
+        title: "Code block"
+      },
+      {
+        name: "URL",
+        symbol: "\u{1F517}",
+        customAction: "insertUrl",
+        title: "Insert link"
+      },
+      {
         name: "Bullet",
         symbol: "\u2022",
         customAction: "bulletLines",
@@ -255,7 +287,8 @@
       BLACKLIST: "sneedchat-image-blacklist",
       WYSIWYG_MODE: "sneedchat-wysiwyg-mode",
       WATCHED_USERS: "sneedchat-watched-users",
-      DISABLE_HOMEPAGE_CHAT: "sneedchat-disable-homepage-chat"
+      DISABLE_HOMEPAGE_CHAT: "sneedchat-disable-homepage-chat",
+      EVERYONE_LIST: "sneedchat-everyone-list"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -266,8 +299,10 @@
       pendingTimers: /* @__PURE__ */ new Set(),
       wysiwygMode: true,
       // true = rich/WYSIWYG, false = raw BBCode
-      disableHomepageChat: false
+      disableHomepageChat: false,
       // true = hide chat on homepage
+      everyoneList: []
+      // usernames for @everyone expansion
     };
     SNEED.state = SNEED.state || {};
     Object.assign(SNEED.state, {
@@ -339,6 +374,13 @@
       toggleDisableHomepageChat() {
         runtimeState.disableHomepageChat = !runtimeState.disableHomepageChat;
         return runtimeState.disableHomepageChat;
+      },
+      // @everyone list
+      getEveryoneList() {
+        return runtimeState.everyoneList;
+      },
+      setEveryoneList(list) {
+        runtimeState.everyoneList = list;
       }
     });
   })();
@@ -536,13 +578,45 @@
         return false;
       }
     }
+    async function getEveryoneList() {
+      try {
+        const stored = await getStorageValue(state.STORAGE_KEYS.EVERYONE_LIST);
+        return stored || [];
+      } catch (e) {
+        log.error("Failed to load @everyone list:", e);
+        return [];
+      }
+    }
+    async function saveEveryoneList(users) {
+      try {
+        const success = await setStorageValue(state.STORAGE_KEYS.EVERYONE_LIST, users);
+        if (success) {
+          state.setEveryoneList(users);
+        }
+        return success;
+      } catch (e) {
+        log.error("Failed to save @everyone list:", e);
+        return false;
+      }
+    }
+    async function initEveryoneList() {
+      const list = await getEveryoneList();
+      state.setEveryoneList(list);
+      return list;
+    }
     async function initAll() {
       await Promise.all([
         initEmotes(),
         initWysiwygMode(),
         initBlacklist(),
-        initDisableHomepageChat()
+        initDisableHomepageChat(),
+        initEveryoneList()
       ]);
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes[state.STORAGE_KEYS.EVERYONE_LIST]) {
+          state.setEveryoneList(changes[state.STORAGE_KEYS.EVERYONE_LIST].newValue || []);
+        }
+      });
     }
     SNEED.core = SNEED.core || {};
     SNEED.core.storage = {
@@ -574,6 +648,10 @@
       getDisableHomepageChat,
       saveDisableHomepageChat,
       initDisableHomepageChat,
+      // Everyone List
+      getEveryoneList,
+      saveEveryoneList,
+      initEveryoneList,
       // Init
       initAll
     };
@@ -832,6 +910,14 @@
         case "em":
         case "i":
           return "[i]" + childContent + "[/i]";
+        case "u":
+          return "[u]" + childContent + "[/u]";
+        case "s":
+        case "strike":
+        case "del":
+          return "[s]" + childContent + "[/s]";
+        case "code":
+          return "[code]" + childContent + "[/code]";
         case "span": {
           const style = node.getAttribute("style") || "";
           const dataColor = node.getAttribute("data-bbcode-color");
@@ -884,6 +970,9 @@
       let html = text;
       html = html.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<strong>$1</strong>");
       html = html.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<em>$1</em>");
+      html = html.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>");
+      html = html.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>");
+      html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<code>$1</code>");
       html = html.replace(
         /\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,
         '<span style="color:$1" data-bbcode-color="$1">$2</span>'
@@ -2066,7 +2155,7 @@
           input.dispatchEvent(event);
           return;
         } else {
-          const tagMap = { "bold": "b", "italic": "i" };
+          const tagMap = { "bold": "b", "italic": "i", "underline": "u", "strikeThrough": "s" };
           const tag = tagMap[tool.wysiwygCommand] || tool.wysiwygCommand;
           const selectedText = selection.toString();
           textToInsert = `[${tag}]${selectedText}[/${tag}]`;
@@ -2109,6 +2198,16 @@
         } else {
           textToInsert = selectedText ? `[img]${selectedText}[/img]` : "[img][/img]";
           hadSelectedText = !!selectedText;
+        }
+      } else if (tool.customAction === "insertUrl") {
+        const selectedText = selection.toString().trim();
+        hadSelectedText = !!selectedText;
+        if (selectedText && /^https?:\/\/.+/i.test(selectedText)) {
+          textToInsert = `[url]${selectedText}[/url]`;
+        } else if (selectedText) {
+          textToInsert = `[url=]${selectedText}[/url]`;
+        } else {
+          textToInsert = "[url][/url]";
         }
       } else if (tool.customAction === "colorPicker") {
         SNEED.ui.showColorPicker(input, selection, range, doc);
@@ -2167,14 +2266,14 @@
         }
         if (SNEED.core.bbcode) {
           if (wasWysiwyg && !isWysiwyg) {
-            const hasFormatting = input.querySelector("strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]");
+            const hasFormatting = input.querySelector("strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]");
             if (hasFormatting) {
               const bbcode = SNEED.core.bbcode.convertToBBCode(input);
               input.textContent = bbcode;
             }
           } else if (!wasWysiwyg && isWysiwyg) {
             const text = input.textContent || "";
-            if (/\[(b|i|color|img)\b/i.test(text)) {
+            if (/\[(b|i|u|s|code|color|img)\b/i.test(text)) {
               const html = SNEED.core.bbcode.convertToHTML(text);
               input.innerHTML = html;
             }
@@ -2282,11 +2381,25 @@
     const SNEED = window.SNEED;
     const state = SNEED.state;
     const { addManagedEventListener, addManagedObserver, ensureSendWatcher, setResizeCache, getResizeCache } = SNEED.core.events;
+    function expandEveryone(inputElement) {
+      const list = SNEED.state.getEveryoneList();
+      if (!list || list.length === 0) return;
+      const text = inputElement.textContent || "";
+      if (!text.includes("@everyone")) return;
+      const mentions = list.map((u) => "@" + u).join(" ");
+      const walker = document.createTreeWalker(inputElement, NodeFilter.SHOW_TEXT, null, false);
+      let node;
+      while (node = walker.nextNode()) {
+        if (node.textContent.includes("@everyone")) {
+          node.textContent = node.textContent.replace(/@everyone/g, mentions);
+        }
+      }
+    }
     function convertInputToBBCode(inputElement, doc) {
       if (!SNEED.core.bbcode) {
         return;
       }
-      const hasFormatting = inputElement.querySelector("strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]");
+      const hasFormatting = inputElement.querySelector("strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]");
       if (!hasFormatting) {
         return;
       }
@@ -2301,6 +2414,7 @@
       inputElement.setAttribute("data-bbcode-convert-handler", "true");
       addManagedEventListener(inputElement, "keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
+          expandEveryone(inputElement);
           convertInputToBBCode(inputElement, doc);
         }
       }, true);
@@ -2308,6 +2422,7 @@
       if (messageForm && !messageForm.hasAttribute("data-bbcode-submit-handler")) {
         messageForm.setAttribute("data-bbcode-submit-handler", "true");
         addManagedEventListener(messageForm, "submit", (e) => {
+          expandEveryone(inputElement);
           convertInputToBBCode(inputElement, doc);
         }, true);
       }
@@ -3477,11 +3592,19 @@
     const ui = SNEED.ui;
     const features = SNEED.features;
     const util = SNEED.util;
+    function hideOfficialToolbar(doc) {
+      if (doc.getElementById("sneed-hide-toolbar")) return;
+      const style = doc.createElement("style");
+      style.id = "sneed-hide-toolbar";
+      style.textContent = ".chat-toolbar { display: none !important; }";
+      (doc.head || doc.documentElement).appendChild(style);
+    }
     function injectEmoteBar() {
       const isIframe = util.isInIframe();
       if (isIframe) {
         const messageForm = document.getElementById("new-message-form");
         if (messageForm && !document.getElementById("custom-emote-bar")) {
+          hideOfficialToolbar(document);
           const emoteBar = ui.createEmoteBar(document);
           const formatBar = ui.createFormatBar(document);
           messageForm.parentNode.insertBefore(emoteBar, messageForm);
@@ -3515,6 +3638,7 @@
             if (iframeDoc && iframeDoc.readyState === "complete") {
               const messageForm = iframeDoc.getElementById("new-message-form");
               if (messageForm && !iframeDoc.getElementById("custom-emote-bar")) {
+                hideOfficialToolbar(iframeDoc);
                 const emoteBar = ui.createEmoteBar(iframeDoc);
                 const formatBar = ui.createFormatBar(iframeDoc);
                 messageForm.parentNode.insertBefore(emoteBar, messageForm);

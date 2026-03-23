@@ -16,6 +16,18 @@
     const util = SNEED.util;
 
     // ============================================
+    // HIDE OFFICIAL CHAT TOOLBAR
+    // ============================================
+
+    function hideOfficialToolbar(doc) {
+        if (doc.getElementById('sneed-hide-toolbar')) return;
+        const style = doc.createElement('style');
+        style.id = 'sneed-hide-toolbar';
+        style.textContent = '.chat-toolbar { display: none !important; }';
+        (doc.head || doc.documentElement).appendChild(style);
+    }
+
+    // ============================================
     // INJECTION LOGIC
     // ============================================
 
@@ -27,6 +39,8 @@
             const messageForm = document.getElementById('new-message-form');
 
             if (messageForm && !document.getElementById('custom-emote-bar')) {
+                hideOfficialToolbar(document);
+
                 const emoteBar = ui.createEmoteBar(document);
                 const formatBar = ui.createFormatBar(document);
 
@@ -77,6 +91,8 @@
                         const messageForm = iframeDoc.getElementById('new-message-form');
 
                         if (messageForm && !iframeDoc.getElementById('custom-emote-bar')) {
+                            hideOfficialToolbar(iframeDoc);
+
                             const emoteBar = ui.createEmoteBar(iframeDoc);
                             const formatBar = ui.createFormatBar(iframeDoc);
 

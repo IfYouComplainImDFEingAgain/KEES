@@ -81,6 +81,38 @@
             title: 'Italic text'
         },
         {
+            name: 'Underline',
+            symbol: 'U',
+            wysiwygCommand: 'underline',
+            title: 'Underline text'
+        },
+        {
+            name: 'Strikethrough',
+            symbol: 'S',
+            wysiwygCommand: 'strikeThrough',
+            title: 'Strikethrough text'
+        },
+        {
+            name: 'Center',
+            symbol: 'Center',
+            startTag: '[center]',
+            endTag: '[/center]',
+            title: 'Center text'
+        },
+        {
+            name: 'Code',
+            symbol: '{ }',
+            startTag: '[code]',
+            endTag: '[/code]',
+            title: 'Code block'
+        },
+        {
+            name: 'URL',
+            symbol: '🔗',
+            customAction: 'insertUrl',
+            title: 'Insert link'
+        },
+        {
             name: 'Bullet',
             symbol: '•',
             customAction: 'bulletLines',
@@ -154,7 +186,8 @@
         BLACKLIST: 'sneedchat-image-blacklist',
         WYSIWYG_MODE: 'sneedchat-wysiwyg-mode',
         WATCHED_USERS: 'sneedchat-watched-users',
-        DISABLE_HOMEPAGE_CHAT: 'sneedchat-disable-homepage-chat'
+        DISABLE_HOMEPAGE_CHAT: 'sneedchat-disable-homepage-chat',
+        EVERYONE_LIST: 'sneedchat-everyone-list'
     };
 
     // ============================================
@@ -168,7 +201,8 @@
         initialized: false,
         pendingTimers: new Set(),
         wysiwygMode: true, // true = rich/WYSIWYG, false = raw BBCode
-        disableHomepageChat: false // true = hide chat on homepage
+        disableHomepageChat: false, // true = hide chat on homepage
+        everyoneList: [] // usernames for @everyone expansion
     };
 
     // ============================================
@@ -263,6 +297,15 @@
         toggleDisableHomepageChat() {
             runtimeState.disableHomepageChat = !runtimeState.disableHomepageChat;
             return runtimeState.disableHomepageChat;
+        },
+
+        // @everyone list
+        getEveryoneList() {
+            return runtimeState.everyoneList;
+        },
+
+        setEveryoneList(list) {
+            runtimeState.everyoneList = list;
         }
     });
 

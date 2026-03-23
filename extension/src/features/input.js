@@ -10,6 +10,32 @@
     const { addManagedEventListener, addManagedObserver, ensureSendWatcher, setResizeCache, getResizeCache } = SNEED.core.events;
 
     // ============================================
+    // @EVERYONE EXPANSION
+    // ============================================
+
+    /**
+     * Replace @everyone in input with individual @mentions
+     * @param {HTMLElement} inputElement - The input element
+     */
+    function expandEveryone(inputElement) {
+        const list = SNEED.state.getEveryoneList();
+        if (!list || list.length === 0) return;
+
+        const text = inputElement.textContent || '';
+        if (!text.includes('@everyone')) return;
+
+        const mentions = list.map(u => '@' + u).join(' ');
+        // Walk text nodes and replace @everyone
+        const walker = document.createTreeWalker(inputElement, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.textContent.includes('@everyone')) {
+                node.textContent = node.textContent.replace(/@everyone/g, mentions);
+            }
+        }
+    }
+
+    // ============================================
     // WYSIWYG TO BBCODE CONVERSION
     // ============================================
 
@@ -24,7 +50,7 @@
         }
 
         // Check if there's any HTML formatting to convert
-        const hasFormatting = inputElement.querySelector('strong, b, em, i, span[data-bbcode-color], img[data-bbcode-img]');
+        const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, span[data-bbcode-color], img[data-bbcode-img]');
         if (!hasFormatting) {
             return;
         }
@@ -53,6 +79,8 @@
         // Capture-phase Enter key handler (runs before chat.js handler)
         addManagedEventListener(inputElement, 'keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
+                // Expand @everyone before conversion
+                expandEveryone(inputElement);
                 // Convert HTML to BBCode before the form submits
                 convertInputToBBCode(inputElement, doc);
             }
@@ -64,6 +92,8 @@
             messageForm.setAttribute('data-bbcode-submit-handler', 'true');
 
             addManagedEventListener(messageForm, 'submit', (e) => {
+                // Expand @everyone before conversion
+                expandEveryone(inputElement);
                 // Convert HTML to BBCode before submission
                 convertInputToBBCode(inputElement, doc);
             }, true); // capture phase
