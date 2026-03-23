@@ -299,6 +299,7 @@
       WHISPER_POSITION_GLOBAL: "kees-whisper-position-global",
       WHISPER_STATE: "kees-whisper-state",
       WHISPER_STATE_GLOBAL: "kees-whisper-state-global",
+      WHISPER_RETENTION: "kees-whisper-retention",
       WHISPER_HIDE_MAIN: "kees-whisper-hide-main",
       WHISPER_GLOBAL: "kees-whisper-global",
       WHISPER_LATEST: "kees-whisper-latest"
@@ -4564,7 +4565,7 @@
   (function() {
     "use strict";
     const SNEED = window.SNEED;
-    const MAX_HISTORY_PER_PARTNER = 100;
+    let maxHistoryPerPartner = 100;
     const conversations = {};
     let activePartner = null;
     let boxElement = null;
@@ -4603,6 +4604,15 @@
         collapsed: savedCollapsed,
         closed
       });
+    }
+    async function loadRetention() {
+      try {
+        const val = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_RETENTION);
+        if (val !== void 0 && val !== null) {
+          maxHistoryPerPartner = parseInt(val, 10) || 0;
+        }
+      } catch (e) {
+      }
     }
     async function loadGlobalState() {
       try {
@@ -4645,7 +4655,7 @@
         for (const [partner, data] of Object.entries(conversations)) {
           serialized[partner] = {
             partnerId: data.partnerId,
-            messages: data.messages.slice(-MAX_HISTORY_PER_PARTNER)
+            messages: maxHistoryPerPartner > 0 ? data.messages.slice(-maxHistoryPerPartner) : data.messages
           };
         }
         SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY, serialized);
@@ -4658,10 +4668,10 @@
       const convo = conversations[partnerUsername];
       convo.partnerId = partnerId;
       convo.messages.push(msg);
-      if (convo.messages.length > MAX_HISTORY_PER_PARTNER) {
-        convo.messages = convo.messages.slice(-MAX_HISTORY_PER_PARTNER);
+      if (maxHistoryPerPartner > 0 && convo.messages.length > maxHistoryPerPartner) {
+        convo.messages = convo.messages.slice(-maxHistoryPerPartner);
       }
-      if (partnerUsername !== activePartner) {
+      if (partnerUsername !== activePartner && msg.direction !== "out") {
         convo.unread++;
       }
       saveHistory();
@@ -4783,6 +4793,7 @@
       };
     }
     async function start(doc) {
+      await loadRetention();
       await loadGlobalState();
       await loadHideMainState();
       await loadPosition();
@@ -4795,23 +4806,28 @@
         if (changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN]) {
           hideMainChat = changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN].newValue !== false;
         }
+        if (changes[SNEED.state.STORAGE_KEYS.WHISPER_RETENTION]) {
+          const val = parseInt(changes[SNEED.state.STORAGE_KEYS.WHISPER_RETENTION].newValue, 10);
+          maxHistoryPerPartner = isNaN(val) ? 100 : val;
+        }
       });
       chrome.runtime.onMessage.addListener((message) => {
         if (message.type === "relaySendWhisper" && message.partner && message.text) {
           sendWhisper(message.partner, message.text, doc);
         }
       });
-      const container = SNEED.util.findMessageContainer(doc);
+      const container = doc.getElementById("chat-messages") || SNEED.util.findMessageContainer(doc);
       if (!container) return;
       const observer = new MutationObserver((mutations) => {
         let newWhispers = false;
         for (const m of mutations) {
           for (const node of m.addedNodes) {
             if (node.nodeType !== 1) continue;
-            const whisper = extractWhisper(node);
+            const whisperNode = node.classList && node.classList.contains("chat-message--whisper") ? node : node.querySelector && node.querySelector(".chat-message--whisper");
+            const whisper = whisperNode ? extractWhisper(whisperNode) : null;
             if (!whisper) continue;
             if (hideMainChat) {
-              node.style.display = "none";
+              whisperNode.style.display = "none";
             }
             addMessage(whisper.partner, whisper.partnerId, {
               direction: whisper.direction,

@@ -198,6 +198,7 @@
         WHISPER_POSITION_GLOBAL: 'kees-whisper-position-global',
         WHISPER_STATE: 'kees-whisper-state',
         WHISPER_STATE_GLOBAL: 'kees-whisper-state-global',
+        WHISPER_RETENTION: 'kees-whisper-retention',
         WHISPER_HIDE_MAIN: 'kees-whisper-hide-main',
         WHISPER_GLOBAL: 'kees-whisper-global',
         WHISPER_LATEST: 'kees-whisper-latest'

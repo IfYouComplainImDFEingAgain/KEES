@@ -12,10 +12,11 @@
         WHISPER_LATEST: 'kees-whisper-latest',
         WHISPER_POSITION: 'kees-whisper-position-global',
         WHISPER_STATE: 'kees-whisper-state-global',
-        WHISPER_HIDE_MAIN: 'kees-whisper-hide-main'
+        WHISPER_HIDE_MAIN: 'kees-whisper-hide-main',
+        WHISPER_RETENTION: 'kees-whisper-retention'
     };
 
-    const MAX_HISTORY = 100;
+    let maxHistory = 100;
     const conversations = {};
     let activePartner = null;
     let boxElement = null;
@@ -501,6 +502,11 @@
         const enabled = await storageGet(STORAGE_KEYS.WHISPER_GLOBAL);
         if (!enabled) return;
 
+        const retVal = await storageGet(STORAGE_KEYS.WHISPER_RETENTION);
+        if (retVal !== undefined && retVal !== null) {
+            maxHistory = parseInt(retVal, 10) || 0;
+        }
+
         await loadHistory();
         await loadPosition();
         await loadState();
@@ -532,11 +538,11 @@
                     conversations[partner] = { partnerId: partnerId || 0, messages: [], unread: 0 };
                 }
                 conversations[partner].messages.push(msg);
-                if (conversations[partner].messages.length > MAX_HISTORY) {
-                    conversations[partner].messages = conversations[partner].messages.slice(-MAX_HISTORY);
+                if (maxHistory > 0 && conversations[partner].messages.length > maxHistory) {
+                    conversations[partner].messages = conversations[partner].messages.slice(-maxHistory);
                 }
 
-                if (partner !== activePartner) {
+                if (partner !== activePartner && msg.direction !== 'out') {
                     conversations[partner].unread++;
                 }
 
@@ -562,6 +568,11 @@
                 }
 
                 refreshUI();
+            }
+
+            if (changes[STORAGE_KEYS.WHISPER_RETENTION]) {
+                const val = parseInt(changes[STORAGE_KEYS.WHISPER_RETENTION].newValue, 10);
+                maxHistory = isNaN(val) ? 100 : val;
             }
 
             if (changes[STORAGE_KEYS.WHISPER_GLOBAL]) {

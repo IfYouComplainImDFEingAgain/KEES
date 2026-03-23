@@ -22,6 +22,7 @@
     const STORAGE_KEY_EVERYONE_LIST = 'sneedchat-everyone-list';
     const STORAGE_KEY_WHISPER_GLOBAL = 'kees-whisper-global';
     const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
+    const STORAGE_KEY_WHISPER_RETENTION = 'kees-whisper-retention';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -144,6 +145,24 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Whisper retention element
+    const whisperRetention = document.getElementById('whisper-retention');
+
+    // Load whisper retention
+    chrome.storage.local.get([STORAGE_KEY_WHISPER_RETENTION], (result) => {
+        whisperRetention.value = result[STORAGE_KEY_WHISPER_RETENTION] ?? 100;
+    });
+
+    // Save whisper retention on change
+    whisperRetention.addEventListener('change', () => {
+        const value = parseInt(whisperRetention.value, 10);
+        whisperRetention.value = Math.max(0, Math.min(10000, isNaN(value) ? 100 : value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_WHISPER_RETENTION]: parseInt(whisperRetention.value, 10) }, () => {
+            showStatus('Whisper retention saved');
         });
     });
 

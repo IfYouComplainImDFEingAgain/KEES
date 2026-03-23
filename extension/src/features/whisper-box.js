@@ -6,7 +6,7 @@
     'use strict';
 
     const SNEED = window.SNEED;
-    const MAX_HISTORY_PER_PARTNER = 100;
+    let maxHistoryPerPartner = 100;
 
     // Conversation state: { partnerUsername: { partnerId, messages: [], unread: 0 } }
     const conversations = {};
@@ -59,6 +59,17 @@
         });
     }
 
+    async function loadRetention() {
+        try {
+            const val = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_RETENTION);
+            if (val !== undefined && val !== null) {
+                maxHistoryPerPartner = parseInt(val, 10) || 0;
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
     async function loadGlobalState() {
         try {
             const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL);
@@ -104,7 +115,7 @@
             for (const [partner, data] of Object.entries(conversations)) {
                 serialized[partner] = {
                     partnerId: data.partnerId,
-                    messages: data.messages.slice(-MAX_HISTORY_PER_PARTNER)
+                    messages: maxHistoryPerPartner > 0 ? data.messages.slice(-maxHistoryPerPartner) : data.messages
                 };
             }
             SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY, serialized);
@@ -124,13 +135,13 @@
         convo.partnerId = partnerId;
         convo.messages.push(msg);
 
-        // Cap history
-        if (convo.messages.length > MAX_HISTORY_PER_PARTNER) {
-            convo.messages = convo.messages.slice(-MAX_HISTORY_PER_PARTNER);
+        // Cap history (0 = unlimited)
+        if (maxHistoryPerPartner > 0 && convo.messages.length > maxHistoryPerPartner) {
+            convo.messages = convo.messages.slice(-maxHistoryPerPartner);
         }
 
-        // Track unread if not the active conversation
-        if (partnerUsername !== activePartner) {
+        // Track unread if not the active conversation and not from self
+        if (partnerUsername !== activePartner && msg.direction !== 'out') {
             convo.unread++;
         }
 
@@ -299,6 +310,7 @@
     // ============================================
 
     async function start(doc) {
+        await loadRetention();
         await loadGlobalState();
         await loadHideMainState();
         await loadPosition();
@@ -313,6 +325,10 @@
             if (changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN]) {
                 hideMainChat = changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN].newValue !== false;
             }
+            if (changes[SNEED.state.STORAGE_KEYS.WHISPER_RETENTION]) {
+                const val = parseInt(changes[SNEED.state.STORAGE_KEYS.WHISPER_RETENTION].newValue, 10);
+                maxHistoryPerPartner = isNaN(val) ? 100 : val;
+            }
         });
 
         // Listen for relayed whisper sends from non-chat tabs
@@ -322,7 +338,7 @@
             }
         });
 
-        const container = SNEED.util.findMessageContainer(doc);
+        const container = doc.getElementById('chat-messages') || SNEED.util.findMessageContainer(doc);
         if (!container) return;
 
         const observer = new MutationObserver((mutations) => {
@@ -332,12 +348,17 @@
                 for (const node of m.addedNodes) {
                     if (node.nodeType !== 1) continue;
 
-                    const whisper = extractWhisper(node);
+                    // Check the node itself and its children for whispers
+                    const whisperNode = node.classList && node.classList.contains('chat-message--whisper')
+                        ? node
+                        : node.querySelector && node.querySelector('.chat-message--whisper');
+
+                    const whisper = whisperNode ? extractWhisper(whisperNode) : null;
                     if (!whisper) continue;
 
                     // Hide from main chat if enabled
                     if (hideMainChat) {
-                        node.style.display = 'none';
+                        whisperNode.style.display = 'none';
                     }
 
                     addMessage(whisper.partner, whisper.partnerId, {
