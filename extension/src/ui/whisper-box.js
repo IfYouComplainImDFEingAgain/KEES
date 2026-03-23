@@ -24,6 +24,7 @@
         }
         #sneed-whisper-box.expanded {
             min-height: 80px;
+            max-height: 70vh;
             resize: both;
             overflow: auto;
         }
@@ -74,6 +75,7 @@
             background: #0f0f1a;
             flex: 1;
             overflow: hidden;
+            min-height: 0;
         }
         #sneed-whisper-box .whisper-body.collapsed {
             display: none;
@@ -191,6 +193,16 @@
             background: rgba(74, 158, 255, 0.2);
             color: #fff;
         }
+        #sneed-whisper-box .whisper-tab .tab-close {
+            margin-left: 4px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        #sneed-whisper-box .whisper-tab .tab-close:hover {
+            color: #ff4444;
+        }
         #sneed-whisper-box .whisper-tab .unread-badge {
             display: inline-block;
             background: #ff4444;
@@ -209,7 +221,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
-            min-height: 80px;
+            min-height: 0;
             scrollbar-width: thin;
             display: flex;
             flex-direction: column;
@@ -313,6 +325,95 @@
             background: #3a8eef;
         }
     `;
+
+    // ============================================
+    // HTML SANITIZATION
+    // ============================================
+
+    const ALLOWED_TAGS = new Set([
+        'b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'pre',
+        'span', 'div', 'p', 'br', 'a', 'img', 'ul', 'ol', 'li', 'blockquote'
+    ]);
+    const ALLOWED_ATTRS = {
+        'a': ['href', 'title', 'target', 'rel'],
+        'img': ['src', 'alt', 'width', 'height', 'title'],
+        'span': ['class', 'style'],
+        'div': ['class', 'style']
+    };
+    const SAFE_URL_RE = /^https?:\/\//i;
+
+    function sanitizeHTML(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        sanitizeNode(template.content);
+        return template.innerHTML;
+    }
+
+    function sanitizeNode(node) {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+            if (child.nodeType === Node.TEXT_NODE) continue;
+            if (child.nodeType !== Node.ELEMENT_NODE) {
+                child.remove();
+                continue;
+            }
+
+            const tag = child.tagName.toLowerCase();
+            if (!ALLOWED_TAGS.has(tag)) {
+                // Replace with text content
+                const text = document.createTextNode(child.textContent);
+                child.replaceWith(text);
+                continue;
+            }
+
+            // Strip disallowed attributes
+            const allowed = ALLOWED_ATTRS[tag] || [];
+            const attrs = Array.from(child.attributes);
+            for (const attr of attrs) {
+                if (!allowed.includes(attr.name)) {
+                    child.removeAttribute(attr.name);
+                }
+            }
+
+            // Validate URLs
+            if (tag === 'a') {
+                const href = child.getAttribute('href');
+                if (href && !SAFE_URL_RE.test(href)) {
+                    child.removeAttribute('href');
+                }
+                child.setAttribute('target', '_blank');
+                child.setAttribute('rel', 'noopener noreferrer');
+            }
+            if (tag === 'img') {
+                const src = child.getAttribute('src');
+                if (src && !SAFE_URL_RE.test(src)) {
+                    child.remove();
+                    continue;
+                }
+            }
+
+            // Strip dangerous CSS
+            if (child.hasAttribute('style')) {
+                const style = child.getAttribute('style');
+                // Only allow color, font-size, text-align, text-decoration
+                const safeStyle = style.replace(/[^;]+/g, (rule) => {
+                    const prop = rule.split(':')[0].trim().toLowerCase();
+                    if (['color', 'font-size', 'text-align', 'text-decoration', 'font-weight', 'font-style'].includes(prop)) {
+                        return rule;
+                    }
+                    return '';
+                }).replace(/;{2,}/g, ';').replace(/^;|;$/g, '');
+                if (safeStyle) {
+                    child.setAttribute('style', safeStyle);
+                } else {
+                    child.removeAttribute('style');
+                }
+            }
+
+            // Recurse
+            sanitizeNode(child);
+        }
+    }
 
     /**
      * Inject whisper box styles into document
@@ -689,16 +790,19 @@
             if (text && callbacks.onSend) {
                 callbacks.onSend(text);
                 input.value = '';
+                input.focus();
             }
         });
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 const text = input.value.trim();
                 if (text && callbacks.onSend) {
                     callbacks.onSend(text);
                     input.value = '';
+                    input.focus();
                 }
             }
         });
@@ -712,8 +816,9 @@
      * @param {Array} partners - [{ username, unread }]
      * @param {string} activePartner
      * @param {Function} onTabClick
+     * @param {Function} onTabClose
      */
-    function renderTabs(box, partners, activePartner, onTabClick) {
+    function renderTabs(box, partners, activePartner, onTabClick, onTabClose) {
         const tabs = box.querySelector('.whisper-tabs');
         if (!tabs) return;
         tabs.innerHTML = '';
@@ -729,6 +834,15 @@
                 badge.textContent = p.unread > 9 ? '9+' : String(p.unread);
                 tab.appendChild(badge);
             }
+
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'tab-close';
+            closeBtn.textContent = '\u00d7';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (onTabClose) onTabClose(p.username);
+            });
+            tab.appendChild(closeBtn);
 
             tab.addEventListener('click', () => {
                 if (onTabClick) onTabClick(p.username);
@@ -778,7 +892,7 @@
             author.textContent = msg.author;
 
             const content = document.createElement('div');
-            content.innerHTML = msg.html;
+            content.innerHTML = sanitizeHTML(msg.html);
 
             const time = document.createElement('div');
             time.className = 'whisper-msg-time';
@@ -884,7 +998,8 @@
         renderMessages,
         applyPosition,
         adjustOrientation,
-        expand
+        expand,
+        sanitizeHTML
     };
 
 })();

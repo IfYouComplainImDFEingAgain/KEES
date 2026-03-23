@@ -1574,6 +1574,7 @@
         }
         #sneed-whisper-box.expanded {
             min-height: 80px;
+            max-height: 70vh;
             resize: both;
             overflow: auto;
         }
@@ -1624,6 +1625,7 @@
             background: #0f0f1a;
             flex: 1;
             overflow: hidden;
+            min-height: 0;
         }
         #sneed-whisper-box .whisper-body.collapsed {
             display: none;
@@ -1741,6 +1743,16 @@
             background: rgba(74, 158, 255, 0.2);
             color: #fff;
         }
+        #sneed-whisper-box .whisper-tab .tab-close {
+            margin-left: 4px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        #sneed-whisper-box .whisper-tab .tab-close:hover {
+            color: #ff4444;
+        }
         #sneed-whisper-box .whisper-tab .unread-badge {
             display: inline-block;
             background: #ff4444;
@@ -1759,7 +1771,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
-            min-height: 80px;
+            min-height: 0;
             scrollbar-width: thin;
             display: flex;
             flex-direction: column;
@@ -1863,6 +1875,95 @@
             background: #3a8eef;
         }
     `;
+    const ALLOWED_TAGS = /* @__PURE__ */ new Set([
+      "b",
+      "strong",
+      "i",
+      "em",
+      "u",
+      "s",
+      "del",
+      "strike",
+      "code",
+      "pre",
+      "span",
+      "div",
+      "p",
+      "br",
+      "a",
+      "img",
+      "ul",
+      "ol",
+      "li",
+      "blockquote"
+    ]);
+    const ALLOWED_ATTRS = {
+      "a": ["href", "title", "target", "rel"],
+      "img": ["src", "alt", "width", "height", "title"],
+      "span": ["class", "style"],
+      "div": ["class", "style"]
+    };
+    const SAFE_URL_RE = /^https?:\/\//i;
+    function sanitizeHTML(html) {
+      const template = document.createElement("template");
+      template.innerHTML = html;
+      sanitizeNode(template.content);
+      return template.innerHTML;
+    }
+    function sanitizeNode(node) {
+      const children = Array.from(node.childNodes);
+      for (const child of children) {
+        if (child.nodeType === Node.TEXT_NODE) continue;
+        if (child.nodeType !== Node.ELEMENT_NODE) {
+          child.remove();
+          continue;
+        }
+        const tag = child.tagName.toLowerCase();
+        if (!ALLOWED_TAGS.has(tag)) {
+          const text = document.createTextNode(child.textContent);
+          child.replaceWith(text);
+          continue;
+        }
+        const allowed = ALLOWED_ATTRS[tag] || [];
+        const attrs = Array.from(child.attributes);
+        for (const attr of attrs) {
+          if (!allowed.includes(attr.name)) {
+            child.removeAttribute(attr.name);
+          }
+        }
+        if (tag === "a") {
+          const href = child.getAttribute("href");
+          if (href && !SAFE_URL_RE.test(href)) {
+            child.removeAttribute("href");
+          }
+          child.setAttribute("target", "_blank");
+          child.setAttribute("rel", "noopener noreferrer");
+        }
+        if (tag === "img") {
+          const src = child.getAttribute("src");
+          if (src && !SAFE_URL_RE.test(src)) {
+            child.remove();
+            continue;
+          }
+        }
+        if (child.hasAttribute("style")) {
+          const style = child.getAttribute("style");
+          const safeStyle = style.replace(/[^;]+/g, (rule) => {
+            const prop = rule.split(":")[0].trim().toLowerCase();
+            if (["color", "font-size", "text-align", "text-decoration", "font-weight", "font-style"].includes(prop)) {
+              return rule;
+            }
+            return "";
+          }).replace(/;{2,}/g, ";").replace(/^;|;$/g, "");
+          if (safeStyle) {
+            child.setAttribute("style", safeStyle);
+          } else {
+            child.removeAttribute("style");
+          }
+        }
+        sanitizeNode(child);
+      }
+    }
     function injectStyles(doc) {
       if (doc.getElementById("sneed-whisper-styles")) return;
       const style = doc.createElement("style");
@@ -2154,21 +2255,24 @@
         if (text && callbacks.onSend) {
           callbacks.onSend(text);
           input.value = "";
+          input.focus();
         }
       });
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
+          e.stopPropagation();
           const text = input.value.trim();
           if (text && callbacks.onSend) {
             callbacks.onSend(text);
             input.value = "";
+            input.focus();
           }
         }
       });
       return box;
     }
-    function renderTabs(box, partners, activePartner, onTabClick) {
+    function renderTabs(box, partners, activePartner, onTabClick, onTabClose) {
       const tabs = box.querySelector(".whisper-tabs");
       if (!tabs) return;
       tabs.innerHTML = "";
@@ -2182,6 +2286,14 @@
           badge.textContent = p.unread > 9 ? "9+" : String(p.unread);
           tab.appendChild(badge);
         }
+        const closeBtn = document.createElement("span");
+        closeBtn.className = "tab-close";
+        closeBtn.textContent = "\xD7";
+        closeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (onTabClose) onTabClose(p.username);
+        });
+        tab.appendChild(closeBtn);
         tab.addEventListener("click", () => {
           if (onTabClick) onTabClick(p.username);
         });
@@ -2216,7 +2328,7 @@
         author.className = "whisper-msg-author";
         author.textContent = msg.author;
         const content = document.createElement("div");
-        content.innerHTML = msg.html;
+        content.innerHTML = sanitizeHTML(msg.html);
         const time = document.createElement("div");
         time.className = "whisper-msg-time";
         const d = new Date(msg.timestamp * 1e3);
@@ -2302,7 +2414,8 @@
       renderMessages,
       applyPosition,
       adjustOrientation,
-      expand
+      expand,
+      sanitizeHTML
     };
   })();
 
@@ -4774,6 +4887,15 @@
           markRead(username);
           refreshUI();
         },
+        onTabClose: (username) => {
+          delete conversations[username];
+          if (activePartner === username) {
+            const keys = Object.keys(conversations);
+            activePartner = keys.length > 0 ? keys[0] : null;
+          }
+          saveHistory();
+          refreshUI();
+        },
         onSend: (text) => {
           if (!activePartner) return;
           sendWhisper(activePartner, text, doc);
@@ -4802,6 +4924,14 @@
         activePartner = username;
         markRead(username);
         refreshUI();
+      }, (username) => {
+        delete conversations[username];
+        if (activePartner === username) {
+          const keys = Object.keys(conversations);
+          activePartner = keys.length > 0 ? keys[0] : null;
+        }
+        saveHistory();
+        refreshUI();
       });
       const msgs = activePartner && conversations[activePartner] ? conversations[activePartner].messages : [];
       SNEED.ui.whisperBox.renderMessages(boxElement, msgs);
@@ -4826,6 +4956,30 @@
         cancelable: true
       });
       chatInput.dispatchEvent(enterEvent);
+    }
+    function sendWhisperNotification(partner, messageText, doc) {
+      if (!("Notification" in window)) return;
+      if (Notification.permission !== "granted") return;
+      const docHasFocus = doc.hasFocus();
+      let parentHasFocus = false;
+      try {
+        parentHasFocus = window.parent && window.parent.document.hasFocus();
+      } catch (e) {
+      }
+      if (docHasFocus || parentHasFocus) return;
+      const body = messageText.length > 150 ? messageText.substring(0, 150) + "..." : messageText;
+      const notification = new Notification(`Whisper from ${partner}`, {
+        body,
+        icon: "https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png",
+        tag: "kees-whisper-" + Date.now(),
+        requireInteraction: false
+      });
+      notification.onclick = () => {
+        window.focus();
+        if (window.parent) window.parent.focus();
+        notification.close();
+      };
+      setTimeout(() => notification.close(), 5e3);
     }
     function extractWhisper(node) {
       if (!node.classList || !node.classList.contains("chat-message--whisper")) return null;
@@ -4878,6 +5032,7 @@
       const container = doc.getElementById("chat-messages") || SNEED.util.findMessageContainer(doc);
       if (!container) return;
       const observer = new MutationObserver((mutations) => {
+        var _a, _b;
         let newWhispers = false;
         for (const m of mutations) {
           for (const node of m.addedNodes) {
@@ -4895,6 +5050,10 @@
               timestamp: whisper.timestamp
             });
             newWhispers = true;
+            if (whisper.direction === "in") {
+              const plainText = ((_b = (_a = whisperNode.querySelector(".message")) == null ? void 0 : _a.textContent) == null ? void 0 : _b.trim()) || "";
+              sendWhisperNotification(whisper.partner, plainText, doc);
+            }
             if (!activePartner) {
               activePartner = whisper.partner;
               markRead(whisper.partner);

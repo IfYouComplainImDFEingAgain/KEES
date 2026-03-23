@@ -196,6 +196,15 @@
                 markRead(username);
                 refreshUI();
             },
+            onTabClose: (username) => {
+                delete conversations[username];
+                if (activePartner === username) {
+                    const keys = Object.keys(conversations);
+                    activePartner = keys.length > 0 ? keys[0] : null;
+                }
+                saveHistory();
+                refreshUI();
+            },
             onSend: (text) => {
                 if (!activePartner) return;
                 sendWhisper(activePartner, text, doc);
@@ -228,6 +237,14 @@
         SNEED.ui.whisperBox.renderTabs(boxElement, partners, activePartner, (username) => {
             activePartner = username;
             markRead(username);
+            refreshUI();
+        }, (username) => {
+            delete conversations[username];
+            if (activePartner === username) {
+                const keys = Object.keys(conversations);
+                activePartner = keys.length > 0 ? keys[0] : null;
+            }
+            saveHistory();
             refreshUI();
         });
 
@@ -268,6 +285,40 @@
             cancelable: true
         });
         chatInput.dispatchEvent(enterEvent);
+    }
+
+    // ============================================
+    // WHISPER NOTIFICATION
+    // ============================================
+
+    function sendWhisperNotification(partner, messageText, doc) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+
+        // Don't notify if page is focused
+        const docHasFocus = doc.hasFocus();
+        let parentHasFocus = false;
+        try {
+            parentHasFocus = window.parent && window.parent.document.hasFocus();
+        } catch (e) { /* cross-origin */ }
+        if (docHasFocus || parentHasFocus) return;
+
+        const body = messageText.length > 150 ? messageText.substring(0, 150) + '...' : messageText;
+
+        const notification = new Notification(`Whisper from ${partner}`, {
+            body: body,
+            icon: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
+            tag: 'kees-whisper-' + Date.now(),
+            requireInteraction: false
+        });
+
+        notification.onclick = () => {
+            window.focus();
+            if (window.parent) window.parent.focus();
+            notification.close();
+        };
+
+        setTimeout(() => notification.close(), 5000);
     }
 
     // ============================================
@@ -369,6 +420,12 @@
                     });
 
                     newWhispers = true;
+
+                    // Send notification for incoming whispers
+                    if (whisper.direction === 'in') {
+                        const plainText = whisperNode.querySelector('.message')?.textContent?.trim() || '';
+                        sendWhisperNotification(whisper.partner, plainText, doc);
+                    }
 
                     // Auto-select first partner
                     if (!activePartner) {

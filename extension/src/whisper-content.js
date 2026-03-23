@@ -63,6 +63,7 @@
             }
             #sneed-whisper-box.expanded {
                 min-height: 80px;
+                max-height: 70vh;
                 resize: both;
                 overflow: auto;
             }
@@ -77,7 +78,7 @@
             #sneed-whisper-box .whisper-toggle-arrow.collapsed { transform: rotate(180deg); }
             #sneed-whisper-box .whisper-close-btn { background: none; border: none; color: #888; font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1; }
             #sneed-whisper-box .whisper-close-btn:hover { color: #ff4444; }
-            #sneed-whisper-box .whisper-body { display: flex; flex-direction: column; background: #0f0f1a; flex: 1; overflow: hidden; }
+            #sneed-whisper-box .whisper-body { display: flex; flex-direction: column; background: #0f0f1a; flex: 1; overflow: hidden; min-height: 0; }
             #sneed-whisper-box .whisper-body.collapsed { display: none; }
             #sneed-whisper-box .whisper-tabs-row { display: flex; background: #16162a; border-bottom: 1px solid #333; min-height: 30px; }
             #sneed-whisper-box .whisper-tabs { display: flex; overflow-x: auto; flex: 1; min-height: 30px; scrollbar-width: thin; }
@@ -92,7 +93,7 @@
             #sneed-whisper-box .whisper-new-user-input:focus { border-color: #4a9eff; }
             #sneed-whisper-box .whisper-new-user-input::placeholder { color: #555; }
             #sneed-whisper-box .whisper-new-user-ok { background: #4a9eff; border: none; border-radius: 4px; color: #fff; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600; }
-            #sneed-whisper-box .whisper-messages { flex: 1; overflow-y: auto; padding: 8px; min-height: 80px; scrollbar-width: thin; display: flex; flex-direction: column; }
+            #sneed-whisper-box .whisper-messages { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; scrollbar-width: thin; display: flex; flex-direction: column; }
             #sneed-whisper-box .whisper-msg { margin-bottom: 6px; padding: 4px 8px; border-radius: 6px; max-width: 85%; word-wrap: break-word; font-size: 12px; line-height: 1.4; }
             #sneed-whisper-box .whisper-msg.incoming { background: #2a1a2a; color: #ddd; align-self: flex-start; border-bottom-left-radius: 2px; }
             #sneed-whisper-box .whisper-msg.outgoing { background: #1a2a3a; color: #eee; align-self: flex-end; border-bottom-right-radius: 2px; }
@@ -110,6 +111,69 @@
             #sneed-whisper-box .whisper-no-chat { color: #ff8844; font-size: 10px; text-align: center; padding: 2px; background: #16162a; border-top: 1px solid #333; }
         `;
         document.head.appendChild(style);
+    }
+
+    // ============================================
+    // HTML SANITIZATION
+    // ============================================
+
+    const ALLOWED_TAGS = new Set([
+        'b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'pre',
+        'span', 'div', 'p', 'br', 'a', 'img', 'ul', 'ol', 'li', 'blockquote'
+    ]);
+    const ALLOWED_ATTRS = {
+        'a': ['href', 'title', 'target', 'rel'],
+        'img': ['src', 'alt', 'width', 'height', 'title'],
+        'span': ['class', 'style'],
+        'div': ['class', 'style']
+    };
+    const SAFE_URL_RE = /^https?:\/\//i;
+
+    function sanitizeHTML(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        sanitizeNode(template.content);
+        return template.innerHTML;
+    }
+
+    function sanitizeNode(node) {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+            if (child.nodeType === Node.TEXT_NODE) continue;
+            if (child.nodeType !== Node.ELEMENT_NODE) {
+                child.remove();
+                continue;
+            }
+            const tag = child.tagName.toLowerCase();
+            if (!ALLOWED_TAGS.has(tag)) {
+                child.replaceWith(document.createTextNode(child.textContent));
+                continue;
+            }
+            const allowed = ALLOWED_ATTRS[tag] || [];
+            for (const attr of Array.from(child.attributes)) {
+                if (!allowed.includes(attr.name)) child.removeAttribute(attr.name);
+            }
+            if (tag === 'a') {
+                const href = child.getAttribute('href');
+                if (href && !SAFE_URL_RE.test(href)) child.removeAttribute('href');
+                child.setAttribute('target', '_blank');
+                child.setAttribute('rel', 'noopener noreferrer');
+            }
+            if (tag === 'img') {
+                const src = child.getAttribute('src');
+                if (src && !SAFE_URL_RE.test(src)) { child.remove(); continue; }
+            }
+            if (child.hasAttribute('style')) {
+                const style = child.getAttribute('style');
+                const safeStyle = style.replace(/[^;]+/g, (rule) => {
+                    const prop = rule.split(':')[0].trim().toLowerCase();
+                    return ['color', 'font-size', 'text-align', 'text-decoration', 'font-weight', 'font-style'].includes(prop) ? rule : '';
+                }).replace(/;{2,}/g, ';').replace(/^;|;$/g, '');
+                if (safeStyle) child.setAttribute('style', safeStyle);
+                else child.removeAttribute('style');
+            }
+            sanitizeNode(child);
+        }
     }
 
     // ============================================
@@ -175,6 +239,22 @@
                 badge.textContent = p.unread > 9 ? '9+' : String(p.unread);
                 tab.appendChild(badge);
             }
+
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'tab-close';
+            closeBtn.textContent = '\u00d7';
+            closeBtn.style.cssText = 'margin-left:4px;color:#666;font-size:12px;cursor:pointer;line-height:1;';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                delete conversations[p.username];
+                if (activePartner === p.username) {
+                    const keys = Object.keys(conversations);
+                    activePartner = keys.length > 0 ? keys[0] : null;
+                }
+                refreshUI();
+            });
+            tab.appendChild(closeBtn);
+
             tab.addEventListener('click', () => {
                 activePartner = p.username;
                 if (conversations[p.username]) conversations[p.username].unread = 0;
@@ -220,7 +300,7 @@
             author.textContent = msg.author;
 
             const content = document.createElement('div');
-            content.innerHTML = msg.html;
+            content.innerHTML = sanitizeHTML(msg.html);
 
             const time = document.createElement('div');
             time.className = 'whisper-msg-time';
@@ -307,6 +387,28 @@
                 boxElement.style.right = 'auto';
             }
         });
+    }
+
+    function sendWhisperNotification(partner, messageText) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+        if (document.hasFocus()) return;
+
+        const body = messageText.length > 150 ? messageText.substring(0, 150) + '...' : messageText;
+
+        const notification = new Notification(`Whisper from ${partner}`, {
+            body: body,
+            icon: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
+            tag: 'kees-whisper-' + Date.now(),
+            requireInteraction: false
+        });
+
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+
+        setTimeout(() => notification.close(), 5000);
     }
 
     function sendWhisper(text) {
@@ -531,11 +633,11 @@
         // Send
         function doSend() {
             const text = input.value.trim();
-            if (text) { sendWhisper(text); input.value = ''; }
+            if (text) { sendWhisper(text); input.value = ''; input.focus(); }
         }
         sendBtn.addEventListener('click', doSend);
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); doSend(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doSend(); }
         });
 
         document.body.appendChild(boxElement);
@@ -603,6 +705,14 @@
                 }
 
                 if (!activePartner) activePartner = partner;
+
+                // Notify for incoming whispers
+                if (msg.direction === 'in') {
+                    // Extract plain text from HTML
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = msg.html;
+                    sendWhisperNotification(partner, tmp.textContent.trim());
+                }
 
                 if (closed) {
                     closed = false;
