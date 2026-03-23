@@ -6,10 +6,11 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 
 ### Chat Features
 - **Emote Bar** - Quick access to custom and site emotes
-- **Format Bar** - BBCode formatting buttons (bold, italic, spoiler, etc.)
+- **Extended Format Bar** - BBCode formatting buttons (Bold, Italic, Underline, Strikethrough, Center, Size, Code, URL, Color, Rainbow, Image, Bullets) — replaces the site's built-in toolbar
+- **Size Picker** - Text size selection with preset sizes
 - **Color Picker** - Advanced color selection for text formatting
 - **Rainbow Text** - Animated rainbow text effect
-- **WYSIWYG Editor** - Toggle between raw BBCode and visual editing mode
+- **WYSIWYG Editor** - Toggle between raw BBCode and visual editing mode (supports center and size formatting)
 - **Custom Emotes** - Add and manage your own custom emotes
 - **Image Blacklist** - Filter images from chat (supports bulk adding multiple URLs)
 - **Watched Users** - Highlight messages from users you're watching
@@ -17,6 +18,8 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
 - **Zipline Upload** - Upload media to your Zipline instance (images auto-wrapped in [img] tags, EXIF stripping enabled by default)
 - **Mention Notifications** - Browser notifications when someone mentions you in chat (with optional message preview)
+- **Mention Sort** - @mention autocomplete sorted by recent chat activity instead of alphabetical
+- **@everyone Expansion** - Type `@everyone` to mention all users in your configured list
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 
 ### Forum Features
@@ -58,6 +61,7 @@ Click the extension icon in your browser toolbar to access settings:
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
 - **Chat Settings** - Mention notifications, scrollback limit
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
+- **@everyone List** - Manage usernames for @everyone expansion
 - **Muted Users** - Manage your muted users list
 
 ### Chat Page

@@ -5,14 +5,18 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 ## Features
 
 **Chat:**
-- Emote bar, format bar, color picker, rainbow text
-- WYSIWYG editor for visual BBCode editing
+- Extended format bar (Bold, Italic, Underline, Strikethrough, Center, Size, Code, URL, Color, Rainbow, Image, Bullets)
+- WYSIWYG editor for visual BBCode editing (including center and size support)
+- Size picker with preset sizes
 - Custom emotes and image blacklist
 - Watched users highlighting
 - YouTube link titles
 - Double-click to edit messages
 - Zipline upload integration (with EXIF stripping)
 - Mention notifications
+- @everyone expansion (configurable user list in settings)
+- Mention autocomplete sorted by recent activity
+- Hides official chat toolbar (replaced by extension's enhanced toolbar)
 - Configurable scrollback limit (up to 5000 messages)
 
 **Forum:**
