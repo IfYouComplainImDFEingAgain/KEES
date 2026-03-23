@@ -13,7 +13,11 @@
         WHISPER_POSITION: 'kees-whisper-position-global',
         WHISPER_STATE: 'kees-whisper-state-global',
         WHISPER_HIDE_MAIN: 'kees-whisper-hide-main',
-        WHISPER_RETENTION: 'kees-whisper-retention'
+        WHISPER_RETENTION: 'kees-whisper-retention',
+        GLOBAL_CHAT: 'kees-global-chat',
+        CHAT_WS_URL: 'kees-chat-ws-url',
+        CHAT_LAST_ROOM: 'kees-chat-last-room',
+        CHAT_USER: 'kees-chat-user'
     };
 
     let maxHistory = 100;
@@ -23,6 +27,203 @@
     let closed = false;
     let savedCollapsed = false;
     let savedPosition = null;
+
+    // View mode: 'whispers' or 'chat'
+    let viewMode = 'whispers';
+    let globalChatEnabled = false;
+
+    // ============================================
+    // GLOBAL CHAT - WEBSOCKET CLIENT
+    // ============================================
+
+    let chatWs = null;
+    let chatWsUrl = null;
+    let chatRoom = null;
+    let chatUser = null;
+    let chatMessages = [];
+    let chatReconnectTimer = null;
+    let chatRooms = []; // [{ id, name }]
+    const CHAT_MAX_MESSAGES = 200;
+
+    function scrapeWsUrl() {
+        // Try to find chat_ws_url in inline scripts on any page
+        const scripts = document.querySelectorAll('script:not([src])');
+        for (const script of scripts) {
+            const match = script.textContent.match(/chat_ws_url\s*[:=]\s*["']([^"']+)["']/);
+            if (match) return match[1];
+        }
+        // Construct from known path pattern — the chat.js overrides
+        // host/port/protocol anyway, so we just need the WS path
+        // Common path: /ws or /chat/ws
+        // Try to find it from any script that mentions a websocket path
+        for (const script of scripts) {
+            const wsMatch = script.textContent.match(/["'](wss?:\/\/[^"']*\/ws[^"']*)["']/);
+            if (wsMatch) return wsMatch[1];
+        }
+        return null;
+    }
+
+    function scrapeRooms() {
+        const links = document.querySelectorAll('a[href*="/chat/"]');
+        const rooms = [];
+        links.forEach(a => {
+            const match = a.href.match(/\/chat\/[^/]+\.(\d+)\//);
+            if (match) {
+                const id = parseInt(match[1], 10);
+                const name = a.textContent.trim();
+                if (id && name && !rooms.find(r => r.id === id)) {
+                    rooms.push({ id, name });
+                }
+            }
+        });
+        return rooms;
+    }
+
+    function chatConnect() {
+        if (!chatWsUrl || !chatRoom) return;
+        chatDisconnect();
+
+        try {
+            const url = new URL(chatWsUrl);
+            url.hostname = window.location.hostname;
+            url.port = window.location.port;
+            url.protocol = window.location.protocol === 'http:' ? 'ws:' : 'wss:';
+
+            chatWs = new WebSocket(url.href);
+
+            chatWs.addEventListener('open', () => {
+                chatWs.send('/join ' + chatRoom);
+                chatAddSystemMessage('Connected to chat');
+            });
+
+            chatWs.addEventListener('message', (e) => {
+                chatHandleMessage(e.data);
+            });
+
+            chatWs.addEventListener('close', () => {
+                chatAddSystemMessage('Disconnected. Reconnecting...');
+                chatReconnectTimer = setTimeout(chatConnect, 3000);
+            });
+
+            chatWs.addEventListener('error', () => {
+                // close event will handle reconnect
+            });
+        } catch (e) {
+            chatAddSystemMessage('Failed to connect: ' + e.message);
+        }
+    }
+
+    function chatDisconnect() {
+        if (chatReconnectTimer) {
+            clearTimeout(chatReconnectTimer);
+            chatReconnectTimer = null;
+        }
+        if (chatWs) {
+            chatWs.onopen = null;
+            chatWs.onclose = null;
+            chatWs.onerror = null;
+            chatWs.onmessage = null;
+            if (chatWs.readyState === WebSocket.OPEN || chatWs.readyState === WebSocket.CONNECTING) {
+                chatWs.close(1000, 'Closing');
+            }
+            chatWs = null;
+        }
+    }
+
+    function chatHandleMessage(data) {
+        let parsed;
+        try {
+            parsed = JSON.parse(data);
+        } catch {
+            chatAddSystemMessage(data);
+            return;
+        }
+
+        if (parsed.system) {
+            chatAddSystemMessage(parsed.system);
+        }
+
+        if (parsed.messages) {
+            for (const msg of parsed.messages) {
+                const author = msg.author ? msg.author.username : null;
+                const text = msg.message || '';
+                chatAddMessage(author, text, msg.message_date);
+            }
+        }
+
+        if (parsed.whisper) {
+            // Whispers are handled separately via storage
+        }
+    }
+
+    function chatAddSystemMessage(text) {
+        chatMessages.push({ system: true, text: text, timestamp: Math.floor(Date.now() / 1000) });
+        if (chatMessages.length > CHAT_MAX_MESSAGES) {
+            chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
+        }
+        if (viewMode === 'chat') renderChatMessages();
+    }
+
+    function chatAddMessage(author, html, timestamp) {
+        chatMessages.push({
+            system: false,
+            author: author || 'Unknown',
+            html: html,
+            timestamp: timestamp || Math.floor(Date.now() / 1000)
+        });
+        if (chatMessages.length > CHAT_MAX_MESSAGES) {
+            chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
+        }
+        if (viewMode === 'chat') renderChatMessages();
+    }
+
+    function chatSend(text) {
+        if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
+        chatWs.send(text);
+    }
+
+    function renderChatMessages() {
+        if (!boxElement) return;
+        const container = boxElement.querySelector('.whisper-messages');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (chatMessages.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'whisper-empty';
+            empty.textContent = chatWsUrl ? 'No messages yet' : 'Visit a chat page first to connect';
+            container.appendChild(empty);
+            return;
+        }
+
+        for (const msg of chatMessages) {
+            const el = document.createElement('div');
+
+            if (msg.system) {
+                el.className = 'whisper-msg chat-system';
+                el.textContent = msg.text;
+            } else {
+                el.className = 'whisper-msg chat-msg';
+                const authorSpan = document.createElement('span');
+                authorSpan.className = 'chat-msg-author';
+                authorSpan.textContent = msg.author;
+
+                const sep = document.createTextNode(': ');
+
+                const contentSpan = document.createElement('span');
+                contentSpan.className = 'chat-msg-content';
+                contentSpan.innerHTML = sanitizeHTML(msg.html);
+
+                el.appendChild(authorSpan);
+                el.appendChild(sep);
+                el.appendChild(contentSpan);
+            }
+
+            container.appendChild(el);
+        }
+
+        container.scrollTop = container.scrollHeight;
+    }
 
     // ============================================
     // STORAGE HELPERS
@@ -109,6 +310,19 @@
             #sneed-whisper-box .whisper-send { background: #4a9eff; border: none; border-radius: 4px; color: #fff; padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 600; }
             #sneed-whisper-box .whisper-send:hover { background: #3a8eef; }
             #sneed-whisper-box .whisper-no-chat { color: #ff8844; font-size: 10px; text-align: center; padding: 2px; background: #16162a; border-top: 1px solid #333; }
+            #sneed-whisper-box .whisper-view-toggle { background: none; border: 1px solid #444; border-radius: 3px; color: #999; font-size: 10px; cursor: pointer; padding: 2px 6px; margin-right: 6px; transition: all 0.15s; }
+            #sneed-whisper-box .whisper-view-toggle:hover { color: #fff; border-color: #666; }
+            #sneed-whisper-box .whisper-view-toggle.active { color: #4a9eff; border-color: #4a9eff; }
+            #sneed-whisper-box .chat-system { color: #666; font-style: italic; font-size: 11px; padding: 2px 0; align-self: center; max-width: 100%; }
+            #sneed-whisper-box .chat-msg { color: #ddd; font-size: 12px; padding: 2px 0; max-width: 100%; align-self: stretch; word-wrap: break-word; }
+            #sneed-whisper-box .chat-msg-author { color: #4a9eff; font-weight: 600; font-size: 12px; }
+            #sneed-whisper-box .chat-msg-content { color: #ddd; }
+            #sneed-whisper-box .chat-msg-content img { max-height: 80px; max-width: 100%; vertical-align: middle; }
+            #sneed-whisper-box .chat-msg-content a { color: #6ab0ff; }
+            #sneed-whisper-box .chat-room-selector { display: flex; align-items: center; padding: 4px 8px; background: #16162a; border-bottom: 1px solid #333; gap: 4px; }
+            #sneed-whisper-box .chat-room-select { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 4px; color: #eee; padding: 3px 6px; font-size: 11px; outline: none; font-family: inherit; }
+            #sneed-whisper-box .chat-room-select:focus { border-color: #4a9eff; }
+            #sneed-whisper-box .chat-room-label { color: #888; font-size: 10px; flex-shrink: 0; }
         `;
         document.head.appendChild(style);
     }
@@ -315,12 +529,41 @@
         container.scrollTop = container.scrollHeight;
     }
 
+    function switchView() {
+        if (!boxElement) return;
+
+        const title = boxElement.querySelector('.whisper-header-title');
+        if (title) title.textContent = viewMode === 'chat' ? 'Chat' : 'Whispers';
+
+        // Update toggle button states
+        boxElement.querySelectorAll('.whisper-view-toggle').forEach(btn => {
+            const isChat = btn.textContent === 'Chat';
+            btn.classList.toggle('active', (isChat && viewMode === 'chat') || (!isChat && viewMode === 'whispers'));
+        });
+
+        // Show/hide view-specific UI
+        const tabsRow = boxElement.querySelector('.whisper-tabs-row');
+        const newUserRow = boxElement.querySelector('.whisper-new-user-row');
+        const roomSel = boxElement.querySelector('.chat-room-selector');
+        if (tabsRow) tabsRow.style.display = viewMode === 'whispers' ? 'flex' : 'none';
+        if (newUserRow && viewMode === 'chat') newUserRow.style.display = 'none';
+        if (roomSel) roomSel.style.display = viewMode === 'chat' ? 'flex' : 'none';
+
+        refreshUI();
+    }
+
     function refreshUI() {
-        renderTabs();
-        renderMessages();
-        const input = boxElement ? boxElement.querySelector('.whisper-input') : null;
-        if (input) {
-            input.placeholder = activePartner ? `Whisper to ${activePartner}...` : 'Type a whisper...';
+        if (viewMode === 'chat') {
+            renderChatMessages();
+            const input = boxElement ? boxElement.querySelector('.whisper-input') : null;
+            if (input) input.placeholder = 'Send a message...';
+        } else {
+            renderTabs();
+            renderMessages();
+            const input = boxElement ? boxElement.querySelector('.whisper-input') : null;
+            if (input) {
+                input.placeholder = activePartner ? `Whisper to ${activePartner}...` : 'Type a whisper...';
+            }
         }
     }
 
@@ -448,7 +691,32 @@
 
         const title = document.createElement('span');
         title.className = 'whisper-header-title';
-        title.textContent = 'Whispers';
+        title.textContent = viewMode === 'chat' ? 'Chat' : 'Whispers';
+
+        // View toggle buttons (only if global chat is enabled)
+        const viewBtns = document.createElement('span');
+        if (globalChatEnabled) {
+            const whisperBtn = document.createElement('button');
+            whisperBtn.className = 'whisper-view-toggle' + (viewMode === 'whispers' ? ' active' : '');
+            whisperBtn.textContent = 'Whispers';
+            whisperBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                viewMode = 'whispers';
+                switchView();
+            });
+
+            const chatBtn = document.createElement('button');
+            chatBtn.className = 'whisper-view-toggle' + (viewMode === 'chat' ? ' active' : '');
+            chatBtn.textContent = 'Chat';
+            chatBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                viewMode = 'chat';
+                switchView();
+            });
+
+            viewBtns.appendChild(whisperBtn);
+            viewBtns.appendChild(chatBtn);
+        }
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'whisper-close-btn';
@@ -456,6 +724,7 @@
 
         header.appendChild(arrow);
         header.appendChild(title);
+        header.appendChild(viewBtns);
         header.appendChild(closeBtn);
 
         // Body
@@ -511,6 +780,44 @@
             else if (e.key === 'Escape') { newUserRow.style.display = 'none'; }
         });
 
+        // Room selector (chat mode)
+        const roomSelector = document.createElement('div');
+        roomSelector.className = 'chat-room-selector';
+        roomSelector.style.display = viewMode === 'chat' ? 'flex' : 'none';
+
+        const roomLabel = document.createElement('span');
+        roomLabel.className = 'chat-room-label';
+        roomLabel.textContent = 'Room:';
+
+        const roomSelect = document.createElement('select');
+        roomSelect.className = 'chat-room-select';
+
+        function populateRooms() {
+            roomSelect.innerHTML = '';
+            chatRooms.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = String(r.id);
+                opt.textContent = r.name;
+                if (r.id === chatRoom) opt.selected = true;
+                roomSelect.appendChild(opt);
+            });
+        }
+
+        populateRooms();
+
+        roomSelect.addEventListener('change', () => {
+            const newRoom = parseInt(roomSelect.value, 10);
+            if (newRoom && newRoom !== chatRoom) {
+                chatRoom = newRoom;
+                storageSet(STORAGE_KEYS.CHAT_LAST_ROOM, chatRoom);
+                chatMessages = [];
+                chatConnect();
+            }
+        });
+
+        roomSelector.appendChild(roomLabel);
+        roomSelector.appendChild(roomSelect);
+
         // Messages
         const messages = document.createElement('div');
         messages.className = 'whisper-messages';
@@ -535,6 +842,7 @@
 
         body.appendChild(tabsRow);
         body.appendChild(newUserRow);
+        body.appendChild(roomSelector);
         body.appendChild(messages);
         body.appendChild(inputRow);
         body.appendChild(noChat);
@@ -633,7 +941,14 @@
         // Send
         function doSend() {
             const text = input.value.trim();
-            if (text) { sendWhisper(text); input.value = ''; input.focus(); }
+            if (!text) return;
+            if (viewMode === 'chat') {
+                chatSend(text);
+            } else {
+                sendWhisper(text);
+            }
+            input.value = '';
+            input.focus();
         }
         sendBtn.addEventListener('click', doSend);
         input.addEventListener('keydown', (e) => {
@@ -664,9 +979,54 @@
             maxHistory = parseInt(retVal, 10) || 0;
         }
 
+        // Load global chat config
+        globalChatEnabled = (await storageGet(STORAGE_KEYS.GLOBAL_CHAT)) === true;
+        if (globalChatEnabled) {
+            chatWsUrl = await storageGet(STORAGE_KEYS.CHAT_WS_URL);
+            chatRoom = await storageGet(STORAGE_KEYS.CHAT_LAST_ROOM);
+            chatUser = await storageGet(STORAGE_KEYS.CHAT_USER);
+            chatRooms = scrapeRooms();
+
+            // Try to scrape WS URL from page if not stored
+            if (!chatWsUrl) {
+                chatWsUrl = scrapeWsUrl();
+                if (chatWsUrl) {
+                    storageSet(STORAGE_KEYS.CHAT_WS_URL, chatWsUrl);
+                }
+            }
+
+
+            // Construct WS URL if not stored or if stored URL has wrong path
+            if (!chatWsUrl || !chatWsUrl.includes('/chat.ws')) {
+                const proto = window.location.protocol === 'http:' ? 'ws:' : 'wss:';
+                const host = window.location.hostname;
+                const port = window.location.port ? ':' + window.location.port : '';
+                chatWsUrl = proto + '//' + host + port + '/chat.ws';
+                storageSet(STORAGE_KEYS.CHAT_WS_URL, chatWsUrl);
+            }
+
+            // Default to first room if none saved
+            if (!chatRoom && chatRooms.length > 0) {
+                chatRoom = chatRooms[0].id;
+            }
+        }
+
         await loadHistory();
         await loadPosition();
         await loadState();
+
+        // If global chat is enabled, show the box even without whisper history
+        if (globalChatEnabled && !closed) {
+            if (!boxElement) {
+                viewMode = 'chat';
+                createBox();
+            }
+            if (chatWsUrl && chatRoom) {
+                chatConnect();
+            } else {
+                chatAddSystemMessage('Visit a chat page once to enable global chat');
+            }
+        }
 
         if (Object.keys(conversations).length > 0 && !closed) {
             activePartner = Object.keys(conversations)[0];
@@ -744,12 +1104,24 @@
 
             if (changes[STORAGE_KEYS.WHISPER_GLOBAL]) {
                 if (changes[STORAGE_KEYS.WHISPER_GLOBAL].newValue !== true && boxElement) {
+                    chatDisconnect();
                     boxElement.remove();
                     boxElement = null;
                 }
             }
+
+            if (changes[STORAGE_KEYS.GLOBAL_CHAT]) {
+                globalChatEnabled = changes[STORAGE_KEYS.GLOBAL_CHAT].newValue === true;
+                if (!globalChatEnabled) {
+                    chatDisconnect();
+                }
+            }
         });
     }
+
+    window.addEventListener('beforeunload', () => {
+        chatDisconnect();
+    });
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

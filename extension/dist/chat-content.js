@@ -302,7 +302,11 @@
       WHISPER_RETENTION: "kees-whisper-retention",
       WHISPER_HIDE_MAIN: "kees-whisper-hide-main",
       WHISPER_GLOBAL: "kees-whisper-global",
-      WHISPER_LATEST: "kees-whisper-latest"
+      WHISPER_LATEST: "kees-whisper-latest",
+      GLOBAL_CHAT: "kees-global-chat",
+      CHAT_WS_URL: "kees-chat-ws-url",
+      CHAT_LAST_ROOM: "kees-chat-last-room",
+      CHAT_USER: "kees-chat-user"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -5104,6 +5108,40 @@
     const ui = SNEED.ui;
     const features = SNEED.features;
     const util = SNEED.util;
+    function captureChatConfig() {
+      window.addEventListener("__kees_chat_config", (e) => {
+        const data = e.detail;
+        if (data && data.wsUrl) {
+          chrome.storage.local.set({
+            [state.STORAGE_KEYS.CHAT_WS_URL]: data.wsUrl,
+            [state.STORAGE_KEYS.CHAT_USER]: data.user || null
+          });
+        }
+      }, { once: true });
+      const script = document.createElement("script");
+      script.textContent = `
+            (function() {
+                if (typeof APP !== 'undefined' && APP.chat_ws_url) {
+                    window.dispatchEvent(new CustomEvent('__kees_chat_config', {
+                        detail: {
+                            wsUrl: APP.chat_ws_url,
+                            user: APP.user ? { id: APP.user.id, username: APP.user.username } : null
+                        }
+                    }));
+                }
+            })();
+        `;
+      document.documentElement.appendChild(script);
+      script.remove();
+      function saveRoom() {
+        const room = parseInt(window.location.hash.substring(1), 10);
+        if (room > 0) {
+          chrome.storage.local.set({ [state.STORAGE_KEYS.CHAT_LAST_ROOM]: room });
+        }
+      }
+      saveRoom();
+      window.addEventListener("hashchange", saveRoom);
+    }
     function hideOfficialToolbar(doc) {
       if (doc.getElementById("sneed-hide-toolbar")) return;
       const style = doc.createElement("style");
@@ -5281,6 +5319,7 @@
       }
       log.info("Initializing Sneedchat Enhancer Extension...");
       await storage.initAll();
+      captureChatConfig();
       function waitForReady() {
         if (document.readyState === "loading") {
           events.addGlobalEventListener(document, "DOMContentLoaded", () => {

@@ -201,7 +201,11 @@
         WHISPER_RETENTION: 'kees-whisper-retention',
         WHISPER_HIDE_MAIN: 'kees-whisper-hide-main',
         WHISPER_GLOBAL: 'kees-whisper-global',
-        WHISPER_LATEST: 'kees-whisper-latest'
+        WHISPER_LATEST: 'kees-whisper-latest',
+        GLOBAL_CHAT: 'kees-global-chat',
+        CHAT_WS_URL: 'kees-chat-ws-url',
+        CHAT_LAST_ROOM: 'kees-chat-last-room',
+        CHAT_USER: 'kees-chat-user'
     };
 
     // ============================================

@@ -16,6 +16,50 @@
     const util = SNEED.util;
 
     // ============================================
+    // CAPTURE CHAT CONFIG FOR GLOBAL CHAT
+    // ============================================
+
+    function captureChatConfig() {
+        // Listen for the config from the injected page script
+        window.addEventListener('__kees_chat_config', (e) => {
+            const data = e.detail;
+            if (data && data.wsUrl) {
+                chrome.storage.local.set({
+                    [state.STORAGE_KEYS.CHAT_WS_URL]: data.wsUrl,
+                    [state.STORAGE_KEYS.CHAT_USER]: data.user || null
+                });
+            }
+        }, { once: true });
+
+        // Inject a script into the page to read APP and post it back
+        const script = document.createElement('script');
+        script.textContent = `
+            (function() {
+                if (typeof APP !== 'undefined' && APP.chat_ws_url) {
+                    window.dispatchEvent(new CustomEvent('__kees_chat_config', {
+                        detail: {
+                            wsUrl: APP.chat_ws_url,
+                            user: APP.user ? { id: APP.user.id, username: APP.user.username } : null
+                        }
+                    }));
+                }
+            })();
+        `;
+        document.documentElement.appendChild(script);
+        script.remove();
+
+        // Capture room from URL hash
+        function saveRoom() {
+            const room = parseInt(window.location.hash.substring(1), 10);
+            if (room > 0) {
+                chrome.storage.local.set({ [state.STORAGE_KEYS.CHAT_LAST_ROOM]: room });
+            }
+        }
+        saveRoom();
+        window.addEventListener('hashchange', saveRoom);
+    }
+
+    // ============================================
     // HIDE OFFICIAL CHAT TOOLBAR
     // ============================================
 
@@ -277,6 +321,9 @@
 
         // Initialize all storage caches (emotes, blacklist, wysiwyg mode)
         await storage.initAll();
+
+        // Capture chat WS URL and room for global chat
+        captureChatConfig();
 
         // Wait for DOM ready
         function waitForReady() {

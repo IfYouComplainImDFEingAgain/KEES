@@ -23,6 +23,7 @@
     const STORAGE_KEY_WHISPER_GLOBAL = 'kees-whisper-global';
     const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
     const STORAGE_KEY_WHISPER_RETENTION = 'kees-whisper-retention';
+    const STORAGE_KEY_GLOBAL_CHAT = 'kees-global-chat';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -145,6 +146,20 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Global chat element
+    const globalChat = document.getElementById('global-chat');
+
+    chrome.storage.local.get([STORAGE_KEY_GLOBAL_CHAT], (result) => {
+        globalChat.checked = result[STORAGE_KEY_GLOBAL_CHAT] === true;
+    });
+
+    globalChat.addEventListener('change', () => {
+        const enabled = globalChat.checked;
+        chrome.storage.local.set({ [STORAGE_KEY_GLOBAL_CHAT]: enabled }, () => {
+            showStatus(enabled ? 'Global chat box enabled' : 'Global chat box disabled');
         });
     });
 
