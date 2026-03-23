@@ -193,10 +193,14 @@
         WATCHED_USERS: 'sneedchat-watched-users',
         DISABLE_HOMEPAGE_CHAT: 'sneedchat-disable-homepage-chat',
         EVERYONE_LIST: 'sneedchat-everyone-list',
-        WHISPER_PERSISTENCE: 'kees-whisper-persistence',
         WHISPER_HISTORY: 'kees-whisper-history',
         WHISPER_POSITION: 'kees-whisper-position',
-        WHISPER_HIDE_MAIN: 'kees-whisper-hide-main'
+        WHISPER_POSITION_GLOBAL: 'kees-whisper-position-global',
+        WHISPER_STATE: 'kees-whisper-state',
+        WHISPER_STATE_GLOBAL: 'kees-whisper-state-global',
+        WHISPER_HIDE_MAIN: 'kees-whisper-hide-main',
+        WHISPER_GLOBAL: 'kees-whisper-global',
+        WHISPER_LATEST: 'kees-whisper-latest'
     };
 
     // ============================================

@@ -294,10 +294,14 @@
       WATCHED_USERS: "sneedchat-watched-users",
       DISABLE_HOMEPAGE_CHAT: "sneedchat-disable-homepage-chat",
       EVERYONE_LIST: "sneedchat-everyone-list",
-      WHISPER_PERSISTENCE: "kees-whisper-persistence",
       WHISPER_HISTORY: "kees-whisper-history",
       WHISPER_POSITION: "kees-whisper-position",
-      WHISPER_HIDE_MAIN: "kees-whisper-hide-main"
+      WHISPER_POSITION_GLOBAL: "kees-whisper-position-global",
+      WHISPER_STATE: "kees-whisper-state",
+      WHISPER_STATE_GLOBAL: "kees-whisper-state-global",
+      WHISPER_HIDE_MAIN: "kees-whisper-hide-main",
+      WHISPER_GLOBAL: "kees-whisper-global",
+      WHISPER_LATEST: "kees-whisper-latest"
     };
     const runtimeState = {
       emoteBarVisible: false,
@@ -2082,19 +2086,30 @@
         doc.removeEventListener("mousemove", onMouseMove);
         doc.removeEventListener("mouseup", onMouseUp);
         if (hasDragged) {
-          if (savePositionTimer) clearTimeout(savePositionTimer);
-          savePositionTimer = setTimeout(() => {
-            const rect = box.getBoundingClientRect();
-            const win = doc.defaultView || window;
-            if (callbacks.onPositionChange) {
-              callbacks.onPositionChange({
-                x: rect.left / win.innerWidth,
-                y: rect.top / win.innerHeight
-              });
-            }
-          }, 300);
+          saveBoxLayout();
         }
       }
+      function saveBoxLayout() {
+        if (savePositionTimer) clearTimeout(savePositionTimer);
+        savePositionTimer = setTimeout(() => {
+          const rect = box.getBoundingClientRect();
+          const win = doc.defaultView || window;
+          if (callbacks.onPositionChange) {
+            callbacks.onPositionChange({
+              x: rect.left / win.innerWidth,
+              y: rect.top / win.innerHeight,
+              width: rect.width,
+              height: rect.height
+            });
+          }
+        }, 300);
+      }
+      const resizeObserver = new ResizeObserver(() => {
+        if (!body.classList.contains("collapsed")) {
+          saveBoxLayout();
+        }
+      });
+      resizeObserver.observe(box);
       header.addEventListener("mousedown", onMouseDown);
       header.addEventListener("click", (e) => {
         if (e.target === closeBtn) return;
@@ -2197,7 +2212,7 @@
       });
       container.scrollTop = container.scrollHeight;
     }
-    function applyPosition(box, pos, doc) {
+    function applyPosition(box, pos, doc, applySize) {
       if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return;
       const win = doc.defaultView || window;
       const x = Math.max(0, Math.min(win.innerWidth - box.offsetWidth, pos.x * win.innerWidth));
@@ -2206,6 +2221,10 @@
       box.style.right = "auto";
       box.style.left = x + "px";
       box.style.top = y + "px";
+      if (applySize !== false) {
+        if (pos.width) box.style.width = pos.width + "px";
+        if (pos.height) box.style.height = pos.height + "px";
+      }
     }
     function expand(box) {
       const body = box.querySelector(".whisper-body");
@@ -4551,10 +4570,11 @@
     let boxElement = null;
     let currentDoc = null;
     let closed = false;
-    let persistenceEnabled = false;
+    let globalEnabled = false;
     let hideMainChat = true;
     let saveDebounceTimer = null;
     let savedPosition = null;
+    let savedCollapsed = false;
     async function loadPosition() {
       try {
         const pos = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_POSITION);
@@ -4568,12 +4588,28 @@
       savedPosition = pos;
       SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_POSITION, pos);
     }
-    async function loadPersistenceState() {
+    async function loadState() {
       try {
-        const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE);
-        persistenceEnabled = result === true;
+        const state = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_STATE);
+        if (state && typeof state === "object") {
+          savedCollapsed = state.collapsed === true;
+          closed = state.closed === true;
+        }
       } catch (e) {
-        persistenceEnabled = false;
+      }
+    }
+    function saveState() {
+      SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_STATE, {
+        collapsed: savedCollapsed,
+        closed
+      });
+    }
+    async function loadGlobalState() {
+      try {
+        const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL);
+        globalEnabled = result === true;
+      } catch (e) {
+        globalEnabled = false;
       }
     }
     async function loadHideMainState() {
@@ -4585,7 +4621,7 @@
       }
     }
     async function loadHistory() {
-      if (!persistenceEnabled) return;
+      if (!globalEnabled) return;
       try {
         const history = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY);
         if (history && typeof history === "object") {
@@ -4602,7 +4638,7 @@
       }
     }
     function saveHistory() {
-      if (!persistenceEnabled) return;
+      if (!globalEnabled) return;
       if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
       saveDebounceTimer = setTimeout(() => {
         const serialized = {};
@@ -4629,6 +4665,14 @@
         convo.unread++;
       }
       saveHistory();
+      if (globalEnabled) {
+        SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_LATEST, {
+          partner: partnerUsername,
+          partnerId,
+          msg,
+          ts: Date.now()
+        });
+      }
     }
     function markRead(partner) {
       if (conversations[partner]) {
@@ -4644,7 +4688,9 @@
     function ensureBox(doc) {
       if (boxElement && doc.getElementById("sneed-whisper-box")) return;
       boxElement = SNEED.ui.whisperBox.createWhisperBox(doc, {
-        onToggle: () => {
+        onToggle: (expanded) => {
+          savedCollapsed = !expanded;
+          saveState();
         },
         onClose: () => {
           if (boxElement) {
@@ -4652,6 +4698,7 @@
             boxElement = null;
           }
           closed = true;
+          saveState();
         },
         onTabClick: (username) => {
           activePartner = username;
@@ -4736,16 +4783,22 @@
       };
     }
     async function start(doc) {
-      await loadPersistenceState();
+      await loadGlobalState();
       await loadHideMainState();
       await loadPosition();
+      await loadState();
       await loadHistory();
       chrome.storage.onChanged.addListener((changes) => {
-        if (changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE]) {
-          persistenceEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE].newValue === true;
+        if (changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL]) {
+          globalEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL].newValue === true;
         }
         if (changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN]) {
           hideMainChat = changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN].newValue !== false;
+        }
+      });
+      chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === "relaySendWhisper" && message.partner && message.text) {
+          sendWhisper(message.partner, message.text, doc);
         }
       });
       const container = SNEED.util.findMessageContainer(doc);
@@ -4776,6 +4829,8 @@
         if (newWhispers) {
           if (closed) {
             closed = false;
+            savedCollapsed = false;
+            saveState();
           }
           ensureBox(doc);
           SNEED.ui.whisperBox.expand(boxElement);
@@ -4784,17 +4839,20 @@
       });
       observer.observe(container, { childList: true, subtree: true });
       SNEED.core.events.addManagedObserver(container, observer);
-      if (Object.keys(conversations).length > 0) {
+      if (Object.keys(conversations).length > 0 && !closed) {
         if (!activePartner) {
           activePartner = Object.keys(conversations)[0];
         }
         ensureBox(doc);
         refreshUI();
-        const body = boxElement.querySelector(".whisper-body");
-        const arrow = boxElement.querySelector(".whisper-toggle-arrow");
-        if (body) body.classList.add("collapsed");
-        if (arrow) arrow.classList.add("collapsed");
-        boxElement.classList.remove("expanded");
+        if (savedCollapsed) {
+          const body = boxElement.querySelector(".whisper-body");
+          const arrow = boxElement.querySelector(".whisper-toggle-arrow");
+          if (body) body.classList.add("collapsed");
+          if (arrow) arrow.classList.add("collapsed");
+          boxElement.classList.remove("expanded");
+          boxElement.style.height = "";
+        }
       }
     }
     SNEED.features = SNEED.features || {};

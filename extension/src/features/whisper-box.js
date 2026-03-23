@@ -14,10 +14,11 @@
     let boxElement = null;
     let currentDoc = null;
     let closed = false; // User explicitly closed the box
-    let persistenceEnabled = false;
+    let globalEnabled = false;
     let hideMainChat = true; // Default to true
     let saveDebounceTimer = null;
     let savedPosition = null;
+    let savedCollapsed = false;
 
     // ============================================
     // PERSISTENCE
@@ -39,12 +40,31 @@
         SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_POSITION, pos);
     }
 
-    async function loadPersistenceState() {
+    async function loadState() {
         try {
-            const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE);
-            persistenceEnabled = result === true;
+            const state = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_STATE);
+            if (state && typeof state === 'object') {
+                savedCollapsed = state.collapsed === true;
+                closed = state.closed === true;
+            }
         } catch (e) {
-            persistenceEnabled = false;
+            // ignore
+        }
+    }
+
+    function saveState() {
+        SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_STATE, {
+            collapsed: savedCollapsed,
+            closed: closed
+        });
+    }
+
+    async function loadGlobalState() {
+        try {
+            const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL);
+            globalEnabled = result === true;
+        } catch (e) {
+            globalEnabled = false;
         }
     }
 
@@ -59,7 +79,7 @@
     }
 
     async function loadHistory() {
-        if (!persistenceEnabled) return;
+        if (!globalEnabled) return;
         try {
             const history = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY);
             if (history && typeof history === 'object') {
@@ -77,7 +97,7 @@
     }
 
     function saveHistory() {
-        if (!persistenceEnabled) return;
+        if (!globalEnabled) return;
         if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
         saveDebounceTimer = setTimeout(() => {
             const serialized = {};
@@ -115,6 +135,16 @@
         }
 
         saveHistory();
+
+        // Broadcast to other tabs when global is enabled
+        if (globalEnabled) {
+            SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_LATEST, {
+                partner: partnerUsername,
+                partnerId: partnerId,
+                msg: msg,
+                ts: Date.now()
+            });
+        }
     }
 
     function markRead(partner) {
@@ -138,13 +168,17 @@
         if (boxElement && doc.getElementById('sneed-whisper-box')) return;
 
         boxElement = SNEED.ui.whisperBox.createWhisperBox(doc, {
-            onToggle: () => {},
+            onToggle: (expanded) => {
+                savedCollapsed = !expanded;
+                saveState();
+            },
             onClose: () => {
                 if (boxElement) {
                     boxElement.remove();
                     boxElement = null;
                 }
                 closed = true;
+                saveState();
             },
             onTabClick: (username) => {
                 activePartner = username;
@@ -265,18 +299,26 @@
     // ============================================
 
     async function start(doc) {
-        await loadPersistenceState();
+        await loadGlobalState();
         await loadHideMainState();
         await loadPosition();
+        await loadState();
         await loadHistory();
 
         // Listen for setting changes
         chrome.storage.onChanged.addListener((changes) => {
-            if (changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE]) {
-                persistenceEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_PERSISTENCE].newValue === true;
+            if (changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL]) {
+                globalEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL].newValue === true;
             }
             if (changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN]) {
                 hideMainChat = changes[SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN].newValue !== false;
+            }
+        });
+
+        // Listen for relayed whisper sends from non-chat tabs
+        chrome.runtime.onMessage.addListener((message) => {
+            if (message.type === 'relaySendWhisper' && message.partner && message.text) {
+                sendWhisper(message.partner, message.text, doc);
             }
         });
 
@@ -319,6 +361,8 @@
                 if (closed) {
                     // Re-open on new whisper
                     closed = false;
+                    savedCollapsed = false;
+                    saveState();
                 }
                 ensureBox(doc);
                 SNEED.ui.whisperBox.expand(boxElement);
@@ -329,19 +373,22 @@
         observer.observe(container, { childList: true, subtree: true });
         SNEED.core.events.addManagedObserver(container, observer);
 
-        // If we have history from storage, show the box
-        if (Object.keys(conversations).length > 0) {
+        // If we have history from storage and not closed, show the box
+        if (Object.keys(conversations).length > 0 && !closed) {
             if (!activePartner) {
                 activePartner = Object.keys(conversations)[0];
             }
             ensureBox(doc);
             refreshUI();
-            // Start collapsed if loaded from history
-            const body = boxElement.querySelector('.whisper-body');
-            const arrow = boxElement.querySelector('.whisper-toggle-arrow');
-            if (body) body.classList.add('collapsed');
-            if (arrow) arrow.classList.add('collapsed');
-            boxElement.classList.remove('expanded');
+            // Apply saved collapsed state
+            if (savedCollapsed) {
+                const body = boxElement.querySelector('.whisper-body');
+                const arrow = boxElement.querySelector('.whisper-toggle-arrow');
+                if (body) body.classList.add('collapsed');
+                if (arrow) arrow.classList.add('collapsed');
+                boxElement.classList.remove('expanded');
+                boxElement.style.height = '';
+            }
         }
     }
 

@@ -106,6 +106,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         uploadToZipline(message.fileData, message.fileName, message.mimeType).then(sendResponse);
         return true; // Keep channel open for async response
     }
+
+    if (message.type === 'sendWhisper') {
+        // Relay whisper send to all chat tabs
+        chrome.tabs.query({ url: ['*://kiwifarms.st/chat/*', '*://kiwifarms.st/test-chat*', '*://kiwifarms.tw/chat/*', '*://kiwifarms.tw/test-chat*', '*://kiwifarms.net/chat/*', '*://kiwifarms.net/test-chat*'] }, (tabs) => {
+            let sent = false;
+            for (const tab of tabs) {
+                chrome.tabs.sendMessage(tab.id, {
+                    type: 'relaySendWhisper',
+                    partner: message.partner,
+                    text: message.text
+                });
+                sent = true;
+                break; // Only need one chat tab
+            }
+            sendResponse({ success: sent, error: sent ? null : 'No chat tab open' });
+        });
+        return true;
+    }
 });
 
 console.log('[KEES] Background service worker initialized');

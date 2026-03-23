@@ -20,7 +20,7 @@
     const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
     const STORAGE_KEY_ATTACHMENT_STRIP_EXIF = 'kees-attachment-strip-exif';
     const STORAGE_KEY_EVERYONE_LIST = 'sneedchat-everyone-list';
-    const STORAGE_KEY_WHISPER_PERSISTENCE = 'kees-whisper-persistence';
+    const STORAGE_KEY_WHISPER_GLOBAL = 'kees-whisper-global';
     const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
@@ -75,10 +75,10 @@
 
     // Load current settings
     // Whisper elements
-    const whisperPersistence = document.getElementById('whisper-persistence');
+    const whisperGlobal = document.getElementById('whisper-global');
     const whisperHideMain = document.getElementById('whisper-hide-main');
 
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_PERSISTENCE, STORAGE_KEY_WHISPER_HIDE_MAIN], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -87,7 +87,7 @@
         muteDisruptiveGuests.checked = result[STORAGE_KEY_MUTE_DISRUPTIVE] === true;
         // Default to true for privacy
         attachmentStripExif.checked = result[STORAGE_KEY_ATTACHMENT_STRIP_EXIF] !== false;
-        whisperPersistence.checked = result[STORAGE_KEY_WHISPER_PERSISTENCE] === true;
+        whisperGlobal.checked = result[STORAGE_KEY_WHISPER_GLOBAL] === true;
         // Default to true
         whisperHideMain.checked = result[STORAGE_KEY_WHISPER_HIDE_MAIN] !== false;
     });
@@ -147,12 +147,12 @@
         });
     });
 
-    // Save whisper persistence setting on change
-    whisperPersistence.addEventListener('change', () => {
-        const enabled = whisperPersistence.checked;
+    // Save whisper global setting on change
+    whisperGlobal.addEventListener('change', () => {
+        const enabled = whisperGlobal.checked;
 
-        chrome.storage.local.set({ [STORAGE_KEY_WHISPER_PERSISTENCE]: enabled }, () => {
-            showStatus(enabled ? 'Whisper persistence enabled' : 'Whisper persistence disabled');
+        chrome.storage.local.set({ [STORAGE_KEY_WHISPER_GLOBAL]: enabled }, () => {
+            showStatus(enabled ? 'Global whisper box enabled' : 'Global whisper box disabled');
         });
     });
 

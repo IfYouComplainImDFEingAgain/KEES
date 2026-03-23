@@ -781,7 +781,7 @@
      * @param {{ x: number, y: number }} pos - Normalized position (0-1)
      * @param {Document} doc
      */
-    function applyPosition(box, pos, doc) {
+    function applyPosition(box, pos, doc, applySize) {
         if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return;
         const win = doc.defaultView || window;
         const x = Math.max(0, Math.min(win.innerWidth - box.offsetWidth, pos.x * win.innerWidth));
@@ -790,8 +790,10 @@
         box.style.right = 'auto';
         box.style.left = x + 'px';
         box.style.top = y + 'px';
-        if (pos.width) box.style.width = pos.width + 'px';
-        if (pos.height) box.style.height = pos.height + 'px';
+        if (applySize !== false) {
+            if (pos.width) box.style.width = pos.width + 'px';
+            if (pos.height) box.style.height = pos.height + 'px';
+        }
     }
 
     /**

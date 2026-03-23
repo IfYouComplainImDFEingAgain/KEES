@@ -87,6 +87,23 @@
       ],
       "js": ["dist/chat-content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/*",
+        "https://kiwifarms.tw/*",
+        "https://kiwifarms.net/*"
+      ],
+      "exclude_matches": [
+        "https://kiwifarms.st/chat/*",
+        "https://kiwifarms.st/test-chat*",
+        "https://kiwifarms.tw/chat/*",
+        "https://kiwifarms.tw/test-chat*",
+        "https://kiwifarms.net/chat/*",
+        "https://kiwifarms.net/test-chat*"
+      ],
+      "js": ["src/whisper-content.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
