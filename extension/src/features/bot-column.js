@@ -13,20 +13,16 @@
     let hideFromMain = false;
 
     const STYLES = `
-        .sneed-chat-columns {
+        .sneed-has-bot-col {
             display: flex !important;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
+            flex-direction: row !important;
         }
-        .sneed-chat-columns > .sneed-main-col {
-            flex: 1;
-            min-width: 0;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+        .sneed-has-bot-col > #chat-scroller,
+        .sneed-has-bot-col > :first-child:not(.sneed-bot-col) {
+            flex: 1 !important;
+            min-width: 0 !important;
         }
-        .sneed-chat-columns > .sneed-bot-col {
+        .sneed-bot-col {
             width: 300px;
             min-width: 200px;
             max-width: 50%;
@@ -147,31 +143,17 @@
         const chatMessages = doc.getElementById('chat-messages');
         if (!chatMessages) return;
 
-        // Find the scrollable parent of chat-messages
         const scroller = chatMessages.closest('#chat-scroller') || chatMessages.parentElement;
         if (!scroller || doc.getElementById('sneed-bot-column')) return;
 
         injectStyles(doc);
 
-        // Wrap existing content in a columns layout
-        const wrapper = doc.createElement('div');
-        wrapper.className = 'sneed-chat-columns';
-        wrapper.id = 'sneed-chat-columns';
-
-        // Main column wraps the scroller
-        const mainCol = doc.createElement('div');
-        mainCol.className = 'sneed-main-col';
-
-        // Move scroller's children into main column
-        // Actually, wrap the scroller itself
+        // Make the scroller's parent a flex row and add bot column as sibling
         const parent = scroller.parentElement;
-        parent.insertBefore(wrapper, scroller);
-        wrapper.appendChild(scroller);
-        scroller.classList.add('sneed-main-col');
+        parent.classList.add('sneed-has-bot-col');
 
-        // Bot column
         const botCol = createColumn(doc);
-        wrapper.appendChild(botCol);
+        parent.appendChild(botCol);
 
         const botMessages = botCol.querySelector('.sneed-bot-col-messages');
 
@@ -214,6 +196,19 @@
         const author = getMessageAuthor(msgEl);
         if (!author || !isBotUser(author)) return false;
 
+        const msgId = msgEl.id || msgEl.dataset.id;
+
+        // Check if this message already exists in bot column (edit/replace)
+        if (msgId) {
+            const existing = botContainer.querySelector(`[id="${msgId}"], [data-id="${msgId}"]`);
+            if (existing) {
+                const clone = msgEl.cloneNode(true);
+                existing.replaceWith(clone);
+                if (hideFromMain) msgEl.style.display = 'none';
+                return false; // Don't count as new for auto-scroll
+            }
+        }
+
         // Clone into bot column
         const clone = msgEl.cloneNode(true);
         botContainer.appendChild(clone);
@@ -227,19 +222,12 @@
     }
 
     function teardownColumn(doc) {
-        // Clean up the column layout
-        const wrapper = doc.getElementById('sneed-chat-columns');
-        if (wrapper) {
-            const scroller = wrapper.querySelector('#chat-scroller') || wrapper.querySelector('.sneed-main-col');
-            if (scroller) {
-                scroller.classList.remove('sneed-main-col');
-                wrapper.parentElement.insertBefore(scroller, wrapper);
-            }
-            wrapper.remove();
-        }
-
         const botCol = doc.getElementById('sneed-bot-column');
-        if (botCol) botCol.remove();
+        if (botCol) {
+            const parent = botCol.parentElement;
+            botCol.remove();
+            if (parent) parent.classList.remove('sneed-has-bot-col');
+        }
 
         // Show any hidden bot messages
         const chatMessages = doc.getElementById('chat-messages');

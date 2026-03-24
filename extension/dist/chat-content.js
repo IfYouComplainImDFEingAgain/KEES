@@ -5135,20 +5135,16 @@
     let enabled = false;
     let hideFromMain = false;
     const STYLES = `
-        .sneed-chat-columns {
+        .sneed-has-bot-col {
             display: flex !important;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
+            flex-direction: row !important;
         }
-        .sneed-chat-columns > .sneed-main-col {
-            flex: 1;
-            min-width: 0;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+        .sneed-has-bot-col > #chat-scroller,
+        .sneed-has-bot-col > :first-child:not(.sneed-bot-col) {
+            flex: 1 !important;
+            min-width: 0 !important;
         }
-        .sneed-chat-columns > .sneed-bot-col {
+        .sneed-bot-col {
             width: 300px;
             min-width: 200px;
             max-width: 50%;
@@ -5254,17 +5250,10 @@
       const scroller = chatMessages.closest("#chat-scroller") || chatMessages.parentElement;
       if (!scroller || doc.getElementById("sneed-bot-column")) return;
       injectStyles(doc);
-      const wrapper = doc.createElement("div");
-      wrapper.className = "sneed-chat-columns";
-      wrapper.id = "sneed-chat-columns";
-      const mainCol = doc.createElement("div");
-      mainCol.className = "sneed-main-col";
       const parent = scroller.parentElement;
-      parent.insertBefore(wrapper, scroller);
-      wrapper.appendChild(scroller);
-      scroller.classList.add("sneed-main-col");
+      parent.classList.add("sneed-has-bot-col");
       const botCol = createColumn(doc);
-      wrapper.appendChild(botCol);
+      parent.appendChild(botCol);
       const botMessages = botCol.querySelector(".sneed-bot-col-messages");
       const existing = chatMessages.querySelectorAll(".chat-message");
       existing.forEach((msg) => {
@@ -5296,6 +5285,16 @@
     function processMessage(msgEl, botContainer, doc) {
       const author = getMessageAuthor(msgEl);
       if (!author || !isBotUser(author)) return false;
+      const msgId = msgEl.id || msgEl.dataset.id;
+      if (msgId) {
+        const existing = botContainer.querySelector(`[id="${msgId}"], [data-id="${msgId}"]`);
+        if (existing) {
+          const clone2 = msgEl.cloneNode(true);
+          existing.replaceWith(clone2);
+          if (hideFromMain) msgEl.style.display = "none";
+          return false;
+        }
+      }
       const clone = msgEl.cloneNode(true);
       botContainer.appendChild(clone);
       if (hideFromMain) {
@@ -5304,17 +5303,12 @@
       return true;
     }
     function teardownColumn(doc) {
-      const wrapper = doc.getElementById("sneed-chat-columns");
-      if (wrapper) {
-        const scroller = wrapper.querySelector("#chat-scroller") || wrapper.querySelector(".sneed-main-col");
-        if (scroller) {
-          scroller.classList.remove("sneed-main-col");
-          wrapper.parentElement.insertBefore(scroller, wrapper);
-        }
-        wrapper.remove();
-      }
       const botCol = doc.getElementById("sneed-bot-column");
-      if (botCol) botCol.remove();
+      if (botCol) {
+        const parent = botCol.parentElement;
+        botCol.remove();
+        if (parent) parent.classList.remove("sneed-has-bot-col");
+      }
       const chatMessages = doc.getElementById("chat-messages");
       if (chatMessages) {
         chatMessages.querySelectorAll('.chat-message[style*="display: none"]').forEach((msg) => {
