@@ -5326,6 +5326,214 @@
     SNEED.features.botColumn = { start };
   })();
 
+  // src/features/wave-animation.js
+  (function() {
+    "use strict";
+    const SNEED = window.SNEED;
+    const WAVE_INTERVAL = 200;
+    const SIZE_NORMAL = 5;
+    const SIZE_HIGHLIGHT = 7;
+    const RAINBOW_COLORS = ["#ff0000", "#ff8800", "#ffff00", "#00ff00", "#0088ff", "#8800ff"];
+    let activeWave = null;
+    let pageScriptInjected = false;
+    function injectPageScript(doc) {
+      if (pageScriptInjected) return;
+      pageScriptInjected = true;
+      const script = doc.createElement("script");
+      script.src = chrome.runtime.getURL("src/wave-edit-page.js");
+      doc.documentElement.appendChild(script);
+      script.addEventListener("load", () => script.remove());
+    }
+    function sendEdit(doc, uuid, message) {
+      const win = doc.defaultView || window;
+      win.dispatchEvent(new CustomEvent("__kees_edit_message", {
+        detail: { uuid, message }
+      }));
+    }
+    function buildSizeWaveFrame(chars, pos) {
+      let result = "";
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i].trim() === "") {
+          result += chars[i];
+          continue;
+        }
+        if (i === pos) {
+          result += `[size=${SIZE_HIGHLIGHT}]${chars[i]}[/size]`;
+        } else {
+          result += chars[i];
+        }
+      }
+      return result;
+    }
+    function buildColorWaveFrame(chars, pos) {
+      let result = "";
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i].trim() === "") {
+          result += chars[i];
+          continue;
+        }
+        if (i === pos) {
+          result += `[color=#ff0000]${chars[i]}[/color]`;
+        } else {
+          result += chars[i];
+        }
+      }
+      return result;
+    }
+    function buildRainbowWaveFrame(chars, pos) {
+      let result = "";
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i].trim() === "") {
+          result += chars[i];
+          continue;
+        }
+        const colorIdx = (i + pos) % RAINBOW_COLORS.length;
+        result += `[color=${RAINBOW_COLORS[colorIdx]}]${chars[i]}[/color]`;
+      }
+      return result;
+    }
+    const WAVE_TYPES = {
+      sizewave: buildSizeWaveFrame,
+      colorwave: buildColorWaveFrame,
+      rainbowwave: buildRainbowWaveFrame
+    };
+    function startWave(type, uuid, originalText, doc) {
+      stopWave(doc);
+      injectPageScript(doc);
+      const cleanText = originalText.replace(/\[[^\]]+\]/g, "");
+      const chars = [...cleanText];
+      if (!cleanText.trim() || chars.length === 0) return;
+      const builder = WAVE_TYPES[type];
+      if (!builder) return;
+      let frame = 0;
+      activeWave = {
+        type,
+        uuid,
+        originalText: cleanText,
+        timer: setInterval(() => {
+          const message = builder(chars, frame);
+          sendEdit(doc, uuid, message);
+          frame++;
+          if (frame >= chars.length) {
+            clearInterval(activeWave.timer);
+            setTimeout(() => {
+              sendEdit(doc, uuid, cleanText);
+              activeWave = null;
+            }, WAVE_INTERVAL);
+          }
+        }, WAVE_INTERVAL)
+      };
+    }
+    function stopWave(doc) {
+      if (activeWave) {
+        clearInterval(activeWave.timer);
+        if (activeWave.uuid && activeWave.originalText && doc) {
+          sendEdit(doc, activeWave.uuid, activeWave.originalText);
+        }
+        activeWave = null;
+      }
+    }
+    function getLastOwnMessage(doc) {
+      var _a, _b;
+      const messages = doc.querySelectorAll("#chat-messages .chat-message");
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.classList.contains("chat-message--whisper")) continue;
+        if (msg.classList.contains("chat-message--systemMsg")) continue;
+        const id = msg.id || msg.dataset.id;
+        if (!id) continue;
+        const editBtn = msg.querySelector(".button.edit");
+        const deleteBtn = msg.querySelector(".button.delete");
+        if (editBtn || deleteBtn) {
+          const uuid = id.replace("chat-message-", "");
+          const raw = msg.dataset.raw;
+          const text = raw || ((_b = (_a = msg.querySelector(".message")) == null ? void 0 : _a.textContent) == null ? void 0 : _b.trim()) || "";
+          return { uuid, text };
+        }
+      }
+      return null;
+    }
+    function handleCommand(command, doc) {
+      const trimmed = command.trim();
+      const parts = trimmed.split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      if (cmd === "/stopwave") {
+        stopWave(doc);
+        return true;
+      }
+      const type = cmd.substring(1);
+      if (WAVE_TYPES[type]) {
+        const argText = parts.slice(1).join(" ");
+        if (argText) {
+          waitForOwnMessage(doc, argText, (uuid, text) => {
+            startWave(type, uuid, text, doc);
+          });
+          const inputElement = doc.getElementById("new-message-input");
+          if (inputElement) {
+            inputElement.textContent = argText;
+            SNEED.util.positionCursorAtEnd(doc, inputElement);
+          }
+          return false;
+        } else {
+          const lastMsg = getLastOwnMessage(doc);
+          if (!lastMsg) return true;
+          startWave(type, lastMsg.uuid, lastMsg.text, doc);
+          return true;
+        }
+      }
+      return false;
+    }
+    function waitForOwnMessage(doc, expectedText, callback) {
+      const chatMessages = doc.getElementById("chat-messages");
+      if (!chatMessages) return;
+      const observer = new MutationObserver((mutations) => {
+        var _a, _b;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            if (!node.classList || !node.classList.contains("chat-message")) continue;
+            if (node.classList.contains("chat-message--whisper")) continue;
+            if (node.classList.contains("chat-message--systemMsg")) continue;
+            const editBtn = node.querySelector(".button.edit");
+            const deleteBtn = node.querySelector(".button.delete");
+            if (!editBtn && !deleteBtn) continue;
+            const id = node.id || node.dataset.id;
+            if (!id) continue;
+            const uuid = id.replace("chat-message-", "");
+            const raw = node.dataset.raw;
+            const text = raw || ((_b = (_a = node.querySelector(".message")) == null ? void 0 : _a.textContent) == null ? void 0 : _b.trim()) || "";
+            observer.disconnect();
+            setTimeout(() => callback(uuid, text), 100);
+            return;
+          }
+        }
+      });
+      observer.observe(chatMessages, { childList: true });
+      setTimeout(() => observer.disconnect(), 5e3);
+    }
+    function start(doc) {
+      const inputElement = doc.getElementById("new-message-input");
+      const messageForm = doc.getElementById("new-message-form");
+      if (!inputElement || !messageForm) return;
+      SNEED.core.events.addManagedEventListener(inputElement, "keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          const text = (inputElement.textContent || "").trim();
+          if (handleCommand(text, doc)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            inputElement.textContent = "";
+            const event = new Event("input", { bubbles: true });
+            inputElement.dispatchEvent(event);
+            return false;
+          }
+        }
+      }, true);
+      window.addEventListener("beforeunload", () => stopWave(doc));
+    }
+    SNEED.features = SNEED.features || {};
+    SNEED.features.waveAnimation = { start, stopWave };
+  })();
+
   // src/bootstrap.js
   (function() {
     "use strict";
@@ -5416,6 +5624,9 @@
           if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
             SNEED.features.botColumn.start(document);
           }
+          if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
+            SNEED.features.waveAnimation.start(document);
+          }
           log.info("Emote and format bars injected into test-chat");
         }
       } else {
@@ -5464,6 +5675,9 @@
                 }
                 if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
                   SNEED.features.botColumn.start(iframeDoc);
+                }
+                if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
+                  SNEED.features.waveAnimation.start(iframeDoc);
                 }
                 log.info("Emote and format bars injected into iframe");
               }

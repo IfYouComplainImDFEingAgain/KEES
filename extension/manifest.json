@@ -116,7 +116,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/attachment-exif-page.js"],
+      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js"],
       "matches": [
         "https://kiwifarms.st/*",
         "https://kiwifarms.tw/*",

@@ -136,6 +136,11 @@
                     SNEED.features.botColumn.start(document);
                 }
 
+                // Start wave animation feature
+                if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
+                    SNEED.features.waveAnimation.start(document);
+                }
+
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
@@ -211,6 +216,11 @@
                             // Start bot column feature
                             if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
                                 SNEED.features.botColumn.start(iframeDoc);
+                            }
+
+                            // Start wave animation feature
+                            if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
+                                SNEED.features.waveAnimation.start(iframeDoc);
                             }
 
                             log.info('Emote and format bars injected into iframe');

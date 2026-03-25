@@ -107,6 +107,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // Keep channel open for async response
     }
 
+    if (message.type === 'editMessage') {
+        // Relay message edit to chat tab
+        chrome.tabs.query({ url: ['*://kiwifarms.st/chat/*', '*://kiwifarms.st/test-chat*', '*://kiwifarms.tw/chat/*', '*://kiwifarms.tw/test-chat*', '*://kiwifarms.net/chat/*', '*://kiwifarms.net/test-chat*'] }, (tabs) => {
+            for (const tab of tabs) {
+                chrome.tabs.sendMessage(tab.id, {
+                    type: 'relayEditMessage',
+                    uuid: message.uuid,
+                    message: message.message
+                });
+                break;
+            }
+        });
+        sendResponse({ success: true });
+        return true;
+    }
+
     if (message.type === 'sendWhisper') {
         // Relay whisper send to all chat tabs
         chrome.tabs.query({ url: ['*://kiwifarms.st/chat/*', '*://kiwifarms.st/test-chat*', '*://kiwifarms.tw/chat/*', '*://kiwifarms.tw/test-chat*', '*://kiwifarms.net/chat/*', '*://kiwifarms.net/test-chat*'] }, (tabs) => {
