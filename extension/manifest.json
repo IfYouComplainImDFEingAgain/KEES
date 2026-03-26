@@ -128,7 +128,7 @@
     "gecko": {
       "id": "kees@kiwifarms.extension",
       "data_collection_permissions": {
-        "required": []
+        "required": ["none"]
       }
     }
   }
