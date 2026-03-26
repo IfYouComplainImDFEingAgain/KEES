@@ -83,9 +83,11 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 ## Building from Source
 
 ### Prerequisites
-- **Operating System**: Any (Linux, macOS, Windows)
-- **Node.js**: Version 16 or higher ([download](https://nodejs.org/))
+- **Operating System**: Any (Linux, macOS, Windows, including ARM64)
+- **Node.js**: Version 16 or higher (tested with Node 20; compatible with Node 24)
 - **npm**: Included with Node.js
+
+No other tools are required. The only build dependency is [esbuild](https://esbuild.github.io/) (open source, installed locally via npm, pinned in `package-lock.json`).
 
 ### Build Instructions
 
@@ -95,9 +97,9 @@ git clone https://github.com/IfYouComplainImDFEingAgain/KEES.git
 cd KEES/extension
 ```
 
-2. Install dependencies:
+2. Install dependencies (uses lockfile for exact versions):
 ```bash
-npm install
+npm ci
 ```
 
 3. Build the extension:
