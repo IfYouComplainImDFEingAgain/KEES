@@ -22,22 +22,11 @@
             }
         }, { once: true });
 
-        // Inject a script into the page to read APP config and post it back
+        // Inject external script to read APP config (CSP-safe)
         const script = document.createElement('script');
-        script.textContent = `
-            (function() {
-                if (typeof APP !== 'undefined' && APP.chat_ws_url) {
-                    window.dispatchEvent(new CustomEvent('__kees_chat_config', {
-                        detail: {
-                            wsUrl: APP.chat_ws_url,
-                            user: APP.user ? { id: APP.user.id, username: APP.user.username } : null
-                        }
-                    }));
-                }
-            })();
-        `;
+        script.src = chrome.runtime.getURL('src/capture-chat-config.js');
         document.documentElement.appendChild(script);
-        script.remove();
+        script.addEventListener('load', () => script.remove());
 
         function saveRoom() {
             const room = parseInt(window.location.hash.substring(1), 10);

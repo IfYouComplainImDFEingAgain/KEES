@@ -142,12 +142,11 @@
     "128": "icons/kiwi-logo-extension-128.png"
   },
   "background": {
-    "service_worker": "src/background.js",
-    "scripts": ["src/background.js"]
+    "service_worker": "src/background.js"
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js"],
+      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/capture-chat-config.js"],
       "matches": [
         "https://kiwifarms.st/*",
         "https://kiwifarms.tw/*",
