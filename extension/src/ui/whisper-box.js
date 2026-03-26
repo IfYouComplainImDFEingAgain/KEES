@@ -837,7 +837,7 @@
     function renderTabs(box, partners, activePartner, onTabClick, onTabClose, isOnline) {
         const tabs = box.querySelector('.whisper-tabs');
         if (!tabs) return;
-        tabs.innerHTML = '';
+        tabs.replaceChildren();
 
         partners.forEach(p => {
             const tab = document.createElement('div');
@@ -882,7 +882,7 @@
     function renderMessages(box, msgs) {
         const container = box.querySelector('.whisper-messages');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
 
         if (!msgs || msgs.length === 0) {
             const empty = document.createElement('div');

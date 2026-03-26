@@ -218,7 +218,7 @@
         if (!boxElement) return;
         const container = boxElement.querySelector('.whisper-messages');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
 
         if (chatMessages.length === 0) {
             const empty = document.createElement('div');
@@ -476,7 +476,7 @@
         if (!boxElement) return;
         const tabs = boxElement.querySelector('.whisper-tabs');
         if (!tabs) return;
-        tabs.innerHTML = '';
+        tabs.replaceChildren();
 
         getPartnerList().forEach(p => {
             const tab = document.createElement('div');
@@ -522,7 +522,7 @@
         if (!boxElement) return;
         const container = boxElement.querySelector('.whisper-messages');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
 
         const msgs = activePartner && conversations[activePartner]
             ? conversations[activePartner].messages : [];
@@ -833,7 +833,7 @@
         roomSelect.className = 'chat-room-select';
 
         function populateRooms() {
-            roomSelect.innerHTML = '';
+            roomSelect.replaceChildren();
             chatRooms.forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = String(r.id);
