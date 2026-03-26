@@ -1,6 +1,6 @@
 # Kiwi Extra Enhancement Suite (KEES)
 
-A browser extension that adds enhanced features to Kiwi Farms chat and forum pages.
+A browser extension that adds enhanced features Xenforo chat and forum pages.
 
 ## Features
 
@@ -51,11 +51,6 @@ A browser extension that adds enhanced features to Kiwi Farms chat and forum pag
 3. Open `about:debugging#/runtime/this-firefox`
 4. Click "Load Temporary Add-on" and select `extension/manifest.json`
 
-## Supported Sites
-
-- kiwifarms.st
-- kiwifarms.tw
-- kiwifarms.net
 
 ## Screenshots
 
