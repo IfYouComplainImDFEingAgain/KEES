@@ -25,7 +25,7 @@
         "https://kiwifarms.net/"
       ],
       "css": ["src/homepage-hide.css"],
-      "js": ["dist/homepage-content.js"],
+      "js": ["src/homepage-content.js"],
       "run_at": "document_start"
     },
     {
@@ -52,7 +52,12 @@
         "https://kiwifarms.tw/threads/*",
         "https://kiwifarms.net/threads/*"
       ],
-      "js": ["dist/forum-content.js"],
+      "js": [
+        "src/features/featured-posts.js",
+        "src/features/user-muting.js",
+        "src/features/reaction-filter.js",
+        "src/features/disruptive-guest-filter.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -61,7 +66,7 @@
         "https://kiwifarms.tw/members/*",
         "https://kiwifarms.net/members/*"
       ],
-      "js": ["dist/member-content.js"],
+      "js": ["src/features/user-forum-activity.js"],
       "run_at": "document_idle"
     },
     {
@@ -85,7 +90,33 @@
         "https://kiwifarms.net/chat/*",
         "https://kiwifarms.net/test-chat*"
       ],
-      "js": ["dist/chat-content.js"],
+      "js": [
+        "src/core/namespace.js",
+        "src/util/dom.js",
+        "src/core/state.js",
+        "src/core/storage.js",
+        "src/core/events.js",
+        "src/core/bbcode-converter.js",
+        "src/ui/styles.js",
+        "src/ui/color-picker.js",
+        "src/ui/size-picker.js",
+        "src/ui/whisper-box.js",
+        "src/ui/dialogs.js",
+        "src/ui/bars.js",
+        "src/features/formatting.js",
+        "src/features/input.js",
+        "src/features/blacklist-filter.js",
+        "src/features/watched-users.js",
+        "src/features/youtube-titles.js",
+        "src/features/double-click-edit.js",
+        "src/features/zipline-upload.js",
+        "src/features/mention-notifications.js",
+        "src/features/mention-sort.js",
+        "src/features/whisper-box.js",
+        "src/features/bot-column.js",
+        "src/features/wave-animation.js",
+        "src/bootstrap.js"
+      ],
       "run_at": "document_idle"
     },
     {

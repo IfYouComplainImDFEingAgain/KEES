@@ -352,4 +352,7 @@
     SNEED.injectEmoteBar = injectEmoteBar;
     SNEED.checkAndReinject = checkAndReinject;
 
+    // Auto-initialize
+    SNEED.init();
+
 })();

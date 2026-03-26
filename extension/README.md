@@ -80,79 +80,24 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 ### User Profiles
 - **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally)
 
-## Building from Source
+## Development
 
-### Prerequisites
-- **Operating System**: Any (Linux, macOS, Windows, including ARM64)
-- **Node.js**: Version 16 or higher (tested with Node 20; compatible with Node 24)
-- **npm**: Included with Node.js
-
-No other tools are required. The only build dependency is [esbuild](https://esbuild.github.io/) (open source, installed locally via npm, pinned in `package-lock.json`).
-
-### Build Instructions
-
-1. Clone the repository and navigate to the extension directory:
-```bash
-git clone https://github.com/IfYouComplainImDFEingAgain/KEES.git
-cd KEES/extension
-```
-
-2. Install dependencies (uses lockfile for exact versions):
-```bash
-npm ci
-```
-
-3. Build the extension:
-```bash
-npm run build
-```
-
-This runs `node build.js` which uses [esbuild](https://esbuild.github.io/) to bundle the source files in `src/` into the output files in `dist/`. No minification or obfuscation is applied. The build produces:
-- `dist/chat-content.js` — bundled from `src/chat-content.js` and its imports
-- `dist/forum-content.js` — bundled from `src/forum-content.js`
-- `dist/homepage-content.js` — bundled from `src/homepage-content.js`
-- `dist/member-content.js` — bundled from `src/member-content.js`
-
-The following files are loaded directly without bundling:
-- `src/background.js` — service worker / background script
-- `src/whisper-content.js` — global whisper box (self-contained)
-- `src/features/scrollback.js` — scrollback limit override
-- `src/attachment-exif-inject.js` — EXIF stripping injector
-- `src/attachment-exif-page.js` — EXIF stripping page script
-- `src/wave-edit-page.js` — message edit page script
-- `popup/popup.html` and `popup/popup.js` — settings UI
-
-4. The built extension is in the `extension/` directory and can be loaded directly in the browser.
-
-### Watch mode (development)
-```bash
-npm run watch
-```
+No build step required. All source files are loaded directly by the browser — no bundler, no transpilation, no minification. Load the `extension/` directory directly in your browser to develop.
 
 ### Project Structure
 ```
 extension/
 ├── manifest.json          # Extension manifest (MV3)
-├── build.js               # esbuild bundler config
-├── package.json
-├── dist/                  # Built output
-│   ├── chat-content.js
-│   ├── forum-content.js
-│   ├── homepage-content.js
-│   └── member-content.js
 ├── icons/
-│   ├── icon-48.png
-│   └── icon-128.png
 ├── popup/
 │   ├── popup.html
 │   └── popup.js
 └── src/
-    ├── background.js      # Service worker for API calls
-    ├── chat-content.js    # Chat page entry point
-    ├── forum-content.js   # Forum thread entry point
-    ├── homepage-content.js # Homepage entry point
-    ├── member-content.js  # User profile entry point
-    ├── homepage-hide.css  # CSS for instant content hiding
+    ├── background.js      # Service worker
+    ├── homepage-content.js # Homepage script
+    ├── whisper-content.js  # Global whisper/chat box
+    ├── bootstrap.js        # Chat page initialization
+    ├── homepage-hide.css
     ├── core/              # Core modules
     ├── ui/                # UI components
     ├── features/          # Feature modules

@@ -17,21 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: extension/package-lock.json
-
-      - name: Install dependencies
-        working-directory: extension
-        run: npm ci
-
-      - name: Build extension
-        working-directory: extension
-        run: npm run build
-
       - name: Get version
         id: version
         run: |
@@ -43,14 +28,7 @@ jobs:
           cd extension
           zip -r ../kees-${{ steps.version.outputs.version }}.zip \
             manifest.json \
-            dist/ \
-            src/background.js \
-            src/homepage-hide.css \
-            src/attachment-exif-inject.js \
-            src/attachment-exif-page.js \
-            src/wave-edit-page.js \
-            src/whisper-content.js \
-            src/features/scrollback.js \
+            src/ \
             popup/ \
             icons/
 
