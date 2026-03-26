@@ -48,6 +48,8 @@ jobs:
             src/homepage-hide.css \
             src/attachment-exif-inject.js \
             src/attachment-exif-page.js \
+            src/wave-edit-page.js \
+            src/whisper-content.js \
             src/features/scrollback.js \
             popup/ \
             icons/

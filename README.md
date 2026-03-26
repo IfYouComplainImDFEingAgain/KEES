@@ -141,7 +141,7 @@ Your userscript manager will prompt you to install. Click "Install" to confirm.
 1. Open Tampermonkey/Violentmonkey dashboard
 2. Click the "+" tab to create a new script
 3. Delete any default content
-4. Copy the contents of [`user-bar/loader.user.js`](user-bar/loader.user.js) and paste it
+4. Copy the contents of [`old-greasemonkey-scripts/user-bar/loader.user.js`](old-greasemonkey-scripts/user-bar/loader.user.js) and paste it
 5. Click **File > Save** or press `Ctrl+S` (or `Cmd+S` on Mac)
 6. The script will automatically run on Sneedchat pages
 
@@ -185,7 +185,7 @@ Click the **ban icon** to manage blacklisted images. Blacklisted image URLs won'
 
 ## Additional Scripts
 
-### I LOVE CHRIS. YES I DO. (`ILOVECHRIS-YESIDO.js`)
+### I LOVE CHRIS. YES I DO. (`other-scripts/ILOVECHRIS-YESIDO.js`)
 
 A Tampermonkey userscript that automatically clicks the like button on Chris' DLive with random intervals.
 
@@ -200,6 +200,6 @@ A Tampermonkey userscript that automatically clicks the like button on Chris' DL
 1. Install Tampermonkey (see prerequisites above)
 2. Open Tampermonkey dashboard
 3. Create a new script
-4. Copy contents of `ILOVECHRIS-YESIDO.js` and paste it into the editor
+4. Copy contents of `other-scripts/ILOVECHRIS-YESIDO.js` and paste it into the editor
 5. Save the script
 6. Navigate to https://dlive.tv/djheartbeatz (must be logged in)
