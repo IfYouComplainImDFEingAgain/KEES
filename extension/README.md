@@ -1,6 +1,6 @@
 # Kiwi Extra Enhancement Suite (KEES)
 
-A browser extension that adds enhanced features to Kiwi Farms chat and forum pages.
+A browser extension that adds enhanced features to Xenforo chat and forum pages.
 
 ## Features
 
@@ -80,24 +80,49 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 ### User Profiles
 - **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally)
 
-## Development
+## Building from Source
 
 ### Prerequisites
-- Node.js 16+
-- npm
+- **Operating System**: Any (Linux, macOS, Windows)
+- **Node.js**: Version 16 or higher ([download](https://nodejs.org/))
+- **npm**: Included with Node.js
 
-### Setup
+### Build Instructions
+
+1. Clone the repository and navigate to the extension directory:
 ```bash
-cd extension
+git clone https://github.com/IfYouComplainImDFEingAgain/KEES.git
+cd KEES/extension
+```
+
+2. Install dependencies:
+```bash
 npm install
 ```
 
-### Build
+3. Build the extension:
 ```bash
 npm run build
 ```
 
-### Watch mode
+This runs `node build.js` which uses [esbuild](https://esbuild.github.io/) to bundle the source files in `src/` into the output files in `dist/`. No minification or obfuscation is applied. The build produces:
+- `dist/chat-content.js` — bundled from `src/chat-content.js` and its imports
+- `dist/forum-content.js` — bundled from `src/forum-content.js`
+- `dist/homepage-content.js` — bundled from `src/homepage-content.js`
+- `dist/member-content.js` — bundled from `src/member-content.js`
+
+The following files are loaded directly without bundling:
+- `src/background.js` — service worker / background script
+- `src/whisper-content.js` — global whisper box (self-contained)
+- `src/features/scrollback.js` — scrollback limit override
+- `src/attachment-exif-inject.js` — EXIF stripping injector
+- `src/attachment-exif-page.js` — EXIF stripping page script
+- `src/wave-edit-page.js` — message edit page script
+- `popup/popup.html` and `popup/popup.js` — settings UI
+
+4. The built extension is in the `extension/` directory and can be loaded directly in the browser.
+
+### Watch mode (development)
 ```bash
 npm run watch
 ```
@@ -132,12 +157,6 @@ extension/
     ├── util/              # Utilities
     └── bootstrap.js       # Initialization
 ```
-
-## Supported Sites
-
-- kiwifarms.st
-- kiwifarms.tw
-- kiwifarms.net
 
 ## License
 
