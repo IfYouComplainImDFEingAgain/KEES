@@ -2297,7 +2297,7 @@
     function renderTabs(box, partners, activePartner, onTabClick, onTabClose, isOnline) {
       const tabs = box.querySelector(".whisper-tabs");
       if (!tabs) return;
-      tabs.innerHTML = "";
+      tabs.replaceChildren();
       partners.forEach((p) => {
         const tab = document.createElement("div");
         tab.className = "whisper-tab" + (p.username === activePartner ? " active" : "");
@@ -2329,7 +2329,7 @@
     function renderMessages(box, msgs) {
       const container = box.querySelector(".whisper-messages");
       if (!container) return;
-      container.innerHTML = "";
+      container.replaceChildren();
       if (!msgs || msgs.length === 0) {
         const empty = document.createElement("div");
         empty.className = "whisper-empty";
@@ -4339,13 +4339,33 @@
             outline: none;
             margin-right: 4px;
         `;
-      btn.innerHTML = `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #888;">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-        `;
+      const svgNS = "http://www.w3.org/2000/svg";
+      function createUploadIcon() {
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("width", "24");
+        svg.setAttribute("height", "24");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+        svg.style.color = "#888";
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
+        const polyline = document.createElementNS(svgNS, "polyline");
+        polyline.setAttribute("points", "17 8 12 3 7 8");
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", "12");
+        line.setAttribute("y1", "3");
+        line.setAttribute("x2", "12");
+        line.setAttribute("y2", "15");
+        svg.appendChild(path);
+        svg.appendChild(polyline);
+        svg.appendChild(line);
+        return svg;
+      }
+      btn.appendChild(createUploadIcon());
       btn.addEventListener("mouseenter", () => {
         btn.style.background = "rgba(255,255,255,0.1)";
       });
@@ -4412,12 +4432,22 @@
       const inputElement = doc.getElementById("new-message-input");
       if (!inputElement) return;
       const uploadBtn = doc.getElementById("zipline-upload-button");
-      const originalHTML = uploadBtn.innerHTML;
-      uploadBtn.innerHTML = `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #888; animation: spin 1s linear infinite;">
-                <circle cx="12" cy="12" r="10" stroke-dasharray="30 60"/>
-            </svg>
-        `;
+      const originalChildren = Array.from(uploadBtn.childNodes).map((n) => n.cloneNode(true));
+      const spinSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      spinSvg.setAttribute("width", "24");
+      spinSvg.setAttribute("height", "24");
+      spinSvg.setAttribute("viewBox", "0 0 24 24");
+      spinSvg.setAttribute("fill", "none");
+      spinSvg.setAttribute("stroke", "currentColor");
+      spinSvg.setAttribute("stroke-width", "2");
+      spinSvg.style.cssText = "color: #888; animation: spin 1s linear infinite;";
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", "12");
+      circle.setAttribute("cy", "12");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("stroke-dasharray", "30 60");
+      spinSvg.appendChild(circle);
+      uploadBtn.replaceChildren(spinSvg);
       uploadBtn.disabled = true;
       if (!doc.getElementById("kees-spin-style")) {
         const style = doc.createElement("style");
@@ -4487,7 +4517,7 @@
         console.error("[KEES] Zipline upload error:", e);
         alert("Upload failed: " + e.message);
       } finally {
-        uploadBtn.innerHTML = originalHTML;
+        uploadBtn.replaceChildren(...originalChildren);
         uploadBtn.disabled = false;
       }
     }
@@ -4907,6 +4937,7 @@
           }
           closed = true;
           saveState();
+          showReopenButton(doc);
         },
         onTabClick: (username) => {
           activePartner = username;
@@ -4990,6 +5021,45 @@
         cancelable: true
       });
       chatInput.dispatchEvent(enterEvent);
+    }
+    function addReopenButton(doc) {
+      if (doc.getElementById("sneed-whisper-reopen")) return;
+      const btn = doc.createElement("button");
+      btn.id = "sneed-whisper-reopen";
+      btn.textContent = "Whispers";
+      btn.title = "Open whisper box";
+      btn.style.cssText = `
+            position: fixed; bottom: 8px; right: 16px; z-index: 9998;
+            background: #1a1a2e; color: #999; border: 1px solid #333;
+            border-radius: 6px; padding: 4px 12px; font-size: 11px;
+            cursor: pointer; font-family: inherit; display: none;
+        `;
+      btn.addEventListener("mouseenter", () => {
+        btn.style.color = "#fff";
+        btn.style.borderColor = "#4a9eff";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.color = "#999";
+        btn.style.borderColor = "#333";
+      });
+      btn.addEventListener("click", () => {
+        closed = false;
+        savedCollapsed = false;
+        saveState();
+        btn.style.display = "none";
+        ensureBox(doc);
+        refreshUI();
+      });
+      doc.body.appendChild(btn);
+      if (closed) btn.style.display = "block";
+    }
+    function showReopenButton(doc) {
+      const btn = doc.getElementById("sneed-whisper-reopen");
+      if (btn) btn.style.display = "block";
+    }
+    function hideReopenButton(doc) {
+      const btn = doc.getElementById("sneed-whisper-reopen");
+      if (btn) btn.style.display = "none";
     }
     function sendWhisperNotification(partner, messageText, doc) {
       if (!("Notification" in window)) return;
@@ -5099,6 +5169,7 @@
             closed = false;
             savedCollapsed = false;
             saveState();
+            hideReopenButton(doc);
           }
           ensureBox(doc);
           SNEED.ui.whisperBox.expand(boxElement);
@@ -5107,13 +5178,13 @@
       });
       observer.observe(container, { childList: true, subtree: true });
       SNEED.core.events.addManagedObserver(container, observer);
-      if (Object.keys(conversations).length > 0 && !closed) {
-        if (!activePartner) {
+      if (!closed) {
+        if (Object.keys(conversations).length > 0 && !activePartner) {
           activePartner = Object.keys(conversations)[0];
         }
         ensureBox(doc);
         refreshUI();
-        if (savedCollapsed) {
+        if (savedCollapsed || Object.keys(conversations).length === 0) {
           const body = boxElement.querySelector(".whisper-body");
           const arrow = boxElement.querySelector(".whisper-toggle-arrow");
           if (body) body.classList.add("collapsed");
@@ -5122,6 +5193,7 @@
           boxElement.style.height = "";
         }
       }
+      addReopenButton(doc);
     }
     SNEED.features = SNEED.features || {};
     SNEED.features.whisperBox = { start };

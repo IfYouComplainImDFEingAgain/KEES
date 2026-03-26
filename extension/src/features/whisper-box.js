@@ -190,6 +190,7 @@
                 }
                 closed = true;
                 saveState();
+                showReopenButton(doc);
             },
             onTabClick: (username) => {
                 activePartner = username;
@@ -294,6 +295,50 @@
             cancelable: true
         });
         chatInput.dispatchEvent(enterEvent);
+    }
+
+    // ============================================
+    // REOPEN BUTTON
+    // ============================================
+
+    function addReopenButton(doc) {
+        if (doc.getElementById('sneed-whisper-reopen')) return;
+
+        const btn = doc.createElement('button');
+        btn.id = 'sneed-whisper-reopen';
+        btn.textContent = 'Whispers';
+        btn.title = 'Open whisper box';
+        btn.style.cssText = `
+            position: fixed; bottom: 8px; right: 16px; z-index: 9998;
+            background: #1a1a2e; color: #999; border: 1px solid #333;
+            border-radius: 6px; padding: 4px 12px; font-size: 11px;
+            cursor: pointer; font-family: inherit; display: none;
+        `;
+        btn.addEventListener('mouseenter', () => { btn.style.color = '#fff'; btn.style.borderColor = '#4a9eff'; });
+        btn.addEventListener('mouseleave', () => { btn.style.color = '#999'; btn.style.borderColor = '#333'; });
+        btn.addEventListener('click', () => {
+            closed = false;
+            savedCollapsed = false;
+            saveState();
+            btn.style.display = 'none';
+            ensureBox(doc);
+            refreshUI();
+        });
+
+        doc.body.appendChild(btn);
+
+        // Show if currently closed
+        if (closed) btn.style.display = 'block';
+    }
+
+    function showReopenButton(doc) {
+        const btn = doc.getElementById('sneed-whisper-reopen');
+        if (btn) btn.style.display = 'block';
+    }
+
+    function hideReopenButton(doc) {
+        const btn = doc.getElementById('sneed-whisper-reopen');
+        if (btn) btn.style.display = 'none';
     }
 
     // ============================================
@@ -450,6 +495,7 @@
                     closed = false;
                     savedCollapsed = false;
                     saveState();
+                    hideReopenButton(doc);
                 }
                 ensureBox(doc);
                 SNEED.ui.whisperBox.expand(boxElement);
@@ -460,15 +506,14 @@
         observer.observe(container, { childList: true, subtree: true });
         SNEED.core.events.addManagedObserver(container, observer);
 
-        // If we have history from storage and not closed, show the box
-        if (Object.keys(conversations).length > 0 && !closed) {
-            if (!activePartner) {
+        // Always show the whisper box (collapsed if no history or was closed)
+        if (!closed) {
+            if (Object.keys(conversations).length > 0 && !activePartner) {
                 activePartner = Object.keys(conversations)[0];
             }
             ensureBox(doc);
             refreshUI();
-            // Apply saved collapsed state
-            if (savedCollapsed) {
+            if (savedCollapsed || Object.keys(conversations).length === 0) {
                 const body = boxElement.querySelector('.whisper-body');
                 const arrow = boxElement.querySelector('.whisper-toggle-arrow');
                 if (body) body.classList.add('collapsed');
@@ -477,6 +522,9 @@
                 boxElement.style.height = '';
             }
         }
+
+        // Add reopen button
+        addReopenButton(doc);
     }
 
     // ============================================

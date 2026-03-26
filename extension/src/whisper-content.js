@@ -637,6 +637,49 @@
         }, 300);
     }
 
+    function addReopenButton() {
+        if (document.getElementById('sneed-whisper-reopen')) return;
+        const btn = document.createElement('button');
+        btn.id = 'sneed-whisper-reopen';
+        btn.textContent = 'Whispers';
+        btn.title = 'Open whisper box';
+        btn.style.cssText = `
+            position: fixed; bottom: 8px; right: 16px; z-index: 9998;
+            background: #1a1a2e; color: #999; border: 1px solid #333;
+            border-radius: 6px; padding: 4px 12px; font-size: 11px;
+            cursor: pointer; font-family: inherit; display: none;
+        `;
+        btn.addEventListener('mouseenter', () => { btn.style.color = '#fff'; btn.style.borderColor = '#4a9eff'; });
+        btn.addEventListener('mouseleave', () => { btn.style.color = '#999'; btn.style.borderColor = '#333'; });
+        btn.addEventListener('click', () => {
+            closed = false;
+            savedCollapsed = false;
+            saveState();
+            btn.style.display = 'none';
+            createBox();
+            // Expand
+            const body = boxElement.querySelector('.whisper-body');
+            const arrow = boxElement.querySelector('.whisper-toggle-arrow');
+            if (body) body.classList.remove('collapsed');
+            if (arrow) arrow.classList.remove('collapsed');
+            boxElement.classList.add('expanded');
+            if (savedPosition && savedPosition.height) boxElement.style.height = savedPosition.height + 'px';
+            refreshUI();
+        });
+        document.body.appendChild(btn);
+        if (closed) btn.style.display = 'block';
+    }
+
+    function showReopenButton() {
+        const btn = document.getElementById('sneed-whisper-reopen');
+        if (btn) btn.style.display = 'block';
+    }
+
+    function hideReopenButton() {
+        const btn = document.getElementById('sneed-whisper-reopen');
+        if (btn) btn.style.display = 'none';
+    }
+
     function adjustOrientation() {
         if (!boxElement) return;
         requestAnimationFrame(() => {
@@ -976,6 +1019,7 @@
             boxElement = null;
             closed = true;
             saveState();
+            showReopenButton();
         });
 
         // Send
@@ -1055,24 +1099,20 @@
         await loadPosition();
         await loadState();
 
-        // If global chat is enabled, show the box even without whisper history
-        if (globalChatEnabled && !closed) {
-            if (!boxElement) {
-                viewMode = 'chat';
-                createBox();
+        // Always show the box if not closed
+        if (!closed) {
+            if (Object.keys(conversations).length > 0 && !activePartner) {
+                activePartner = Object.keys(conversations)[0];
             }
-            if (chatWsUrl && chatRoom) {
-                chatConnect();
-            } else {
-                chatAddSystemMessage('Visit a chat page once to enable global chat');
-            }
-        }
 
-        if (Object.keys(conversations).length > 0 && !closed) {
-            activePartner = Object.keys(conversations)[0];
+            if (globalChatEnabled) {
+                viewMode = 'chat';
+            }
+
             createBox();
-            // Apply saved collapsed state
-            if (!savedCollapsed && boxElement) {
+
+            // Expand if we have content and wasn't saved as collapsed
+            if (!savedCollapsed && (Object.keys(conversations).length > 0 || globalChatEnabled)) {
                 const body = boxElement.querySelector('.whisper-body');
                 const arrow = boxElement.querySelector('.whisper-toggle-arrow');
                 if (body) body.classList.remove('collapsed');
@@ -1083,7 +1123,16 @@
                 }
                 adjustOrientation();
             }
+
+            if (globalChatEnabled && chatWsUrl && chatRoom) {
+                chatConnect();
+            } else if (globalChatEnabled) {
+                chatAddSystemMessage('Visit a chat page once to enable global chat');
+            }
         }
+
+        // Add reopen button
+        addReopenButton();
 
         // Listen for new whispers from chat tab
         chrome.storage.onChanged.addListener((changes) => {
@@ -1118,6 +1167,7 @@
                     closed = false;
                     savedCollapsed = false;
                     saveState();
+                    hideReopenButton();
                 }
 
                 if (!boxElement) {
