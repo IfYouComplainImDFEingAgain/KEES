@@ -196,7 +196,8 @@
         pendingTimers: new Set(),
         wysiwygMode: true,
         disableHomepageChat: false,
-        everyoneList: []
+        everyoneList: [],
+        cachedBlacklist: null
     };
 
     SNEED.state = SNEED.state || {};

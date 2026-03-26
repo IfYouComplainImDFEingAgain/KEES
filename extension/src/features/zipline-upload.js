@@ -33,7 +33,7 @@
 
         const svgNS = 'http://www.w3.org/2000/svg';
         function createUploadIcon() {
-            const svg = document.createElementNS(svgNS, 'svg');
+            const svg = doc.createElementNS(svgNS, 'svg');
             svg.setAttribute('width', '24');
             svg.setAttribute('height', '24');
             svg.setAttribute('viewBox', '0 0 24 24');
@@ -43,11 +43,11 @@
             svg.setAttribute('stroke-linecap', 'round');
             svg.setAttribute('stroke-linejoin', 'round');
             svg.style.color = '#888';
-            const path = document.createElementNS(svgNS, 'path');
+            const path = doc.createElementNS(svgNS, 'path');
             path.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
-            const polyline = document.createElementNS(svgNS, 'polyline');
+            const polyline = doc.createElementNS(svgNS, 'polyline');
             polyline.setAttribute('points', '17 8 12 3 7 8');
-            const line = document.createElementNS(svgNS, 'line');
+            const line = doc.createElementNS(svgNS, 'line');
             line.setAttribute('x1', '12'); line.setAttribute('y1', '3');
             line.setAttribute('x2', '12'); line.setAttribute('y2', '15');
             svg.appendChild(path);
@@ -138,7 +138,7 @@
 
         const uploadBtn = doc.getElementById('zipline-upload-button');
         const originalChildren = Array.from(uploadBtn.childNodes).map(n => n.cloneNode(true));
-        const spinSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const spinSvg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
         spinSvg.setAttribute('width', '24');
         spinSvg.setAttribute('height', '24');
         spinSvg.setAttribute('viewBox', '0 0 24 24');
@@ -146,7 +146,7 @@
         spinSvg.setAttribute('stroke', 'currentColor');
         spinSvg.setAttribute('stroke-width', '2');
         spinSvg.style.cssText = 'color: #888; animation: spin 1s linear infinite;';
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const circle = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12');
         circle.setAttribute('r', '10'); circle.setAttribute('stroke-dasharray', '30 60');
         spinSvg.appendChild(circle);

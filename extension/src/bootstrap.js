@@ -94,6 +94,14 @@
                     SNEED.features.ziplineUpload.start(document);
                 }
 
+                if (SNEED.features.youtubeTitles && SNEED.features.youtubeTitles.start) {
+                    SNEED.features.youtubeTitles.start(document);
+                }
+
+                if (SNEED.features.doubleClickEdit && SNEED.features.doubleClickEdit.start) {
+                    SNEED.features.doubleClickEdit.start(document);
+                }
+
                 if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
                     SNEED.features.mentionNotifications.start(document);
                 }
