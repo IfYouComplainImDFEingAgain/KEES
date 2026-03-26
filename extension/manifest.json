@@ -107,8 +107,8 @@
     }
   ],
   "icons": {
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
+    "48": "icons/kiwi-logo-extension-48.png",
+    "128": "icons/kiwi-logo-extension-128.png"
   },
   "background": {
     "service_worker": "src/background.js",
@@ -126,7 +126,8 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "kees@kiwifarms.extension"
+      "id": "kees@kiwifarms.extension",
+      "data_collection_permissions": []
     }
   }
 }
