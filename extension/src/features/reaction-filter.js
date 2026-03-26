@@ -1,22 +1,14 @@
-/**
- * features/reaction-filter.js - Auto-hide posts based on reaction ratio
- * Hides posts that have a high percentage of negative reactions.
- */
+// features/reaction-filter.js - Auto-hide posts with high negative reaction ratio
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
 
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-
     const STORAGE_KEY_ENABLED = 'kees-reaction-filter-enabled';
     const STORAGE_KEY_MIN_REACTS = 'kees-reaction-filter-min-reacts';
     const STORAGE_KEY_BAD_THRESHOLD = 'kees-reaction-filter-bad-threshold';
 
-    // Reaction classifications
     const NEGATIVE_REACTIONS = new Set([16, 17, 29, 14, 3]);
     const POSITIVE_REACTIONS = new Set([1, 2, 5, 26, 6, 7, 31, 22]);
     // All others are neutral and don't count
@@ -25,18 +17,12 @@
     const REACTIONS_SELECTOR = 'ul.reactPlusSummary';
     const REACTION_ITEM_SELECTOR = 'span.reaction[data-reaction-id]';
 
-    // Default settings
     const DEFAULT_MIN_REACTS = 5;
-    const DEFAULT_BAD_THRESHOLD = 50; // percentage
+    const DEFAULT_BAD_THRESHOLD = 50;
 
-    // Cached settings
     let filterEnabled = false;
     let minReactsThreshold = DEFAULT_MIN_REACTS;
     let badReactThreshold = DEFAULT_BAD_THRESHOLD;
-
-    // ============================================
-    // STORAGE
-    // ============================================
 
     async function loadSettings() {
         return new Promise((resolve) => {
@@ -53,10 +39,6 @@
         });
     }
 
-    // ============================================
-    // REACTION ANALYSIS
-    // ============================================
-
     function analyzePostReactions(post) {
         const reactionsContainer = post.querySelector(REACTIONS_SELECTOR);
         if (!reactionsContainer) {
@@ -66,7 +48,6 @@
         let positive = 0;
         let negative = 0;
 
-        // Find all reaction items
         const reactionLinks = reactionsContainer.querySelectorAll('a.reactionsBar-link');
 
         reactionLinks.forEach(link => {
@@ -75,7 +56,6 @@
 
             const reactionId = parseInt(reactionSpan.dataset.reactionId, 10);
 
-            // Get the count - it's the text content after the span
             const linkText = link.textContent.trim();
             const countMatch = linkText.match(/(\d+)\s*$/);
             const count = countMatch ? parseInt(countMatch[1], 10) : 1;
@@ -85,7 +65,6 @@
             } else if (POSITIVE_REACTIONS.has(reactionId)) {
                 positive += count;
             }
-            // Neutral reactions are ignored
         });
 
         const total = positive + negative;
@@ -98,20 +77,12 @@
         if (!filterEnabled) return false;
 
         const stats = analyzePostReactions(post);
-
-        // Don't hide if below minimum react threshold
         if (stats.total < minReactsThreshold) return false;
 
-        // Hide if bad percentage exceeds threshold
         return stats.badPercentage >= badReactThreshold;
     }
 
-    // ============================================
-    // POST PROCESSING
-    // ============================================
-
     function processPost(post) {
-        // Skip if already processed by user muting
         if (post.dataset.sneedMuted) return;
 
         const shouldHide = shouldHidePost(post);
@@ -131,7 +102,6 @@
         post.dataset.keesReactionHidden = 'true';
         post.dataset.keesOriginalDisplay = post.style.display || '';
 
-        // Create collapsed placeholder
         const placeholder = document.createElement('div');
         placeholder.className = 'kees-reaction-placeholder';
         placeholder.style.cssText = `
@@ -172,7 +142,6 @@
         post.style.display = post.dataset.keesOriginalDisplay || '';
         delete post.dataset.keesOriginalDisplay;
 
-        // Remove placeholder
         const placeholder = post.previousElementSibling;
         if (placeholder && placeholder.classList.contains('kees-reaction-placeholder')) {
             placeholder.remove();
@@ -187,17 +156,12 @@
     function refreshAllPosts() {
         const posts = document.querySelectorAll(POST_SELECTOR);
         posts.forEach(post => {
-            // Reset hidden state and reprocess
             if (post.dataset.keesReactionHidden === 'true') {
                 showPost(post);
             }
             processPost(post);
         });
     }
-
-    // ============================================
-    // MUTATION OBSERVER
-    // ============================================
 
     function setupObserver() {
         const observer = new MutationObserver((mutations) => {
@@ -207,7 +171,6 @@
                         if (node.matches && node.matches(POST_SELECTOR)) {
                             processPost(node);
                         }
-                        // Check children
                         const posts = node.querySelectorAll ? node.querySelectorAll(POST_SELECTOR) : [];
                         posts.forEach(processPost);
                     }
@@ -223,20 +186,13 @@
         return observer;
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function init() {
-        // Only run on thread pages
         if (!window.location.pathname.includes('/threads/')) {
             return;
         }
 
-        // Load settings
         await loadSettings();
 
-        // Process existing posts
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 processAllPosts();
@@ -247,7 +203,6 @@
             setupObserver();
         }
 
-        // Listen for storage changes (from popup or other tabs)
         chrome.storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local') {
                 let needsRefresh = false;
@@ -274,7 +229,6 @@
         console.log('[KEES] Reaction filter initialized');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.reactionFilter = {
         init,
@@ -283,7 +237,6 @@
         refreshAllPosts
     };
 
-    // Auto-init
     init();
 
 })();

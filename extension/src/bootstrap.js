@@ -1,8 +1,4 @@
-/**
- * bootstrap.js - Application entry point
- * Handles initialization, injection, and cleanup.
- * Async version for browser extension.
- */
+// bootstrap.js - Application entry point, handles initialization, injection, and cleanup
 (function() {
     'use strict';
 
@@ -15,12 +11,7 @@
     const features = SNEED.features;
     const util = SNEED.util;
 
-    // ============================================
-    // CAPTURE CHAT CONFIG FOR GLOBAL CHAT
-    // ============================================
-
     function captureChatConfig() {
-        // Listen for the config from the injected page script
         window.addEventListener('__kees_chat_config', (e) => {
             const data = e.detail;
             if (data && data.wsUrl) {
@@ -31,7 +22,7 @@
             }
         }, { once: true });
 
-        // Inject a script into the page to read APP and post it back
+        // Inject a script into the page to read APP config and post it back
         const script = document.createElement('script');
         script.textContent = `
             (function() {
@@ -48,7 +39,6 @@
         document.documentElement.appendChild(script);
         script.remove();
 
-        // Capture room from URL hash
         function saveRoom() {
             const room = parseInt(window.location.hash.substring(1), 10);
             if (room > 0) {
@@ -59,10 +49,6 @@
         window.addEventListener('hashchange', saveRoom);
     }
 
-    // ============================================
-    // HIDE OFFICIAL CHAT TOOLBAR
-    // ============================================
-
     function hideOfficialToolbar(doc) {
         if (doc.getElementById('sneed-hide-toolbar')) return;
         const style = doc.createElement('style');
@@ -71,15 +57,10 @@
         (doc.head || doc.documentElement).appendChild(style);
     }
 
-    // ============================================
-    // INJECTION LOGIC
-    // ============================================
-
     function injectEmoteBar() {
         const isIframe = util.isInIframe();
 
         if (isIframe) {
-            // We're in the test-chat iframe
             const messageForm = document.getElementById('new-message-form');
 
             if (messageForm && !document.getElementById('custom-emote-bar')) {
@@ -101,42 +82,34 @@
                     observeForBarsRemoval(root, document);
                 }
 
-                // Start blacklist filter for chat messages
                 if (features.startBlacklistFilter) {
                     features.startBlacklistFilter(document);
                 }
 
-                // Start watched users feature
                 if (features.startWatchedUsers) {
                     features.startWatchedUsers(document);
                 }
 
-                // Start Zipline upload feature
                 if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
                     SNEED.features.ziplineUpload.start(document);
                 }
 
-                // Start mention notifications feature
                 if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
                     SNEED.features.mentionNotifications.start(document);
                 }
 
-                // Start mention sort feature
                 if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
                     SNEED.features.mentionSort.start(document);
                 }
 
-                // Start whisper box feature
                 if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
                     SNEED.features.whisperBox.start(document);
                 }
 
-                // Start bot column feature
                 if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
                     SNEED.features.botColumn.start(document);
                 }
 
-                // Start wave animation feature
                 if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
                     SNEED.features.waveAnimation.start(document);
                 }
@@ -144,7 +117,6 @@
                 log.info('Emote and format bars injected into test-chat');
             }
         } else {
-            // We're in the parent page, need to wait for iframe
             const iframe = document.getElementById('rust-shim');
 
             if (iframe) {
@@ -173,52 +145,42 @@
                                 observeForBarsRemoval(root, iframeDoc);
                             }
 
-                            // Start blacklist filter for chat messages
                             if (features.startBlacklistFilter) {
                                 features.startBlacklistFilter(iframeDoc);
                             }
 
-                            // Start watched users feature
                             if (features.startWatchedUsers) {
                                 features.startWatchedUsers(iframeDoc);
                             }
 
-                            // Start YouTube titles feature
                             if (SNEED.features.youtubeTitles && SNEED.features.youtubeTitles.start) {
                                 SNEED.features.youtubeTitles.start(iframeDoc);
                             }
 
-                            // Start double-click to edit feature
                             if (SNEED.features.doubleClickEdit && SNEED.features.doubleClickEdit.start) {
                                 SNEED.features.doubleClickEdit.start(iframeDoc);
                             }
 
-                            // Start Zipline upload feature
                             if (SNEED.features.ziplineUpload && SNEED.features.ziplineUpload.start) {
                                 SNEED.features.ziplineUpload.start(iframeDoc);
                             }
 
-                            // Start mention notifications feature
                             if (SNEED.features.mentionNotifications && SNEED.features.mentionNotifications.start) {
                                 SNEED.features.mentionNotifications.start(iframeDoc);
                             }
 
-                            // Start mention sort feature
                             if (SNEED.features.mentionSort && SNEED.features.mentionSort.start) {
                                 SNEED.features.mentionSort.start(iframeDoc);
                             }
 
-                            // Start whisper box feature
                             if (SNEED.features.whisperBox && SNEED.features.whisperBox.start) {
                                 SNEED.features.whisperBox.start(iframeDoc);
                             }
 
-                            // Start bot column feature
                             if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
                                 SNEED.features.botColumn.start(iframeDoc);
                             }
 
-                            // Start wave animation feature
                             if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
                                 SNEED.features.waveAnimation.start(iframeDoc);
                             }
@@ -233,10 +195,6 @@
         }
     }
 
-    // ============================================
-    // OBSERVERS
-    // ============================================
-
     function observeForIframe(doc) {
         if (doc.__sneed_iframe_observed) return;
         doc.__sneed_iframe_observed = true;
@@ -248,14 +206,12 @@
                 iframe.addEventListener('load', () => checkAndReinject(), { passive: true });
                 state.addTimer(setTimeout(checkAndReinject, 50));
 
-                // Setup cleanup when iframe unloads/reloads
                 try {
                     const iframeWin = iframe.contentWindow;
                     if (iframeWin && !iframe.__sneed_unload_handler) {
                         iframe.__sneed_unload_handler = true;
                         iframeWin.addEventListener('beforeunload', () => {
                             events.cleanupIframeObservers(iframe);
-                            // Clear iframe-specific state
                             const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
                             if (iframeDoc) {
                                 if (iframeDoc.__sneed_sendWatcher) {
@@ -297,10 +253,6 @@
         events.addManagedObserver(chatRoot, obs);
     }
 
-    // ============================================
-    // REINJECT LOGIC
-    // ============================================
-
     function checkAndReinject() {
         if (!state.canReinject()) return;
 
@@ -327,10 +279,6 @@
         }
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function init() {
         if (state.isInitialized()) {
             log.warn('Already initialized');
@@ -339,13 +287,10 @@
 
         log.info('Initializing Sneedchat Enhancer Extension...');
 
-        // Initialize all storage caches (emotes, blacklist, wysiwyg mode)
         await storage.initAll();
 
-        // Capture chat WS URL and room for global chat
         captureChatConfig();
 
-        // Wait for DOM ready
         function waitForReady() {
             if (document.readyState === 'loading') {
                 events.addGlobalEventListener(document, 'DOMContentLoaded', () => {
@@ -355,40 +300,33 @@
                 state.addTimer(setTimeout(injectEmoteBar, state.CONFIG.INIT_DELAY));
             }
 
-            // Observe for iframe on parent page
             observeForIframe(document);
         }
 
         waitForReady();
 
-        // Visibility change handler
         events.addGlobalEventListener(document, 'visibilitychange', () => {
             if (!document.hidden) {
                 checkAndReinject();
             }
         });
 
-        // Focus handler
         events.addGlobalEventListener(window, 'focus', () => {
             checkAndReinject();
         });
 
-        // Initial check after delay
         state.addTimer(setTimeout(checkAndReinject, state.CONFIG.POLLING_CHECK_DELAY));
 
-        // Cleanup on unload
         events.addGlobalEventListener(window, 'unload', () => {
             state.clearAllTimers();
             events.cleanupAllObservers();
             events.cleanupAllListeners();
             ui.cleanupBars(document);
 
-            // Cleanup send watcher on main document
             if (document.__sneed_sendWatcher) {
                 document.__sneed_sendWatcher.destroy();
             }
 
-            // Try to cleanup iframe too
             const iframe = document.getElementById('rust-shim');
             if (iframe) {
                 try {
@@ -409,10 +347,6 @@
         state.setInitialized(true);
         log.info('Sneedchat Enhancer Extension initialized');
     }
-
-    // ============================================
-    // EXPORT INIT TO NAMESPACE
-    // ============================================
 
     SNEED.init = init;
     SNEED.injectEmoteBar = injectEmoteBar;

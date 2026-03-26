@@ -1,27 +1,15 @@
-/**
- * features/user-muting.js - User muting functionality
- * Allows hiding posts from specific users on forum thread pages.
- */
+// features/user-muting.js - Allows hiding posts from specific users on forum thread pages
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
 
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-
     const STORAGE_KEY = 'sneedchat-muted-users';
     const POST_SELECTOR = 'article.message[data-author]';
     const POSTMARK_BUTTON_SELECTOR = '.message-attribution-gadget.hbReact-message-postmark';
 
-    // Cache of muted users for synchronous checks
     let mutedUsersCache = new Set();
-
-    // ============================================
-    // STORAGE
-    // ============================================
 
     async function getMutedUsers() {
         return new Promise((resolve) => {
@@ -61,10 +49,6 @@
         return mutedUsersCache.has(username);
     }
 
-    // ============================================
-    // UI: MUTE BUTTON
-    // ============================================
-
     function createMuteButton(username, isMuted) {
         const btn = document.createElement('a');
         btn.className = 'message-attribution-gadget sneed-mute-btn';
@@ -95,7 +79,6 @@
                 showToast(`Muted ${username}`);
             }
 
-            // Update all mute buttons and post visibility
             refreshAllPosts();
         });
 
@@ -116,12 +99,7 @@
         }
     }
 
-    // ============================================
-    // UI: TOAST NOTIFICATION
-    // ============================================
-
     function showToast(message) {
-        // Remove existing toast
         const existing = document.getElementById('sneed-mute-toast');
         if (existing) existing.remove();
 
@@ -143,7 +121,6 @@
             animation: sneed-toast-in 0.3s ease;
         `;
 
-        // Add animation keyframes if not already present
         if (!document.getElementById('sneed-mute-toast-styles')) {
             const style = document.createElement('style');
             style.id = 'sneed-mute-toast-styles';
@@ -168,20 +145,14 @@
         }, 2000);
     }
 
-    // ============================================
-    // POST PROCESSING
-    // ============================================
-
     function processPost(post) {
         const username = post.dataset.author;
         if (!username) return;
 
         const isMuted = isUserMuted(username);
 
-        // Add/update mute button
         let muteBtn = post.querySelector('.sneed-mute-btn');
         if (!muteBtn) {
-            // Find the postmark button to insert before
             const postmarkBtn = post.querySelector(POSTMARK_BUTTON_SELECTOR);
             if (postmarkBtn) {
                 muteBtn = createMuteButton(username, isMuted);
@@ -191,13 +162,11 @@
             updateMuteButtonState(muteBtn, isMuted);
         }
 
-        // Hide/show the post based on mute status
         if (isMuted) {
             if (!post.dataset.sneedMuted) {
                 post.dataset.sneedMuted = 'true';
                 post.dataset.sneedOriginalDisplay = post.style.display || '';
 
-                // Create collapsed placeholder
                 const placeholder = document.createElement('div');
                 placeholder.className = 'sneed-muted-placeholder';
                 placeholder.style.cssText = `
@@ -228,13 +197,11 @@
                 post.style.display = 'none';
             }
         } else {
-            // Unmuted - restore post visibility
             if (post.dataset.sneedMuted) {
                 delete post.dataset.sneedMuted;
                 post.style.display = post.dataset.sneedOriginalDisplay || '';
                 delete post.dataset.sneedOriginalDisplay;
 
-                // Remove placeholder
                 const placeholder = post.previousElementSibling;
                 if (placeholder && placeholder.classList.contains('sneed-muted-placeholder')) {
                     placeholder.remove();
@@ -249,7 +216,6 @@
     }
 
     function refreshAllPosts() {
-        // Update all mute buttons and post visibility
         const posts = document.querySelectorAll(POST_SELECTOR);
         posts.forEach(post => {
             const username = post.dataset.author;
@@ -262,7 +228,6 @@
                 updateMuteButtonState(muteBtn, isMuted);
             }
 
-            // Update visibility
             if (isMuted && !post.dataset.sneedMuted) {
                 processPost(post);
             } else if (!isMuted && post.dataset.sneedMuted) {
@@ -270,10 +235,6 @@
             }
         });
     }
-
-    // ============================================
-    // MUTATION OBSERVER
-    // ============================================
 
     function setupObserver() {
         const observer = new MutationObserver((mutations) => {
@@ -283,7 +244,6 @@
                         if (node.matches && node.matches(POST_SELECTOR)) {
                             processPost(node);
                         }
-                        // Check children
                         const posts = node.querySelectorAll ? node.querySelectorAll(POST_SELECTOR) : [];
                         posts.forEach(processPost);
                     }
@@ -299,21 +259,14 @@
         return observer;
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function init() {
-        // Only run on thread pages
         if (!window.location.pathname.includes('/threads/')) {
             return;
         }
 
-        // Load muted users into cache
         const users = await getMutedUsers();
         mutedUsersCache = new Set(users);
 
-        // Process existing posts
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 processAllPosts();
@@ -324,7 +277,6 @@
             setupObserver();
         }
 
-        // Listen for storage changes (from popup or other tabs)
         chrome.storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local' && changes[STORAGE_KEY]) {
                 mutedUsersCache = new Set(changes[STORAGE_KEY].newValue || []);
@@ -335,7 +287,6 @@
         console.log('[SNEED] User muting initialized');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.userMuting = {
         init,
@@ -345,7 +296,6 @@
         isUserMuted
     };
 
-    // Auto-init
     init();
 
 })();

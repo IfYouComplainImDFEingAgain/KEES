@@ -1,8 +1,4 @@
-/**
- * features/mention-sort.js - Sort mention autocomplete by recent activity
- * When @ is typed, builds a recency map from chat messages and re-sorts
- * the mention dropdown once it appears.
- */
+// features/mention-sort.js - Sort mention autocomplete by recent activity
 (function() {
     'use strict';
 
@@ -11,9 +7,7 @@
     let sorting = false;
     let pendingSort = false;
 
-    /**
-     * Build activity map from visible chat messages (bottom = most recent)
-     */
+    // Build activity map from visible chat messages (bottom = most recent)
     function buildActivityMap(doc) {
         const activity = {};
         const messages = doc.querySelectorAll('.chat-message');
@@ -22,16 +16,13 @@
             if (authorEl) {
                 const username = (authorEl.textContent || '').trim().toLowerCase();
                 if (username) {
-                    activity[username] = i; // Higher index = more recent
+                    activity[username] = i;
                 }
             }
         });
         return activity;
     }
 
-    /**
-     * Re-sort mention dropdown items by recent activity
-     */
     function resortDropdown(dropdown, activity) {
         if (sorting) return;
         sorting = true;
@@ -59,9 +50,6 @@
         }
     }
 
-    /**
-     * Try to sort the dropdown, retrying briefly if it hasn't appeared yet
-     */
     function sortWhenReady(doc, activity, attempts) {
         const dropdown = doc.querySelector('.mention-dropdown');
         if (dropdown && dropdown.children.length > 1) {
@@ -74,10 +62,6 @@
         }
     }
 
-    /**
-     * Start listening for @ keystrokes
-     * @param {Document} doc - Document context
-     */
     function start(doc) {
         const input = doc.getElementById('new-message-input');
         if (!input) return;
@@ -86,7 +70,6 @@
             if (pendingSort) return;
 
             const text = input.textContent || '';
-            // Check if user just typed @ (last char or after space/newline)
             const atIdx = text.lastIndexOf('@');
             if (atIdx === -1) return;
 
@@ -99,10 +82,6 @@
             sortWhenReady(doc, activity, 0);
         });
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.features = SNEED.features || {};
     SNEED.features.mentionSort = { start };

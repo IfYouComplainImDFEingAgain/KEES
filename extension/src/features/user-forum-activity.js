@@ -1,24 +1,13 @@
-/**
- * features/user-forum-activity.js - Analyze user forum posting activity
- * Shows which forums a user posts in most frequently.
- */
+// features/user-forum-activity.js - Analyze user forum posting activity
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
 
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-
     const STORAGE_KEY_PREFIX = 'kees-user-forums-';
-    const MAX_PAGES_TO_FETCH = 20; // Limit to avoid excessive requests
-    const FETCH_DELAY = 300; // ms between requests
-
-    // ============================================
-    // URL/USER UTILITIES
-    // ============================================
+    const MAX_PAGES_TO_FETCH = 20;
+    const FETCH_DELAY = 300;
 
     function getUserInfoFromUrl() {
         const match = window.location.pathname.match(/\/members\/([^\/]+)\.(\d+)/);
@@ -34,10 +23,6 @@
     function getStorageKey(userId) {
         return STORAGE_KEY_PREFIX + userId;
     }
-
-    // ============================================
-    // STORAGE
-    // ============================================
 
     async function getCachedData(userId) {
         return new Promise((resolve) => {
@@ -61,10 +46,6 @@
             chrome.storage.local.remove([key], resolve);
         });
     }
-
-    // ============================================
-    // FETCH UTILITIES
-    // ============================================
 
     async function fetchPage(url) {
         try {
@@ -90,19 +71,13 @@
         return new Promise(r => setTimeout(r, ms));
     }
 
-    // ============================================
-    // FORUM EXTRACTION
-    // ============================================
-
     function extractForumsFromPage(doc) {
         const forums = [];
 
-        // Try multiple selectors for post rows
         const postRows = doc.querySelectorAll('.block-row, .contentRow');
         console.log('[KEES] Found', postRows.length, 'post rows');
 
         postRows.forEach(row => {
-            // Look for "Forum: <link>" pattern in list items
             const listItems = row.querySelectorAll('li');
             listItems.forEach(li => {
                 const text = li.textContent.trim();
@@ -131,25 +106,18 @@
     }
 
     function getSearchUrl(userId) {
-        // Construct the search URL directly from user ID
         return `/search/member?user_id=${userId}`;
     }
-
-    // ============================================
-    // ANALYSIS
-    // ============================================
 
     async function analyzeUserActivity(userId, progressCallback) {
         const forumCounts = {};
         let totalPosts = 0;
         let pagesProcessed = 0;
 
-        // Go directly to the search page for this user
         progressCallback('Starting search...');
         const searchUrl = window.location.origin + getSearchUrl(userId);
         console.log('[KEES] Search URL:', searchUrl);
 
-        // Fetch search pages
         {
             let currentUrl = searchUrl;
 
@@ -174,14 +142,12 @@
 
                 currentUrl = getNextPageUrl(doc);
 
-                // Make URL absolute if needed
                 if (currentUrl && !currentUrl.startsWith('http')) {
                     currentUrl = window.location.origin + currentUrl;
                 }
             }
         }
 
-        // Sort by count
         const sortedForums = Object.entries(forumCounts)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
@@ -194,10 +160,6 @@
             timestamp: Date.now()
         };
     }
-
-    // ============================================
-    // UI
-    // ============================================
 
     function createActivityBox(userInfo) {
         const box = document.createElement('div');
@@ -228,13 +190,11 @@
     function renderResults(data, container) {
         const statusEl = document.getElementById('kees-activity-status');
 
-        // Show when data was collected
         if (statusEl) {
             const date = new Date(data.timestamp);
             statusEl.textContent = `Last updated: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
         }
 
-        // Build results HTML
         let html = `
             <div style="margin-bottom: 12px; color: #888; font-size: 13px;">
                 Analyzed ${data.totalPosts} posts across ${data.pagesAnalyzed} pages
@@ -268,7 +228,6 @@
 
         container.innerHTML = html;
 
-        // Re-add buttons at the bottom
         const btnContainer = document.createElement('div');
         btnContainer.style.marginTop = '16px';
         btnContainer.innerHTML = `
@@ -278,7 +237,6 @@
         `;
         container.appendChild(btnContainer);
 
-        // Re-attach refresh handler
         document.getElementById('kees-refresh-btn').addEventListener('click', () => {
             startAnalysis(true);
         });
@@ -328,10 +286,6 @@
         });
     }
 
-    // ============================================
-    // MAIN LOGIC
-    // ============================================
-
     let currentUserInfo = null;
 
     async function startAnalysis(forceRefresh = false) {
@@ -343,7 +297,6 @@
             return;
         }
 
-        // Check cache first
         if (!forceRefresh) {
             const cached = await getCachedData(userInfo.userId);
             if (cached) {
@@ -352,7 +305,6 @@
             }
         }
 
-        // Clear old cache if refreshing
         if (forceRefresh) {
             await clearCachedData(userInfo.userId);
         }
@@ -369,12 +321,7 @@
         }
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function init() {
-        // Only run on member pages
         if (!window.location.pathname.includes('/members/')) {
             return;
         }
@@ -387,14 +334,12 @@
 
         currentUserInfo = userInfo;
 
-        // Wait for DOM
         function insertBox() {
             const tabHeader = document.querySelector('.block-tabHeader--memberTabs');
             if (!tabHeader) {
                 return false;
             }
 
-            // Check if already inserted
             if (document.getElementById('kees-forum-activity')) {
                 return true;
             }
@@ -402,14 +347,12 @@
             const box = createActivityBox(userInfo);
             tabHeader.parentNode.insertBefore(box, tabHeader);
 
-            // Check for cached data
             getCachedData(userInfo.userId).then(cached => {
                 if (cached) {
                     renderResults(cached, document.getElementById('kees-activity-content'));
                 }
             });
 
-            // Attach button handlers
             document.getElementById('kees-analyze-btn').addEventListener('click', () => {
                 startAnalysis(false);
             });
@@ -425,7 +368,6 @@
             document.addEventListener('DOMContentLoaded', insertBox);
         } else {
             if (!insertBox()) {
-                // Retry with observer if element not found
                 const observer = new MutationObserver(() => {
                     if (insertBox()) {
                         observer.disconnect();
@@ -439,7 +381,6 @@
         console.log('[KEES] User forum activity initialized for', userInfo.username);
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.userForumActivity = {
         init,
@@ -448,7 +389,6 @@
         clearCachedData
     };
 
-    // Auto-init
     init();
 
 })();

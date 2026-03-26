@@ -1,7 +1,4 @@
-/**
- * features/input.js - Input handling
- * Input auto-resize, Shift+Enter for newlines, send failure handling, WYSIWYG conversion.
- */
+// features/input.js - Input auto-resize, Shift+Enter, send failure handling, WYSIWYG conversion
 (function() {
     'use strict';
 
@@ -9,14 +6,6 @@
     const state = SNEED.state;
     const { addManagedEventListener, addManagedObserver, ensureSendWatcher, setResizeCache, getResizeCache } = SNEED.core.events;
 
-    // ============================================
-    // @EVERYONE EXPANSION
-    // ============================================
-
-    /**
-     * Replace @everyone in input with individual @mentions
-     * @param {HTMLElement} inputElement - The input element
-     */
     function expandEveryone(inputElement) {
         const list = SNEED.state.getEveryoneList();
         if (!list || list.length === 0) return;
@@ -25,7 +14,6 @@
         if (!text.includes('@everyone')) return;
 
         const mentions = list.map(u => '@' + u).join(' ');
-        // Walk text nodes and replace @everyone
         const walker = document.createTreeWalker(inputElement, NodeFilter.SHOW_TEXT, null, false);
         let node;
         while ((node = walker.nextNode())) {
@@ -35,41 +23,21 @@
         }
     }
 
-    // ============================================
-    // WYSIWYG TO BBCODE CONVERSION
-    // ============================================
-
-    /**
-     * Convert input HTML content to BBCode before submission
-     * @param {HTMLElement} inputElement - The input element
-     * @param {Document} doc - Document context
-     */
     function convertInputToBBCode(inputElement, doc) {
         if (!SNEED.core.bbcode) {
             return;
         }
 
-        // Check if there's any HTML formatting to convert
         const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]');
         if (!hasFormatting) {
             return;
         }
 
-        // Convert HTML to BBCode
         const bbcode = SNEED.core.bbcode.convertToBBCode(inputElement);
-
-        // Replace content with plain text BBCode
         inputElement.textContent = bbcode;
-
-        // Position cursor at end
         SNEED.util.positionCursorAtEnd(doc, inputElement);
     }
 
-    /**
-     * Attach pre-submit conversion handlers
-     * @param {HTMLElement} inputElement - The input element
-     * @param {Document} doc - Document context
-     */
     function attachPreSubmitHandlers(inputElement, doc) {
         if (inputElement.hasAttribute('data-bbcode-convert-handler')) {
             return;
@@ -79,12 +47,10 @@
         // Capture-phase Enter key handler (runs before chat.js handler)
         addManagedEventListener(inputElement, 'keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                // Expand @everyone before conversion
                 expandEveryone(inputElement);
-                // Convert HTML to BBCode before the form submits
                 convertInputToBBCode(inputElement, doc);
             }
-        }, true); // capture phase
+        }, true);
 
         // Capture-phase form submit handler
         const messageForm = doc.getElementById('new-message-form');
@@ -92,17 +58,11 @@
             messageForm.setAttribute('data-bbcode-submit-handler', 'true');
 
             addManagedEventListener(messageForm, 'submit', (e) => {
-                // Expand @everyone before conversion
                 expandEveryone(inputElement);
-                // Convert HTML to BBCode before submission
                 convertInputToBBCode(inputElement, doc);
-            }, true); // capture phase
+            }, true);
         }
     }
-
-    // ============================================
-    // OPTIMIZED INPUT RESIZER
-    // ============================================
 
     function createOptimizedResizer(inputElement, doc) {
         let raf = 0;
@@ -148,10 +108,6 @@
         return { resizeInput, cleanup };
     }
 
-    // ============================================
-    // SHIFT+ENTER HANDLER
-    // ============================================
-
     function createShiftEnterHandler(doc) {
         return function(e) {
             if (e.key === 'Enter' && e.shiftKey) {
@@ -189,10 +145,6 @@
         addManagedEventListener(inputElement, 'keydown', handler, true);
     }
 
-    // ============================================
-    // CHARACTER LIMIT WARNING
-    // ============================================
-
     const CHAR_LIMIT = 1023;
 
     function updateCharacterWarning(inputElement, doc) {
@@ -221,10 +173,6 @@
             warning.style.display = 'none';
         }
     }
-
-    // ============================================
-    // SEND FAILURE INDICATOR
-    // ============================================
 
     function showSendFailureIndicator(doc) {
         if (doc.getElementById('send-failure-indicator')) return;
@@ -263,10 +211,6 @@
         setTimeout(() => { indicator.remove(); }, 3000);
     }
 
-    // ============================================
-    // ADD EMOTE TOGGLE BUTTON
-    // ============================================
-
     function addEmoteToggleButton(doc) {
         const buttonsContainer = doc.querySelector('.chat-form-buttons');
         const submitButton = doc.getElementById('new-message-submit');
@@ -276,10 +220,8 @@
             return;
         }
 
-        // Hide original send button
         submitButton.style.display = 'none';
 
-        // Auto-resize setup
         inputElement.style.maxHeight = state.CONFIG.MAX_INPUT_HEIGHT + 'px';
         inputElement.style.overflowY = 'auto';
         inputElement.style.resize = 'none';
@@ -295,7 +237,6 @@
             updateCharacterWarning(inputElement, doc);
         }, 0));
 
-        // Watch for input clear
         if (!inputElement.hasAttribute('data-observer-attached')) {
             const observer = new MutationObserver(() => {
                 if (!inputElement.textContent || inputElement.textContent.trim() === '') {
@@ -312,7 +253,6 @@
             inputElement._resizeObserver = observer;
         }
 
-        // Form submission handler
         const messageForm = doc.getElementById('new-message-form');
         if (messageForm && !messageForm.__sneed_submit_handler) {
             messageForm.__sneed_submit_handler = true;
@@ -322,7 +262,6 @@
                 const lastMessageContent = inputElement.innerHTML || '';
                 const lastMessageText = inputElement.textContent || '';
 
-                // Block send if over character limit
                 if (lastMessageText.length > CHAR_LIMIT) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -364,18 +303,13 @@
             });
         }
 
-        // Shift+Enter handler
         attachShiftEnterHandler(inputElement, doc);
-
-        // WYSIWYG to BBCode conversion handlers
         attachPreSubmitHandlers(inputElement, doc);
 
-        // Enter key handler - block send if over limit, resize after send
         if (!inputElement.hasAttribute('data-enter-resize-handler')) {
             inputElement.setAttribute('data-enter-resize-handler', 'true');
             addManagedEventListener(inputElement, 'keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    // Block send if over character limit
                     const charCount = (inputElement.textContent || '').length;
                     if (charCount > CHAR_LIMIT) {
                         e.preventDefault();
@@ -389,10 +323,8 @@
             }, true);
         }
 
-        // Initial resize
         resizeInput();
 
-        // Create and position toggle button
         const emoteToggleBtn = SNEED.ui.createEmoteToggleButton(doc);
         emoteToggleBtn.style.position = 'absolute';
         emoteToggleBtn.style.right = '8px';
@@ -407,10 +339,6 @@
             inputElement.style.paddingRight = '50px';
         }
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.features = SNEED.features || {};
     SNEED.features.createOptimizedResizer = createOptimizedResizer;

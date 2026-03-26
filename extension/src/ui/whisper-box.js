@@ -1,7 +1,4 @@
-/**
- * ui/whisper-box.js - Floating whisper chat box UI
- * Renders the whisper conversation window with tabs, messages, and input.
- */
+// ui/whisper-box.js - Floating whisper chat box UI
 (function() {
     'use strict';
 
@@ -341,10 +338,6 @@
         }
     `;
 
-    // ============================================
-    // HTML SANITIZATION
-    // ============================================
-
     const ALLOWED_TAGS = new Set([
         'b', 'strong', 'i', 'em', 'u', 's', 'del', 'strike', 'code', 'pre',
         'span', 'div', 'p', 'br', 'a', 'img', 'ul', 'ol', 'li', 'blockquote'
@@ -375,13 +368,11 @@
 
             const tag = child.tagName.toLowerCase();
             if (!ALLOWED_TAGS.has(tag)) {
-                // Replace with text content
                 const text = document.createTextNode(child.textContent);
                 child.replaceWith(text);
                 continue;
             }
 
-            // Strip disallowed attributes
             const allowed = ALLOWED_ATTRS[tag] || [];
             const attrs = Array.from(child.attributes);
             for (const attr of attrs) {
@@ -390,7 +381,6 @@
                 }
             }
 
-            // Validate URLs
             if (tag === 'a') {
                 const href = child.getAttribute('href');
                 if (href && !SAFE_URL_RE.test(href)) {
@@ -407,10 +397,9 @@
                 }
             }
 
-            // Strip dangerous CSS
+            // Strip dangerous CSS - only allow safe properties
             if (child.hasAttribute('style')) {
                 const style = child.getAttribute('style');
-                // Only allow color, font-size, text-align, text-decoration
                 const safeStyle = style.replace(/[^;]+/g, (rule) => {
                     const prop = rule.split(':')[0].trim().toLowerCase();
                     if (['color', 'font-size', 'text-align', 'text-decoration', 'font-weight', 'font-style'].includes(prop)) {
@@ -425,14 +414,10 @@
                 }
             }
 
-            // Recurse
             sanitizeNode(child);
         }
     }
 
-    /**
-     * Inject whisper box styles into document
-     */
     function injectStyles(doc) {
         if (doc.getElementById('sneed-whisper-styles')) return;
         const style = doc.createElement('style');
@@ -441,12 +426,6 @@
         (doc.head || doc.documentElement).appendChild(style);
     }
 
-    /**
-     * Create the whisper box DOM structure
-     * @param {Document} doc
-     * @param {Object} callbacks - { onToggle, onClose, onTabClick, onSend }
-     * @returns {HTMLElement}
-     */
     function createWhisperBox(doc, callbacks) {
         injectStyles(doc);
 
@@ -454,13 +433,12 @@
         box.id = 'sneed-whisper-box';
         box.classList.add('expanded');
 
-        // Header
         const header = doc.createElement('div');
         header.className = 'whisper-header';
 
         const arrow = doc.createElement('span');
         arrow.className = 'whisper-toggle-arrow';
-        arrow.textContent = '\u25BC'; // ▼
+        arrow.textContent = '\u25BC';
 
         const title = doc.createElement('span');
         title.className = 'whisper-header-title';
@@ -468,18 +446,16 @@
 
         const closeBtn = doc.createElement('button');
         closeBtn.className = 'whisper-close-btn';
-        closeBtn.textContent = '\u00d7'; // ×
+        closeBtn.textContent = '\u00d7';
         closeBtn.title = 'Close whisper box';
 
         header.appendChild(arrow);
         header.appendChild(title);
         header.appendChild(closeBtn);
 
-        // Body (collapsible)
         const body = doc.createElement('div');
         body.className = 'whisper-body';
 
-        // Tabs row (tabs + add button)
         const tabsRow = doc.createElement('div');
         tabsRow.className = 'whisper-tabs-row';
 
@@ -494,7 +470,6 @@
         tabsRow.appendChild(tabs);
         tabsRow.appendChild(addTabBtn);
 
-        // New user input row (hidden by default)
         const newUserRow = doc.createElement('div');
         newUserRow.className = 'whisper-new-user-row';
         newUserRow.style.display = 'none';
@@ -512,7 +487,6 @@
         newUserRow.appendChild(newUserInput);
         newUserRow.appendChild(newUserOk);
 
-        // Autocomplete
         let acDropdown = null;
         let acIndex = -1;
 
@@ -634,7 +608,6 @@
             setTimeout(closeAutocomplete, 150);
         });
 
-        // Messages
         const messages = doc.createElement('div');
         messages.className = 'whisper-messages';
 
@@ -643,7 +616,6 @@
         empty.textContent = 'No whispers yet';
         messages.appendChild(empty);
 
-        // Input row
         const inputRow = doc.createElement('div');
         inputRow.className = 'whisper-input-row';
 
@@ -667,7 +639,6 @@
         box.appendChild(header);
         box.appendChild(body);
 
-        // Drag state
         let isDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
@@ -677,7 +648,6 @@
         let savePositionTimer = null;
 
         function onMouseDown(e) {
-            // Don't drag from close button
             if (e.target === closeBtn) return;
             isDragging = true;
             hasDragged = false;
@@ -705,12 +675,10 @@
             let newX = boxStartX + dx;
             let newY = boxStartY + dy;
 
-            // Clamp to viewport
             const win = doc.defaultView || window;
             newX = Math.max(0, Math.min(win.innerWidth - box.offsetWidth, newX));
             newY = Math.max(0, Math.min(win.innerHeight - 32, newY));
 
-            // Switch from bottom/right to top/left positioning
             box.style.bottom = 'auto';
             box.style.right = 'auto';
             box.style.left = newX + 'px';
@@ -745,7 +713,6 @@
             }, 300);
         }
 
-        // Save size when resized via browser drag handle
         const resizeObserver = new ResizeObserver(() => {
             if (!body.classList.contains('collapsed')) {
                 saveBoxLayout();
@@ -755,7 +722,6 @@
 
         header.addEventListener('mousedown', onMouseDown);
 
-        // Toggle on click (only if not dragged)
         header.addEventListener('click', (e) => {
             if (e.target === closeBtn) return;
             if (hasDragged) return;
@@ -763,15 +729,12 @@
             body.classList.toggle('collapsed');
             arrow.classList.toggle('collapsed');
             if (isCollapsing) {
-                // Store current size and position before collapsing
                 const rect = box.getBoundingClientRect();
                 box.dataset.prevHeight = box.style.height || '';
                 box.dataset.prevBottom = String(rect.bottom);
                 box.style.height = '';
                 box.classList.remove('expanded');
 
-                // If header is at bottom (column-reverse), move top down
-                // so the header bar stays where it was visually
                 if (box.style.flexDirection === 'column-reverse') {
                     const headerHeight = header.offsetHeight || 32;
                     box.style.top = (rect.bottom - headerHeight) + 'px';
@@ -783,7 +746,6 @@
                     box.style.height = box.dataset.prevHeight;
                 }
 
-                // If header is at bottom, shift top back up to make room
                 if (box.style.flexDirection === 'column-reverse' && box.dataset.prevBottom) {
                     const newHeight = box.offsetHeight;
                     const prevBottom = parseFloat(box.dataset.prevBottom);
@@ -825,15 +787,6 @@
         return box;
     }
 
-    /**
-     * Render tabs for conversation partners
-     * @param {HTMLElement} box
-     * @param {Array} partners - [{ username, unread }]
-     * @param {string} activePartner
-     * @param {Function} onTabClick
-     * @param {Function} onTabClose
-     * @param {Function} isOnline - optional, returns boolean for username
-     */
     function renderTabs(box, partners, activePartner, onTabClick, onTabClose, isOnline) {
         const tabs = box.querySelector('.whisper-tabs');
         if (!tabs) return;
@@ -857,14 +810,14 @@
                 tab.appendChild(badge);
             }
 
-            const closeBtn = document.createElement('span');
-            closeBtn.className = 'tab-close';
-            closeBtn.textContent = '\u00d7';
-            closeBtn.addEventListener('click', (e) => {
+            const closeBtnEl = document.createElement('span');
+            closeBtnEl.className = 'tab-close';
+            closeBtnEl.textContent = '\u00d7';
+            closeBtnEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (onTabClose) onTabClose(p.username);
             });
-            tab.appendChild(closeBtn);
+            tab.appendChild(closeBtnEl);
 
             tab.addEventListener('click', () => {
                 if (onTabClick) onTabClick(p.username);
@@ -874,11 +827,6 @@
         });
     }
 
-    /**
-     * Render messages for the active conversation
-     * @param {HTMLElement} box
-     * @param {Array} msgs - [{ direction, author, html, timestamp }]
-     */
     function renderMessages(box, msgs) {
         const container = box.querySelector('.whisper-messages');
         if (!container) return;
@@ -896,7 +844,6 @@
         let lastTimestamp = 0;
 
         msgs.forEach(msg => {
-            // Insert time separator if gap > 1 hour
             if (lastTimestamp > 0 && (msg.timestamp - lastTimestamp) > ONE_HOUR) {
                 const sep = document.createElement('div');
                 sep.className = 'whisper-time-separator';
@@ -927,16 +874,9 @@
             container.appendChild(el);
         });
 
-        // Scroll to bottom
         container.scrollTop = container.scrollHeight;
     }
 
-    /**
-     * Apply a saved position to the whisper box
-     * @param {HTMLElement} box
-     * @param {{ x: number, y: number }} pos - Normalized position (0-1)
-     * @param {Document} doc
-     */
     function applyPosition(box, pos, doc, applySize) {
         if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return;
         const win = doc.defaultView || window;
@@ -953,10 +893,6 @@
         adjustOrientation(box);
     }
 
-    /**
-     * Show the whisper box (expand if collapsed)
-     * @param {HTMLElement} box
-     */
     function expand(box) {
         const body = box.querySelector('.whisper-body');
         const arrow = box.querySelector('.whisper-toggle-arrow');
@@ -969,11 +905,8 @@
         adjustOrientation(box);
     }
 
-    /**
-     * If the box is near the bottom of the viewport, flip layout so
-     * header is at the bottom and content grows upward
-     * @param {HTMLElement} box
-     */
+    // If the box is near the bottom of the viewport, flip layout so
+    // header is at the bottom and content grows upward
     function adjustOrientation(box) {
         requestAnimationFrame(() => {
             const win = box.ownerDocument.defaultView || window;
@@ -990,7 +923,6 @@
                 box.style.borderRadius = '8px 8px 0 0';
             }
 
-            // Clamp to viewport
             let changed = false;
             let top = rect.top;
             let left = rect.left;
@@ -1008,10 +940,6 @@
             }
         });
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.ui = SNEED.ui || {};
     SNEED.ui.whisperBox = {

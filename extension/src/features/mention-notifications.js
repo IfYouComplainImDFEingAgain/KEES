@@ -1,7 +1,4 @@
-/**
- * features/mention-notifications.js - Browser notifications for chat mentions
- * Sends a notification when someone mentions your username in chat.
- */
+// features/mention-notifications.js - Browser notifications for chat mentions
 (function() {
     'use strict';
 
@@ -12,52 +9,35 @@
     const STORAGE_KEY_SHOW_BODY = 'kees-mention-show-body';
     const MENTION_SELECTOR = '.chat-message--highlightYou';
 
-    // Track initialized documents
     const initializedDocs = new WeakSet();
-    // Track processed message elements to avoid duplicate notifications
     const processedMessages = new WeakSet();
 
     let isEnabled = false;
     let showBody = false;
 
-    // ============================================
-    // CHECK FOR MENTIONS
-    // ============================================
-
     function checkForMention(messageElement, doc) {
         if (!isEnabled) return;
 
-        // Skip if already processed
         if (processedMessages.has(messageElement)) return;
         processedMessages.add(messageElement);
 
-        // Check if this message mentions the user (site adds this class)
         if (!messageElement.classList.contains('chat-message--highlightYou')) return;
 
-        // Get the message author - try multiple selectors
         let author = messageElement.querySelector('.chat-user-name')?.textContent?.trim()
             || messageElement.querySelector('.username')?.textContent?.trim()
             || messageElement.querySelector('[class*="user"]')?.textContent?.trim();
 
-        // Get message content - try multiple selectors
         let content = messageElement.querySelector('.chat-message-content')?.textContent?.trim()
             || messageElement.querySelector('.message-content')?.textContent?.trim()
             || messageElement.querySelector('.content')?.textContent?.trim()
             || messageElement.textContent?.trim() || '';
 
-        // Send notification
         sendNotification(author || 'Someone', content, doc);
     }
 
-    // ============================================
-    // SEND NOTIFICATION
-    // ============================================
-
     function sendNotification(author, content, doc) {
-        // Check if notifications are supported and permitted
         if (!('Notification' in window)) return;
 
-        // Request permission if needed
         if (Notification.permission === 'default') {
             Notification.requestPermission();
             return;
@@ -75,13 +55,11 @@
         }
         if (docHasFocus || parentHasFocus) return;
 
-        // Build notification body
         let body = '';
         if (showBody && content) {
             body = content.length > 150 ? content.substring(0, 150) + '...' : content;
         }
 
-        // Create notification
         const notification = new Notification(`${author} mentioned you in chat`, {
             body: body,
             icon: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
@@ -89,20 +67,14 @@
             requireInteraction: false
         });
 
-        // Focus window when notification is clicked
         notification.onclick = () => {
             window.focus();
             if (window.parent) window.parent.focus();
             notification.close();
         };
 
-        // Auto-close after 5 seconds
         setTimeout(() => notification.close(), 5000);
     }
-
-    // ============================================
-    // MUTATION OBSERVER
-    // ============================================
 
     function setupObserver(doc) {
         const chatContainer = doc.querySelector('.chat-messages, .chat-box, #chat-messages');
@@ -111,8 +83,7 @@
             return;
         }
 
-        // Mark all existing messages as already processed to avoid
-        // notifying for initial message batch on connect/reconnect
+        // Mark existing messages as processed to avoid notifying on connect/reconnect
         const existingMessages = chatContainer.querySelectorAll('.chat-message');
         existingMessages.forEach(msg => processedMessages.add(msg));
         console.log('[KEES] Marked', existingMessages.length, 'existing messages as processed');
@@ -122,11 +93,9 @@
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType !== Node.ELEMENT_NODE) continue;
 
-                    // Check if it's a chat message
                     if (node.matches && node.matches('.chat-message')) {
                         checkForMention(node, doc);
                     } else if (node.querySelectorAll) {
-                        // Check for messages inside added node
                         const messages = node.querySelectorAll('.chat-message');
                         messages.forEach(msg => checkForMention(msg, doc));
                     }
@@ -142,15 +111,10 @@
         console.log('[KEES] Mention notification observer started');
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function start(doc) {
         if (!doc || initializedDocs.has(doc)) return;
         initializedDocs.add(doc);
 
-        // Check if feature is enabled
         const settings = await new Promise(resolve => {
             chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY], resolve);
         });
@@ -164,15 +128,13 @@
             console.log('[KEES] Mention notifications enabled, showBody:', showBody);
         }
 
-        // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
 
-        // Setup observer (even if disabled, so it works when enabled later)
+        // Setup observer even if disabled, so it works when enabled later
         setupObserver(doc);
 
-        // Listen for setting changes
         chrome.storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local') {
                 if (changes[STORAGE_KEY_ENABLED]) {
@@ -191,7 +153,6 @@
         console.log('[KEES] Mention notifications module loaded');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.mentionNotifications = {
         init,

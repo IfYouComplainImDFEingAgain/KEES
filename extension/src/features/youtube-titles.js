@@ -1,16 +1,9 @@
-/**
- * features/youtube-titles.js - YouTube video title display in chat
- * Fetches and displays video titles for YouTube links via background script.
- */
+// features/youtube-titles.js - Fetch and display video titles for YouTube links
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
-
-    // ============================================
-    // CONFIGURATION
-    // ============================================
 
     const YOUTUBE_PATTERNS = [
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
@@ -20,15 +13,8 @@
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
     ];
 
-    // Cache for video titles
     const titleCache = new Map();
-
-    // Track initialized documents
     const initializedDocs = new WeakSet();
-
-    // ============================================
-    // VIDEO ID EXTRACTION
-    // ============================================
 
     function extractVideoId(url) {
         for (const pattern of YOUTUBE_PATTERNS) {
@@ -44,11 +30,6 @@
         return `https://www.youtube.com/watch?v=${videoId}`;
     }
 
-    // ============================================
-    // TITLE FETCHING
-    // ============================================
-
-    // Track if extension context is still valid
     let contextValid = true;
 
     function isExtensionContextValid() {
@@ -61,12 +42,10 @@
     }
 
     async function fetchVideoTitle(videoUrl) {
-        // Check if extension context is still valid
         if (!isExtensionContextValid()) {
             return null;
         }
 
-        // Check cache first
         if (titleCache.has(videoUrl)) {
             return titleCache.get(videoUrl);
         }
@@ -86,7 +65,6 @@
                 return info;
             }
         } catch (e) {
-            // Check for extension context invalidated error
             if (e.message && e.message.includes('Extension context invalidated')) {
                 contextValid = false;
                 console.log('[KEES] Extension was reloaded, YouTube titles disabled for this page');
@@ -97,10 +75,6 @@
 
         return null;
     }
-
-    // ============================================
-    // TITLE DISPLAY CREATION
-    // ============================================
 
     function createTitleDisplay(doc, title, author, videoUrl) {
         const container = doc.createElement('div');
@@ -133,7 +107,6 @@
             width: 100%;
         `;
 
-        // YouTube icon
         const icon = doc.createElement('div');
         icon.style.cssText = `
             width: 36px;
@@ -151,7 +124,6 @@
             </svg>
         `;
 
-        // Text content
         const textContent = doc.createElement('div');
         textContent.style.cssText = 'overflow: hidden; flex: 1; min-width: 0;';
 
@@ -178,7 +150,6 @@
         link.appendChild(textContent);
         container.appendChild(link);
 
-        // Hover effects
         container.addEventListener('mouseenter', () => {
             container.style.background = 'linear-gradient(135deg, #252525 0%, #303030 100%)';
             container.style.borderLeftColor = '#ff3333';
@@ -192,15 +163,8 @@
         return container;
     }
 
-    // ============================================
-    // LINK PROCESSING
-    // ============================================
-
     async function processLink(doc, link) {
-        // Skip if already processed
         if (link.dataset.keesYoutubeProcessed) return;
-
-        // Skip if inside our own title display
         if (link.closest('.kees-youtube-title')) return;
 
         link.dataset.keesYoutubeProcessed = 'true';
@@ -210,16 +174,13 @@
 
         const videoUrl = getVideoUrl(videoId);
 
-        // Fetch the title
         const info = await fetchVideoTitle(videoUrl);
         if (!info) return;
 
         console.log('[KEES] YouTube title:', info.title);
 
-        // Create and insert title display
         const titleDisplay = createTitleDisplay(doc, info.title, info.author, link.href);
 
-        // Insert after the link
         const wrapper = doc.createElement('div');
         wrapper.style.cssText = 'display: block;';
         wrapper.appendChild(titleDisplay);
@@ -237,21 +198,15 @@
         links.forEach(link => processLink(doc, link));
     }
 
-    // ============================================
-    // MUTATION OBSERVER
-    // ============================================
-
     function setupObserver(doc) {
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                        // Check if node is a YouTube link
                         if (node.matches && node.matches('a[href*="youtube.com"], a[href*="youtu.be"]')) {
                             processLink(doc, node);
                         }
 
-                        // Check children for YouTube links
                         const links = node.querySelectorAll ?
                             node.querySelectorAll('a[href*="youtube.com"], a[href*="youtu.be"]') : [];
                         links.forEach(link => processLink(doc, link));
@@ -268,10 +223,6 @@
         return observer;
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     function start(doc) {
         if (!doc || initializedDocs.has(doc)) return;
         initializedDocs.add(doc);
@@ -286,7 +237,6 @@
         console.log('[KEES] YouTube titles module loaded');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.youtubeTitles = {
         init,
@@ -295,7 +245,6 @@
         fetchVideoTitle
     };
 
-    // Auto-init
     init();
 
 })();

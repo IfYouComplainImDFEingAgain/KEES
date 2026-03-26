@@ -1,8 +1,4 @@
-/**
- * features/bot-column.js - Bot message column
- * Creates a second column alongside the main chat that shows only messages
- * from configured bot users. Optionally hides bot messages from main chat.
- */
+// features/bot-column.js - Second column alongside main chat for bot messages
 (function() {
     'use strict';
 
@@ -64,7 +60,6 @@
     }
 
     function getMessageAuthor(msgEl) {
-        // Try data-author attribute first (numeric ID), then .author element text
         const authorEl = msgEl.querySelector('.author');
         if (authorEl) return authorEl.textContent.trim();
         return null;
@@ -97,7 +92,6 @@
     }
 
     function start(doc) {
-        // Load settings
         chrome.storage.local.get([
             SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED,
             SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN,
@@ -112,7 +106,6 @@
                 setupColumn(doc);
             }
 
-            // Listen for setting changes
             chrome.storage.onChanged.addListener((changes) => {
                 let needsRefresh = false;
 
@@ -148,7 +141,6 @@
 
         injectStyles(doc);
 
-        // Make the scroller's parent a flex row and add bot column as sibling
         const parent = scroller.parentElement;
         parent.classList.add('sneed-has-bot-col');
 
@@ -157,13 +149,11 @@
 
         const botMessages = botCol.querySelector('.sneed-bot-col-messages');
 
-        // Process existing messages
         const existing = chatMessages.querySelectorAll('.chat-message');
         existing.forEach(msg => {
             processMessage(msg, botMessages, doc);
         });
 
-        // Observe new messages
         const observer = new MutationObserver((mutations) => {
             let added = false;
             for (const m of mutations) {
@@ -175,7 +165,6 @@
                 }
             }
             if (added) {
-                // Auto-scroll bot column
                 botMessages.scrollTop = botMessages.scrollHeight;
             }
         });
@@ -183,7 +172,6 @@
         observer.observe(chatMessages, { childList: true });
         SNEED.core.events.addManagedObserver(chatMessages, observer);
 
-        // Store cleanup ref
         doc.__sneed_botColumn = {
             cleanup: () => {
                 observer.disconnect();
@@ -205,15 +193,13 @@
                 const clone = msgEl.cloneNode(true);
                 existing.replaceWith(clone);
                 if (hideFromMain) msgEl.style.display = 'none';
-                return false; // Don't count as new for auto-scroll
+                return false;
             }
         }
 
-        // Clone into bot column
         const clone = msgEl.cloneNode(true);
         botContainer.appendChild(clone);
 
-        // Hide from main chat if enabled
         if (hideFromMain) {
             msgEl.style.display = 'none';
         }
@@ -244,10 +230,6 @@
             delete doc.__sneed_botColumn;
         }
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.features = SNEED.features || {};
     SNEED.features.botColumn = { start };

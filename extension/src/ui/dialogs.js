@@ -1,8 +1,4 @@
-/**
- * ui/dialogs.js - Dialog/popup components
- * Blacklist manager, emote manager, emote editor, export dialog.
- * Updated for async storage operations.
- */
+// ui/dialogs.js - Blacklist manager, emote manager, emote editor, export dialog
 (function() {
     'use strict';
 
@@ -11,10 +7,6 @@
     const { addManagedEventListener, removeElementListeners } = SNEED.core.events;
     const storage = SNEED.core.storage;
     const { STYLES } = SNEED.ui;
-
-    // ============================================
-    // HELPER: CREATE POPUP BASE
-    // ============================================
 
     function createPopupBase(doc, id, options = {}) {
         const popup = doc.createElement('div');
@@ -53,7 +45,6 @@
             ...(options.marginBottom ? { marginBottom: options.marginBottom } : {})
         });
 
-        // Hover effects
         const hoverBg = typeStyle.background.replace('0.3', '0.5');
         addManagedEventListener(btn, 'mouseenter', () => { btn.style.background = hoverBg; });
         addManagedEventListener(btn, 'mouseleave', () => { btn.style.background = typeStyle.background; });
@@ -76,13 +67,9 @@
         };
 
         setTimeout(() => doc.addEventListener('click', clickOutside), 0);
-        popup.__sneed_cleanup = cleanup; // Store for programmatic removal
+        popup.__sneed_cleanup = cleanup;
         return cleanup;
     }
-
-    // ============================================
-    // BLACKLIST MANAGER
-    // ============================================
 
     async function showBlacklistManager(doc) {
         const existing = doc.getElementById('blacklist-manager');
@@ -93,7 +80,6 @@
 
         manager.appendChild(createTitle(doc, 'Blacklisted Images'));
 
-        // Add URL input section
         const addSection = doc.createElement('div');
         addSection.style.cssText = 'margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 4px;';
 
@@ -214,10 +200,6 @@
         setupClickOutside(doc, manager);
     }
 
-    // ============================================
-    // EXPORT DIALOG
-    // ============================================
-
     function showExportDialog(doc, emotesToExport) {
         const dialog = createPopupBase(doc, 'export-dialog', { minWidth: '500px', maxWidth: '700px', zIndex: '10002' });
 
@@ -264,15 +246,10 @@
         dialog.appendChild(buttonContainer);
 
         doc.body.appendChild(dialog);
-        // Export dialog doesn't use click-outside, but store cleanup for consistency
         dialog.__sneed_cleanup = () => { dialog.remove(); removeElementListeners(dialog); };
         textarea.select();
         textarea.focus();
     }
-
-    // ============================================
-    // EMOTE EDITOR
-    // ============================================
 
     async function showEmoteEditor(doc, emote, index) {
         const existing = doc.getElementById('emote-editor');
@@ -288,7 +265,6 @@
         const fieldStyle = 'display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;';
         const labelStyle = 'color: rgba(255, 255, 255, 0.9); font-size: 12px; font-weight: 500;';
 
-        // Code field
         const codeField = doc.createElement('div');
         codeField.style.cssText = fieldStyle;
         const codeLabel = doc.createElement('label');
@@ -302,7 +278,6 @@
         codeField.appendChild(codeLabel);
         codeField.appendChild(codeInput);
 
-        // Title field
         const titleField = doc.createElement('div');
         titleField.style.cssText = fieldStyle;
         const titleLabel = doc.createElement('label');
@@ -316,7 +291,6 @@
         titleField.appendChild(titleLabel);
         titleField.appendChild(titleInput);
 
-        // Type selector
         const typeField = doc.createElement('div');
         typeField.style.cssText = fieldStyle;
         const typeLabel = doc.createElement('label');
@@ -340,7 +314,6 @@
         typeField.appendChild(typeLabel);
         typeField.appendChild(typeSelect);
 
-        // Value field
         const valueField = doc.createElement('div');
         valueField.style.cssText = fieldStyle;
         const valueLabel = doc.createElement('label');
@@ -371,7 +344,6 @@
         updateValueField();
         addManagedEventListener(typeSelect, 'change', updateValueField);
 
-        // Auto-send checkbox
         const autoSendField = doc.createElement('div');
         autoSendField.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 16px;';
         const autoSendCheckbox = doc.createElement('input');
@@ -391,7 +363,6 @@
         editor.appendChild(valueField);
         editor.appendChild(autoSendField);
 
-        // Buttons
         const buttonContainer = doc.createElement('div');
         buttonContainer.style.cssText = 'display: flex; gap: 8px;';
 
@@ -434,10 +405,6 @@
         doc.body.appendChild(editor);
     }
 
-    // ============================================
-    // EMOTE MANAGER
-    // ============================================
-
     async function showEmoteManager(doc) {
         const existing = doc.getElementById('emote-manager');
         if (existing) { existing.remove(); return; }
@@ -447,12 +414,10 @@
 
         manager.appendChild(createTitle(doc, 'Manage Emotes'));
 
-        // Add button
         const addBtn = createStyledButton(doc, '+ Add New Emote', 'primary', { fullWidth: true, marginBottom: '12px' });
         addManagedEventListener(addBtn, 'click', () => { manager.remove(); showEmoteEditor(doc, null, -1); });
         manager.appendChild(addBtn);
 
-        // Emotes list
         const list = doc.createElement('div');
         list.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;';
 
@@ -516,7 +481,6 @@
 
         manager.appendChild(list);
 
-        // Utility buttons
         const utilityContainer = doc.createElement('div');
         utilityContainer.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
 
@@ -582,10 +546,6 @@
         doc.body.appendChild(manager);
         setupClickOutside(doc, manager);
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.ui.showBlacklistManager = showBlacklistManager;
     SNEED.ui.showEmoteManager = showEmoteManager;

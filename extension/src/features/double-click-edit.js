@@ -1,7 +1,4 @@
-/**
- * features/double-click-edit.js - Double-click to edit chat messages
- * Allows editing your own messages by double-clicking on them.
- */
+// features/double-click-edit.js - Double-click to edit chat messages
 (function() {
     'use strict';
 

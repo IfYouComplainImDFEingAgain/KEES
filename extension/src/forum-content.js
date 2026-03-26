@@ -1,9 +1,5 @@
-/**
- * forum-content.js - Extension entry point for forum thread pages
- * Lightweight script for forum features like featured post consolidation.
- */
+// forum-content.js - Extension entry point for forum thread pages
 
-// Import forum features
 import './features/featured-posts.js';
 import './features/user-muting.js';
 import './features/reaction-filter.js';

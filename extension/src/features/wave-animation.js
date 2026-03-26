@@ -1,24 +1,18 @@
-/**
- * features/wave-animation.js - Animated text effects via message editing
- * Commands: /sizewave, /colorwave, /rainbowwave, /stopwave
- * Runs one pass through the characters then restores original text.
- */
+// features/wave-animation.js - Animated text effects via message editing
+// Commands: /sizewave, /colorwave, /rainbowwave, /stopwave
+// Runs one pass through the characters then restores original text.
 (function() {
     'use strict';
 
     const SNEED = window.SNEED;
 
-    const WAVE_INTERVAL = 200; // ms between frames
+    const WAVE_INTERVAL = 200;
     const SIZE_NORMAL = 5;
     const SIZE_HIGHLIGHT = 7;
     const RAINBOW_COLORS = ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#8800ff'];
 
     let activeWave = null;
     let pageScriptInjected = false;
-
-    // ============================================
-    // PAGE SCRIPT INJECTION
-    // ============================================
 
     function injectPageScript(doc) {
         if (pageScriptInjected) return;
@@ -36,10 +30,6 @@
             detail: { uuid, message }
         }));
     }
-
-    // ============================================
-    // WAVE FRAME GENERATORS
-    // ============================================
 
     function buildSizeWaveFrame(chars, pos) {
         let result = '';
@@ -92,10 +82,6 @@
         rainbowwave: buildRainbowWaveFrame
     };
 
-    // ============================================
-    // WAVE CONTROL
-    // ============================================
-
     function startWave(type, uuid, originalText, doc) {
         stopWave(doc);
         injectPageScript(doc);
@@ -119,10 +105,8 @@
 
                 frame++;
 
-                // Stop after one full pass
                 if (frame >= chars.length) {
                     clearInterval(activeWave.timer);
-                    // Restore original text after a brief pause
                     setTimeout(() => {
                         sendEdit(doc, uuid, cleanText);
                         activeWave = null;
@@ -141,10 +125,6 @@
             activeWave = null;
         }
     }
-
-    // ============================================
-    // COMMAND HANDLING
-    // ============================================
 
     function getLastOwnMessage(doc) {
         const messages = doc.querySelectorAll('#chat-messages .chat-message');
@@ -179,7 +159,7 @@
             return true;
         }
 
-        const type = cmd.substring(1); // remove /
+        const type = cmd.substring(1);
         if (WAVE_TYPES[type]) {
             const argText = parts.slice(1).join(' ');
 
@@ -188,8 +168,7 @@
                 waitForOwnMessage(doc, argText, (uuid, text) => {
                     startWave(type, uuid, text, doc);
                 });
-                // Don't prevent default - let the message send normally
-                // But we need to replace the input with just the arg text (strip the command)
+                // Replace input with just the arg text (strip the command)
                 const inputElement = doc.getElementById('new-message-input');
                 if (inputElement) {
                     inputElement.textContent = argText;
@@ -197,7 +176,6 @@
                 }
                 return false; // let the form submit with the cleaned text
             } else {
-                // No argument - wave the last sent message
                 const lastMsg = getLastOwnMessage(doc);
                 if (!lastMsg) return true;
                 startWave(type, lastMsg.uuid, lastMsg.text, doc);
@@ -232,7 +210,6 @@
                     const text = raw || node.querySelector('.message')?.textContent?.trim() || '';
 
                     observer.disconnect();
-                    // Small delay to let the message fully render
                     setTimeout(() => callback(uuid, text), 100);
                     return;
                 }
@@ -241,13 +218,8 @@
 
         observer.observe(chatMessages, { childList: true });
 
-        // Timeout after 5 seconds
         setTimeout(() => observer.disconnect(), 5000);
     }
-
-    // ============================================
-    // START
-    // ============================================
 
     function start(doc) {
         const inputElement = doc.getElementById('new-message-input');
@@ -271,10 +243,6 @@
 
         window.addEventListener('beforeunload', () => stopWave(doc));
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.features = SNEED.features || {};
     SNEED.features.waveAnimation = { start, stopWave };

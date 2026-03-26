@@ -1,7 +1,4 @@
-/**
- * ui/bars.js - Emote bar and Format bar components
- * Creates the main UI bars for emotes and formatting tools.
- */
+// ui/bars.js - Emote bar and format bar components
 (function() {
     'use strict';
 
@@ -12,23 +9,17 @@
     const state = SNEED.state;
     const { STYLES } = SNEED.ui;
 
-    // ============================================
-    // EMOTE BAR
-    // ============================================
-
     function createEmoteBar(doc) {
         const emoteBar = doc.createElement('div');
         emoteBar.id = 'custom-emote-bar';
         emoteBar.style.cssText = stylesToString(STYLES.emoteBar);
 
-        // Get emotes from state (already loaded during init)
         const emotes = state.getEmotes() || state.defaultEmotes;
         emotes.forEach(emote => {
             const emoteButton = doc.createElement('button');
             emoteButton.type = 'button';
             emoteButton.style.cssText = stylesToString(STYLES.emoteButton);
 
-            // Create content element
             let contentElement;
             if (emote.url) {
                 contentElement = doc.createElement('img');
@@ -50,7 +41,6 @@
                 `Click to insert ${emote.code}, Shift+Click to insert without auto-send`;
             emoteButton.appendChild(contentElement);
 
-            // Hover effects
             addManagedEventListener(emoteButton, 'mouseenter', () => {
                 emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
                 emoteButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
@@ -61,17 +51,14 @@
                 emoteButton.style.borderColor = 'transparent';
             });
 
-            // Click handler
             addManagedEventListener(emoteButton, 'click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
-                // Insert emote
                 if (SNEED.features.insertEmote) {
                     SNEED.features.insertEmote(emote.code, doc);
                 }
 
-                // Auto-send logic
                 setTimeout(() => {
                     const input = doc.getElementById('new-message-input');
                     if (emote.autoSend !== false && !e.shiftKey && input && input.textContent.trim() === emote.code.trim()) {
@@ -117,23 +104,17 @@
         return emoteBar;
     }
 
-    // ============================================
-    // FORMAT BAR
-    // ============================================
-
     function createFormatBar(doc) {
         const formatBar = doc.createElement('div');
         formatBar.id = 'custom-format-bar';
         formatBar.style.cssText = stylesToString(STYLES.formatBar);
 
-        // Tool containers
         const leftTools = doc.createElement('div');
         leftTools.style.cssText = 'display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1;';
 
         const rightTools = doc.createElement('div');
         rightTools.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: auto;';
 
-        // Create format tool buttons
         state.formatTools.forEach(tool => {
             const toolButton = doc.createElement('button');
             toolButton.type = 'button';
@@ -142,15 +123,12 @@
             toolButton.title = tool.title;
             toolButton.setAttribute('data-tool', tool.name);
 
-            // Special handling for WYSIWYG toggle button
             if (tool.isToggle && tool.customAction === 'toggleWysiwyg') {
-                // Set initial state based on stored mode
                 const isWysiwyg = state.isWysiwygMode();
                 toolButton.style.opacity = isWysiwyg ? '0.5' : '1';
                 toolButton.title = isWysiwyg ? 'WYSIWYG mode (click for raw BBCode)' : 'Raw BBCode mode (click for WYSIWYG)';
             }
 
-            // Hover effects
             addManagedEventListener(toolButton, 'mouseenter', () => {
                 toolButton.style.background = 'rgba(255, 255, 255, 0.2)';
                 toolButton.style.borderColor = 'rgba(255, 255, 255, 0.4)';
@@ -161,7 +139,6 @@
                 toolButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             });
 
-            // Click handler
             addManagedEventListener(toolButton, 'click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -170,7 +147,6 @@
                 }
             });
 
-            // Right-align blacklist, emote manager, and wysiwyg toggle buttons
             if (tool.name === 'Blacklist' || tool.name === 'Emotes' || tool.name === 'WysiwygToggle') {
                 rightTools.appendChild(toolButton);
             } else {
@@ -184,10 +160,6 @@
         return formatBar;
     }
 
-    // ============================================
-    // EMOTE TOGGLE BUTTON
-    // ============================================
-
     function createEmoteToggleButton(doc) {
         const emoteButton = doc.createElement('button');
         emoteButton.id = 'emote-toggle-button';
@@ -200,7 +172,6 @@
 
         emoteButton.appendChild(toggleImg);
 
-        // Hover effects
         addManagedEventListener(emoteButton, 'mouseenter', () => {
             emoteButton.style.background = 'rgba(255, 255, 255, 0.1)';
             toggleImg.style.filter = 'brightness(1.2)';
@@ -211,7 +182,6 @@
             toggleImg.style.filter = 'brightness(0.9)';
         });
 
-        // Click handler
         addManagedEventListener(emoteButton, 'click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -230,10 +200,6 @@
         return emoteButton;
     }
 
-    // ============================================
-    // RELOAD EMOTE BAR
-    // ============================================
-
     function reloadEmoteBar(doc) {
         const emoteBar = doc.getElementById('custom-emote-bar');
         if (emoteBar) {
@@ -244,10 +210,6 @@
             }
         }
     }
-
-    // ============================================
-    // CLEANUP
-    // ============================================
 
     function cleanupBars(doc) {
         const emoteBar = doc.getElementById('custom-emote-bar');
@@ -262,7 +224,6 @@
             removeElementObservers(formatBar);
         }
 
-        // Cleanup color picker if exists
         const colorPicker = doc.getElementById('color-picker-popup');
         if (colorPicker) {
             removeElementListeners(colorPicker);
@@ -270,7 +231,6 @@
             colorPicker.remove();
         }
 
-        // Cleanup input observers and resizers
         const inputs = doc.querySelectorAll('[data-observer-attached]');
         inputs.forEach(input => {
             removeElementObservers(input);
@@ -281,10 +241,6 @@
             }
         });
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.ui.createEmoteBar = createEmoteBar;
     SNEED.ui.createFormatBar = createFormatBar;

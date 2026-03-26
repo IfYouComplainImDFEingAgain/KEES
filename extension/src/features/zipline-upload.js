@@ -1,7 +1,4 @@
-/**
- * features/zipline-upload.js - Zipline file upload integration
- * Adds an upload button to the chat input that uploads to Zipline.
- */
+// features/zipline-upload.js - Zipline file upload integration for chat
 (function() {
     'use strict';
 
@@ -11,15 +8,9 @@
     const STORAGE_KEY_ENABLED = 'kees-zipline-enabled';
     const STORAGE_KEY_STRIP_EXIF = 'kees-zipline-strip-exif';
 
-    // Track initialized documents
     const initializedDocs = new WeakSet();
 
-    // Cache settings
     let stripExifEnabled = true; // Default to true for privacy
-
-    // ============================================
-    // UPLOAD BUTTON
-    // ============================================
 
     function createUploadButton(doc) {
         const btn = doc.createElement('button');
@@ -40,7 +31,6 @@
             margin-right: 4px;
         `;
 
-        // Upload icon (SVG)
         const svgNS = 'http://www.w3.org/2000/svg';
         function createUploadIcon() {
             const svg = document.createElementNS(svgNS, 'svg');
@@ -86,27 +76,15 @@
         return input;
     }
 
-    // ============================================
-    // EXIF STRIPPING
-    // ============================================
-
-    /**
-     * Strip EXIF data from an image using Canvas API
-     * Canvas export naturally strips all metadata
-     * @param {File} file - Image file to process
-     * @returns {Promise<File>} - Processed file without EXIF
-     */
+    // Canvas export naturally strips all metadata
     async function stripExifData(file) {
-        // Only process images, skip GIFs (preserve animation)
         if (!file.type.startsWith('image/') || file.type === 'image/gif') {
             return file;
         }
 
         try {
-            // Create image bitmap from file
             const img = await createImageBitmap(file);
 
-            // Use OffscreenCanvas if available, fallback to regular canvas
             let canvas, ctx;
             if (typeof OffscreenCanvas !== 'undefined') {
                 canvas = new OffscreenCanvas(img.width, img.height);
@@ -118,17 +96,14 @@
                 ctx = canvas.getContext('2d');
             }
 
-            // Draw image to canvas (this strips EXIF)
             ctx.drawImage(img, 0, 0);
 
-            // Determine output format and quality
             let outputType = file.type;
             let quality = 0.92;
 
-            // Keep PNG as PNG, convert others to JPEG for smaller size
             if (file.type === 'image/png') {
                 outputType = 'image/png';
-                quality = undefined; // PNG doesn't use quality
+                quality = undefined;
             } else if (file.type === 'image/webp') {
                 outputType = 'image/webp';
                 quality = 0.92;
@@ -137,18 +112,15 @@
                 quality = 0.92;
             }
 
-            // Convert canvas to blob
             let blob;
             if (canvas.convertToBlob) {
                 blob = await canvas.convertToBlob({ type: outputType, quality });
             } else {
-                // Fallback for regular canvas
                 blob = await new Promise(resolve => {
                     canvas.toBlob(resolve, outputType, quality);
                 });
             }
 
-            // Create new file with same name
             const newFile = new File([blob], file.name, { type: outputType });
             console.log(`[KEES] Stripped EXIF: ${file.size} -> ${newFile.size} bytes`);
             return newFile;
@@ -158,17 +130,12 @@
         }
     }
 
-    // ============================================
-    // UPLOAD LOGIC
-    // ============================================
-
     async function handleFileSelect(file, doc) {
         if (!file) return;
 
         const inputElement = doc.getElementById('new-message-input');
         if (!inputElement) return;
 
-        // Show uploading indicator
         const uploadBtn = doc.getElementById('zipline-upload-button');
         const originalChildren = Array.from(uploadBtn.childNodes).map(n => n.cloneNode(true));
         const spinSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -186,7 +153,6 @@
         uploadBtn.replaceChildren(spinSvg);
         uploadBtn.disabled = true;
 
-        // Add spin animation if not exists
         if (!doc.getElementById('kees-spin-style')) {
             const style = doc.createElement('style');
             style.id = 'kees-spin-style';
@@ -195,18 +161,15 @@
         }
 
         try {
-            // Strip EXIF data if enabled
             let processedFile = file;
             if (stripExifEnabled && file.type.startsWith('image/')) {
                 processedFile = await stripExifData(file);
             }
 
-            // Read file as base64
             const base64 = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => {
                     const result = reader.result;
-                    // Remove data URL prefix to get just the base64
                     const base64Data = result.split(',')[1];
                     resolve(base64Data);
                 };
@@ -214,7 +177,6 @@
                 reader.readAsDataURL(processedFile);
             });
 
-            // Send to background script for upload
             const runtime = getRuntime();
             if (!runtime || !runtime.sendMessage) {
                 throw new Error('Extension runtime not available. Try refreshing the page.');
@@ -228,13 +190,11 @@
             });
 
             if (response.success) {
-                // Insert URL into chat input, wrap images in [img] tags
                 const url = response.url;
                 const isImage = processedFile.type.startsWith('image/');
                 const textToInsert = isImage ? `[img]${url}[/img] ` : `${url} `;
 
                 if (inputElement.contentEditable === 'true') {
-                    // Focus and insert at cursor or end
                     inputElement.focus();
                     const win = doc.defaultView || window;
                     const selection = win.getSelection();
@@ -257,7 +217,6 @@
                     selection.removeAllRanges();
                     selection.addRange(range);
 
-                    // Trigger input event
                     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
                 } else {
                     inputElement.value += textToInsert;
@@ -272,17 +231,11 @@
             console.error('[KEES] Zipline upload error:', e);
             alert('Upload failed: ' + e.message);
         } finally {
-            // Restore button
             uploadBtn.replaceChildren(...originalChildren);
             uploadBtn.disabled = false;
         }
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
-    // Get the chrome/browser runtime safely
     function getRuntime() {
         if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
         if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
@@ -304,7 +257,6 @@
             return;
         }
 
-        // Check if Zipline is enabled and load settings
         const settings = await new Promise(resolve => {
             storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_STRIP_EXIF], resolve);
         });
@@ -314,10 +266,8 @@
             return;
         }
 
-        // Load EXIF stripping setting (default to true for privacy)
         stripExifEnabled = settings[STORAGE_KEY_STRIP_EXIF] !== false;
 
-        // Listen for setting changes
         storage.onChanged.addListener((changes, areaName) => {
             if (areaName === 'local' && changes[STORAGE_KEY_STRIP_EXIF]) {
                 stripExifEnabled = changes[STORAGE_KEY_STRIP_EXIF].newValue !== false;
@@ -326,7 +276,6 @@
 
         initializedDocs.add(doc);
 
-        // Wait for the input container to be ready
         const checkForInput = () => {
             const inputElement = doc.getElementById('new-message-input');
             const inputContainer = inputElement?.parentElement;
@@ -335,44 +284,36 @@
                 return;
             }
 
-            // Create upload button and file input
             const uploadBtn = createUploadButton(doc);
             const fileInput = createFileInput(doc);
 
-            // Position the upload button
             uploadBtn.style.position = 'absolute';
-            uploadBtn.style.right = '40px'; // Left of emote toggle
+            uploadBtn.style.right = '40px';
             uploadBtn.style.top = '50%';
             uploadBtn.style.transform = 'translateY(-50%)';
             uploadBtn.style.zIndex = '10';
 
-            // Add click handler
             uploadBtn.addEventListener('click', () => {
                 fileInput.click();
             });
 
-            // Handle file selection
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     handleFileSelect(file, doc);
-                    fileInput.value = ''; // Reset for next selection
+                    fileInput.value = '';
                 }
             });
 
             inputContainer.appendChild(uploadBtn);
             inputContainer.appendChild(fileInput);
 
-            // Adjust input padding to make room
             inputElement.style.paddingRight = '80px';
 
             console.log('[KEES] Zipline upload button added');
         };
 
-        // Try immediately and also observe for changes
         checkForInput();
-
-        // Also try after a delay in case elements aren't ready
         setTimeout(checkForInput, 500);
         setTimeout(checkForInput, 1000);
     }
@@ -381,7 +322,6 @@
         console.log('[KEES] Zipline upload module loaded');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.ziplineUpload = {
         init,

@@ -1,25 +1,16 @@
-/**
- * features/disruptive-guest-filter.js - Filter posts from disruptive guests
- * Hides posts from users marked as "Disruptive Guest" on forum thread pages.
- */
+// features/disruptive-guest-filter.js - Hide posts from users marked as "Disruptive Guest"
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
 
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-
     const STORAGE_KEY = 'kees-mute-disruptive-guests';
     const POST_SELECTOR = 'article.message';
     const DISRUPTIVE_ICON_SELECTOR = 'i.disruptive-user';
 
-    // Cache the setting
     let muteDisruptiveGuests = false;
 
-    // Track if extension context is still valid
     let contextValid = true;
 
     function isExtensionContextValid() {
@@ -30,10 +21,6 @@
             return false;
         }
     }
-
-    // ============================================
-    // STORAGE
-    // ============================================
 
     async function loadSetting() {
         if (!isExtensionContextValid()) return false;
@@ -56,10 +43,6 @@
         });
     }
 
-    // ============================================
-    // POST PROCESSING
-    // ============================================
-
     function isDisruptiveGuest(post) {
         return post.querySelector(DISRUPTIVE_ICON_SELECTOR) !== null;
     }
@@ -72,7 +55,6 @@
                 post.dataset.keesDisruptiveHidden = 'true';
                 post.dataset.keesOriginalDisplay = post.style.display || '';
 
-                // Create collapsed placeholder
                 const placeholder = document.createElement('div');
                 placeholder.className = 'kees-disruptive-placeholder';
                 placeholder.style.cssText = `
@@ -103,13 +85,11 @@
                 post.style.display = 'none';
             }
         } else {
-            // Setting disabled - restore hidden posts
             if (post.dataset.keesDisruptiveHidden) {
                 delete post.dataset.keesDisruptiveHidden;
                 post.style.display = post.dataset.keesOriginalDisplay || '';
                 delete post.dataset.keesOriginalDisplay;
 
-                // Remove placeholder
                 const placeholder = post.previousElementSibling;
                 if (placeholder && placeholder.classList.contains('kees-disruptive-placeholder')) {
                     placeholder.remove();
@@ -127,7 +107,6 @@
         const posts = document.querySelectorAll(POST_SELECTOR);
         posts.forEach(post => {
             if (isDisruptiveGuest(post)) {
-                // Re-process to apply current setting
                 if (muteDisruptiveGuests && !post.dataset.keesDisruptiveHidden) {
                     processPost(post);
                 } else if (!muteDisruptiveGuests && post.dataset.keesDisruptiveHidden) {
@@ -136,10 +115,6 @@
             }
         });
     }
-
-    // ============================================
-    // MUTATION OBSERVER
-    // ============================================
 
     function setupObserver() {
         const observer = new MutationObserver((mutations) => {
@@ -151,7 +126,6 @@
                         if (node.matches && node.matches(POST_SELECTOR)) {
                             processPost(node);
                         }
-                        // Check children
                         const posts = node.querySelectorAll ? node.querySelectorAll(POST_SELECTOR) : [];
                         posts.forEach(processPost);
                     }
@@ -167,12 +141,7 @@
         return observer;
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     async function init() {
-        // Only run on thread pages
         if (!window.location.pathname.includes('/threads/')) {
             return;
         }
@@ -181,7 +150,6 @@
 
         await loadSetting();
 
-        // Process existing posts
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 processAllPosts();
@@ -192,7 +160,6 @@
             setupObserver();
         }
 
-        // Listen for setting changes
         try {
             chrome.storage.onChanged.addListener((changes, areaName) => {
                 if (!isExtensionContextValid()) return;
@@ -208,7 +175,6 @@
         console.log('[KEES] Disruptive guest filter initialized');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.disruptiveGuestFilter = {
         init,
@@ -216,7 +182,6 @@
         refreshAllPosts
     };
 
-    // Auto-init
     init();
 
 })();

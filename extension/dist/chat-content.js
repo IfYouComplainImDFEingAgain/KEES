@@ -315,15 +315,11 @@
       emoteBarVisible: false,
       reinjectAttempts: 0,
       emotes: null,
-      // Will be loaded from storage
       initialized: false,
       pendingTimers: /* @__PURE__ */ new Set(),
       wysiwygMode: true,
-      // true = rich/WYSIWYG, false = raw BBCode
       disableHomepageChat: false,
-      // true = hide chat on homepage
       everyoneList: []
-      // usernames for @everyone expansion
     };
     SNEED.state = SNEED.state || {};
     Object.assign(SNEED.state, {
@@ -333,7 +329,6 @@
       CONFIG,
       STORAGE_KEYS,
       runtime: runtimeState,
-      // Getters/setters for runtime state
       isEmoteBarVisible() {
         return runtimeState.emoteBarVisible;
       },
@@ -362,7 +357,6 @@
       isInitialized() {
         return runtimeState.initialized;
       },
-      // Timer management
       addTimer(id) {
         runtimeState.pendingTimers.add(id);
         return id;
@@ -374,7 +368,6 @@
         runtimeState.pendingTimers.forEach((id) => clearTimeout(id));
         runtimeState.pendingTimers.clear();
       },
-      // WYSIWYG mode
       isWysiwygMode() {
         return runtimeState.wysiwygMode;
       },
@@ -385,7 +378,6 @@
         runtimeState.wysiwygMode = !runtimeState.wysiwygMode;
         return runtimeState.wysiwygMode;
       },
-      // Disable homepage chat
       isHomepageChatDisabled() {
         return runtimeState.disableHomepageChat;
       },
@@ -396,7 +388,6 @@
         runtimeState.disableHomepageChat = !runtimeState.disableHomepageChat;
         return runtimeState.disableHomepageChat;
       },
-      // @everyone list
       getEveryoneList() {
         return runtimeState.everyoneList;
       },
@@ -641,15 +632,12 @@
     }
     SNEED.core = SNEED.core || {};
     SNEED.core.storage = {
-      // Helpers
       getStorageValue,
       setStorageValue,
-      // Emotes
       getEmotes,
       saveEmotes,
       resetEmotesToDefault,
       initEmotes,
-      // Blacklist
       getBlacklist,
       saveBlacklist,
       isBlacklisted,
@@ -658,22 +646,17 @@
       removeFromBlacklist,
       clearBlacklist,
       initBlacklist,
-      // WYSIWYG Mode
       getWysiwygMode,
       saveWysiwygMode,
       initWysiwygMode,
-      // Watched Users
       getWatchedUsers,
       saveWatchedUsers,
-      // Disable Homepage Chat
       getDisableHomepageChat,
       saveDisableHomepageChat,
       initDisableHomepageChat,
-      // Everyone List
       getEveryoneList,
       saveEveryoneList,
       initEveryoneList,
-      // Init
       initAll
     };
   })();
@@ -843,24 +826,19 @@
     }
     SNEED.core = SNEED.core || {};
     SNEED.core.events = {
-      // Event listeners
       addManagedEventListener,
       removeElementListeners,
       addGlobalEventListener,
       removeGlobalEventListener,
       cleanupAllListeners,
-      // Observers
       addManagedObserver,
       removeElementObservers,
       cleanupAllObservers,
-      // Iframe observers
       addIframeObserver,
       cleanupIframeObservers,
-      // Resize cache
       getResizeCache,
       setResizeCache,
       deleteResizeCache,
-      // Send watcher
       ensureSendWatcher
     };
   })();
@@ -1199,7 +1177,6 @@
         pointerEvents: "none",
         zIndex: "-1000"
       },
-      // Dialog/popup styles
       popup: {
         position: "fixed",
         top: "50%",
@@ -2312,14 +2289,14 @@
           badge.textContent = p.unread > 9 ? "9+" : String(p.unread);
           tab.appendChild(badge);
         }
-        const closeBtn = document.createElement("span");
-        closeBtn.className = "tab-close";
-        closeBtn.textContent = "\xD7";
-        closeBtn.addEventListener("click", (e) => {
+        const closeBtnEl = document.createElement("span");
+        closeBtnEl.className = "tab-close";
+        closeBtnEl.textContent = "\xD7";
+        closeBtnEl.addEventListener("click", (e) => {
           e.stopPropagation();
           if (onTabClose) onTabClose(p.username);
         });
-        tab.appendChild(closeBtn);
+        tab.appendChild(closeBtnEl);
         tab.addEventListener("click", () => {
           if (onTabClick) onTabClick(p.username);
         });

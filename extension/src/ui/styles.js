@@ -1,15 +1,8 @@
-/**
- * ui/styles.js - Style configuration
- * Centralized style definitions for all UI components.
- */
+// ui/styles.js - Centralized style definitions for all UI components
 (function() {
     'use strict';
 
     const SNEED = window.SNEED;
-
-    // ============================================
-    // STYLE DEFINITIONS
-    // ============================================
 
     const STYLES = {
         emoteBar: {
@@ -174,8 +167,6 @@
             pointerEvents: 'none',
             zIndex: '-1000'
         },
-
-        // Dialog/popup styles
         popup: {
             position: 'fixed',
             top: '50%',
@@ -244,10 +235,6 @@
         }
     };
 
-    // ============================================
-    // COLOR PALETTE
-    // ============================================
-
     const COLOR_PALETTE = [
         { name: 'Red', hex: '#ff0000' },
         { name: 'Greentext', hex: '#789922' },
@@ -262,10 +249,6 @@
         { name: 'Brown', hex: '#8b4513' },
         { name: 'Gray', hex: '#808080' }
     ];
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.ui = SNEED.ui || {};
     SNEED.ui.STYLES = STYLES;

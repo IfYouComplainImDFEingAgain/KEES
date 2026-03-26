@@ -1,28 +1,20 @@
-/**
- * features/whisper-box.js - Whisper conversation manager
- * Intercepts whisper messages, manages conversations, and controls the whisper UI.
- */
+// features/whisper-box.js - Whisper conversation manager
 (function() {
     'use strict';
 
     const SNEED = window.SNEED;
     let maxHistoryPerPartner = 100;
 
-    // Conversation state: { partnerUsername: { partnerId, messages: [], unread: 0 } }
     const conversations = {};
     let activePartner = null;
     let boxElement = null;
     let currentDoc = null;
-    let closed = false; // User explicitly closed the box
+    let closed = false;
     let globalEnabled = false;
-    let hideMainChat = true; // Default to true
+    let hideMainChat = true;
     let saveDebounceTimer = null;
     let savedPosition = null;
     let savedCollapsed = false;
-
-    // ============================================
-    // PERSISTENCE
-    // ============================================
 
     async function loadPosition() {
         try {
@@ -82,7 +74,6 @@
     async function loadHideMainState() {
         try {
             const result = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HIDE_MAIN);
-            // Default to true
             hideMainChat = result !== false;
         } catch (e) {
             hideMainChat = true;
@@ -122,10 +113,6 @@
         }, 1000);
     }
 
-    // ============================================
-    // CONVERSATION MANAGEMENT
-    // ============================================
-
     function addMessage(partnerUsername, partnerId, msg) {
         if (!conversations[partnerUsername]) {
             conversations[partnerUsername] = { partnerId: partnerId, messages: [], unread: 0 };
@@ -140,14 +127,12 @@
             convo.messages = convo.messages.slice(-maxHistoryPerPartner);
         }
 
-        // Track unread if not the active conversation and not from self
         if (partnerUsername !== activePartner && msg.direction !== 'out') {
             convo.unread++;
         }
 
         saveHistory();
 
-        // Broadcast to other tabs when global is enabled
         if (globalEnabled) {
             SNEED.core.storage.setStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_LATEST, {
                 partner: partnerUsername,
@@ -170,10 +155,6 @@
             unread: data.unread
         }));
     }
-
-    // ============================================
-    // UI MANAGEMENT
-    // ============================================
 
     function ensureBox(doc) {
         if (boxElement && doc.getElementById('sneed-whisper-box')) return;
@@ -224,7 +205,6 @@
 
         doc.body.appendChild(boxElement);
 
-        // Apply saved position
         if (savedPosition) {
             SNEED.ui.whisperBox.applyPosition(boxElement, savedPosition, doc);
         }
@@ -263,16 +243,11 @@
             : [];
         SNEED.ui.whisperBox.renderMessages(boxElement, msgs);
 
-        // Update placeholder
         const input = boxElement.querySelector('.whisper-input');
         if (input) {
             input.placeholder = activePartner ? `Whisper to ${activePartner}...` : 'Type a whisper...';
         }
     }
-
-    // ============================================
-    // SEND WHISPER
-    // ============================================
 
     function sendWhisper(partner, text, doc) {
         const chatInput = doc.getElementById('new-message-input');
@@ -280,12 +255,10 @@
 
         chatInput.textContent = `/w @${partner}, ${text}`;
 
-        // Position cursor at end
         if (SNEED.util.positionCursorAtEnd) {
             SNEED.util.positionCursorAtEnd(doc, chatInput);
         }
 
-        // Dispatch Enter key to trigger send
         const enterEvent = new KeyboardEvent('keydown', {
             key: 'Enter',
             code: 'Enter',
@@ -296,10 +269,6 @@
         });
         chatInput.dispatchEvent(enterEvent);
     }
-
-    // ============================================
-    // REOPEN BUTTON
-    // ============================================
 
     function addReopenButton(doc) {
         if (doc.getElementById('sneed-whisper-reopen')) return;
@@ -327,7 +296,6 @@
 
         doc.body.appendChild(btn);
 
-        // Show if currently closed
         if (closed) btn.style.display = 'block';
     }
 
@@ -341,15 +309,10 @@
         if (btn) btn.style.display = 'none';
     }
 
-    // ============================================
-    // WHISPER NOTIFICATION
-    // ============================================
-
     function sendWhisperNotification(partner, messageText, doc) {
         if (!('Notification' in window)) return;
         if (Notification.permission !== 'granted') return;
 
-        // Don't notify if page is focused
         const docHasFocus = doc.hasFocus();
         let parentHasFocus = false;
         try {
@@ -374,10 +337,6 @@
 
         setTimeout(() => notification.close(), 5000);
     }
-
-    // ============================================
-    // WHISPER INTERCEPTION
-    // ============================================
 
     function extractWhisper(node) {
         if (!node.classList || !node.classList.contains('chat-message--whisper')) return null;
@@ -410,10 +369,6 @@
         };
     }
 
-    // ============================================
-    // START
-    // ============================================
-
     async function start(doc) {
         await loadRetention();
         await loadGlobalState();
@@ -422,7 +377,6 @@
         await loadState();
         await loadHistory();
 
-        // Listen for setting changes
         chrome.storage.onChanged.addListener((changes) => {
             if (changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL]) {
                 globalEnabled = changes[SNEED.state.STORAGE_KEYS.WHISPER_GLOBAL].newValue === true;
@@ -453,7 +407,6 @@
                 for (const node of m.addedNodes) {
                     if (node.nodeType !== 1) continue;
 
-                    // Check the node itself and its children for whispers
                     const whisperNode = node.classList && node.classList.contains('chat-message--whisper')
                         ? node
                         : node.querySelector && node.querySelector('.chat-message--whisper');
@@ -461,7 +414,6 @@
                     const whisper = whisperNode ? extractWhisper(whisperNode) : null;
                     if (!whisper) continue;
 
-                    // Hide from main chat if enabled
                     if (hideMainChat) {
                         whisperNode.style.display = 'none';
                     }
@@ -475,13 +427,11 @@
 
                     newWhispers = true;
 
-                    // Send notification for incoming whispers
                     if (whisper.direction === 'in') {
                         const plainText = whisperNode.querySelector('.message')?.textContent?.trim() || '';
                         sendWhisperNotification(whisper.partner, plainText, doc);
                     }
 
-                    // Auto-select first partner
                     if (!activePartner) {
                         activePartner = whisper.partner;
                         markRead(whisper.partner);
@@ -491,7 +441,6 @@
 
             if (newWhispers) {
                 if (closed) {
-                    // Re-open on new whisper
                     closed = false;
                     savedCollapsed = false;
                     saveState();
@@ -506,7 +455,6 @@
         observer.observe(container, { childList: true, subtree: true });
         SNEED.core.events.addManagedObserver(container, observer);
 
-        // Always show the whisper box (collapsed if no history or was closed)
         if (!closed) {
             if (Object.keys(conversations).length > 0 && !activePartner) {
                 activePartner = Object.keys(conversations)[0];
@@ -523,13 +471,8 @@
             }
         }
 
-        // Add reopen button
         addReopenButton(doc);
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.features = SNEED.features || {};
     SNEED.features.whisperBox = { start };

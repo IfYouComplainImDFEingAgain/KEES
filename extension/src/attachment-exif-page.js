@@ -1,15 +1,11 @@
-/**
- * attachment-exif-page.js - Page context script for EXIF stripping
- * This file is loaded via web_accessible_resources to bypass CSP.
- */
+// attachment-exif-page.js - Page context script for EXIF stripping
+// Loaded via web_accessible_resources to bypass CSP.
 (function() {
     if (window.__keesExifStripperInstalled) return;
     window.__keesExifStripperInstalled = true;
 
-    // Default enabled, will be updated by message
     let stripExifEnabled = true;
 
-    // Listen for setting updates from content script
     window.addEventListener('kees-exif-setting', function(e) {
         stripExifEnabled = e.detail.enabled;
         console.log('[KEES] Attachment EXIF stripping:', stripExifEnabled ? 'enabled' : 'disabled');
@@ -75,7 +71,7 @@
         return newFormData;
     }
 
-    // Intercept XHR
+    // Intercept XHR to strip EXIF from attachment uploads
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSend = XMLHttpRequest.prototype.send;
 
@@ -103,7 +99,7 @@
         return originalXHRSend.apply(this, arguments);
     };
 
-    // Intercept fetch
+    // Intercept fetch to strip EXIF from attachment uploads
     const originalFetch = window.fetch;
 
     window.fetch = function(input, init) {

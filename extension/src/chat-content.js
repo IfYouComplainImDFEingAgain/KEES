@@ -1,7 +1,4 @@
-/**
- * chat-content.js - Extension entry point for chat pages
- * Imports all modules in correct order and initializes the extension.
- */
+// chat-content.js - Extension entry point for chat pages
 
 // Core modules (order matters)
 import './core/namespace.js';

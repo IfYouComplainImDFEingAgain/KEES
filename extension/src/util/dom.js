@@ -1,21 +1,9 @@
-/**
- * util/dom.js - DOM utilities and helpers
- * Provides common DOM manipulation functions used across modules.
- */
+// util/dom.js - DOM utilities and helpers
 (function() {
     'use strict';
 
     const SNEED = window.SNEED;
 
-    // ============================================
-    // STYLE HELPERS
-    // ============================================
-
-    /**
-     * Convert a style object to a CSS string
-     * @param {Object} styles - Object with camelCase CSS properties
-     * @returns {string} - CSS string
-     */
     function stylesToString(styles) {
         return Object.entries(styles)
             .map(([key, value]) => {
@@ -25,15 +13,6 @@
             .join('; ');
     }
 
-    // ============================================
-    // DOM QUERY HELPERS
-    // ============================================
-
-    /**
-     * Find the message container element
-     * @param {Document} doc - Document to search in
-     * @returns {Element|null}
-     */
     function findMessageContainer(doc) {
         return (
             doc.querySelector('.messages') ||
@@ -46,10 +25,6 @@
         );
     }
 
-    /**
-     * Get the target document (handles iframe context)
-     * @returns {Document}
-     */
     function getTargetDocument() {
         const isIframe = window.location.pathname.includes('test-chat');
         if (isIframe) {
@@ -67,25 +42,10 @@
         return document;
     }
 
-    /**
-     * Check if we're in the iframe context
-     * @returns {boolean}
-     */
     function isInIframe() {
         return window.location.pathname.includes('test-chat');
     }
 
-    // ============================================
-    // ELEMENT CREATION HELPERS
-    // ============================================
-
-    /**
-     * Create an element with styles and attributes
-     * @param {Document} doc - Document to create element in
-     * @param {string} tag - Element tag name
-     * @param {Object} options - Options for the element
-     * @returns {Element}
-     */
     function createElement(doc, tag, options = {}) {
         const element = doc.createElement(tag);
 
@@ -104,12 +64,6 @@
         return element;
     }
 
-    /**
-     * Create a button element
-     * @param {Document} doc - Document to create button in
-     * @param {Object} options - Button options
-     * @returns {HTMLButtonElement}
-     */
     function createButton(doc, options = {}) {
         const button = doc.createElement('button');
         button.type = 'button';
@@ -122,16 +76,6 @@
         return button;
     }
 
-    // ============================================
-    // SELECTION/CURSOR HELPERS
-    // ============================================
-
-    /**
-     * Get selection and range from a document
-     * @param {Document} doc - Document to get selection from
-     * @param {Element} input - Input element for fallback
-     * @returns {Object} - { selection, range }
-     */
     function getSelectionAndRange(doc, input) {
         const win = doc.defaultView || window;
         const selection = win.getSelection();
@@ -149,13 +93,6 @@
         return { selection, range };
     }
 
-    /**
-     * Insert text at cursor position in a contenteditable element
-     * @param {Document} doc - Document context
-     * @param {Element} input - Input element
-     * @param {string} text - Text to insert
-     * @param {Object} options - Insertion options
-     */
     function insertTextAtCursor(doc, input, text, options = {}) {
         input.focus();
 
@@ -165,7 +102,6 @@
         range.deleteContents();
         range.insertNode(textNode);
 
-        // Position cursor
         if (options.cursorPosition !== undefined) {
             range.setStart(textNode, options.cursorPosition);
             range.setEnd(textNode, options.cursorPosition);
@@ -177,18 +113,12 @@
         selection.removeAllRanges();
         selection.addRange(range);
 
-        // Trigger input event
         const event = new Event('input', { bubbles: true, cancelable: true });
         input.dispatchEvent(event);
 
         input.focus();
     }
 
-    /**
-     * Position cursor at end of element
-     * @param {Document} doc - Document context
-     * @param {Element} element - Element to position cursor in
-     */
     function positionCursorAtEnd(doc, element) {
         element.focus();
         const range = doc.createRange();
@@ -199,10 +129,6 @@
         selection.removeAllRanges();
         selection.addRange(range);
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.util = SNEED.util || {};
     Object.assign(SNEED.util, {

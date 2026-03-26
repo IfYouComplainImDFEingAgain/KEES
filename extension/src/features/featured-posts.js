@@ -1,37 +1,23 @@
-/**
- * features/featured-posts.js - Featured post consolidation
- * Walks pages forward/backward to collect and display featured posts.
- */
+// features/featured-posts.js - Featured post consolidation
 (function() {
     'use strict';
 
     const SNEED = window.SNEED || {};
     window.SNEED = SNEED;
 
-    // ============================================
-    // CONFIGURATION
-    // ============================================
-
     const DEFAULT_PAGES_FORWARD = 10;
     const DEFAULT_PAGES_BACKWARD = 10;
     // Featured posts have the award icon (fa-award), not the highlighter icon
-    // They also have aria-label="Feature" instead of "xf_hb_feature"
     const FEATURED_POST_SELECTOR = 'a.hbReact-message-postmark[aria-label="Feature"]';
     const POST_SELECTOR = 'article.message';
-
-    // ============================================
-    // URL/PAGE UTILITIES
-    // ============================================
 
     function getCurrentPageInfo() {
         const url = window.location.href;
         const pageMatch = url.match(/\/page-(\d+)/);
         const currentPage = pageMatch ? parseInt(pageMatch[1], 10) : 1;
 
-        // Get thread base URL (without page number)
         const baseUrl = url.replace(/\/page-\d+/, '').replace(/#.*$/, '');
 
-        // Get max page from pagination
         const lastPageLink = document.querySelector('.pageNav-page:last-child a');
         const maxPage = lastPageLink ? parseInt(lastPageLink.textContent, 10) : currentPage;
 
@@ -42,16 +28,11 @@
         if (pageNum === 1) {
             return baseUrl;
         }
-        // Insert page number before any query string or hash
         const urlParts = baseUrl.split('?');
         const basePart = urlParts[0].replace(/\/$/, '');
         const queryPart = urlParts[1] ? '?' + urlParts[1] : '';
         return `${basePart}/page-${pageNum}${queryPart}`;
     }
-
-    // ============================================
-    // FETCH AND PARSE
-    // ============================================
 
     async function fetchPage(url) {
         try {
@@ -80,10 +61,7 @@
         postElements.forEach(post => {
             const featuredBadge = post.querySelector(FEATURED_POST_SELECTOR);
             if (featuredBadge) {
-                // Clone the post element
                 const postClone = post.cloneNode(true);
-
-                // Add page info
                 postClone.dataset.sourcePage = pageNum;
                 postClone.dataset.sourceUrl = pageUrl;
 
@@ -99,12 +77,7 @@
         return posts;
     }
 
-    // ============================================
-    // UI: CONSOLIDATION BUTTON
-    // ============================================
-
     function addConsolidationButton() {
-        // Find the "Next" button
         const nextButton = document.querySelector('.pageNav-jump--next');
         if (!nextButton || document.getElementById('sneed-featured-btn')) {
             return;
@@ -133,16 +106,10 @@
             showConsolidationDialog();
         });
 
-        // Insert after Next button
         nextButton.parentNode.insertBefore(btn, nextButton.nextSibling);
     }
 
-    // ============================================
-    // UI: CONSOLIDATION DIALOG
-    // ============================================
-
     function showConsolidationDialog() {
-        // Remove existing dialog
         const existing = document.getElementById('sneed-featured-dialog');
         if (existing) existing.remove();
 
@@ -216,7 +183,6 @@
             </div>
         `;
 
-        // Add backdrop
         const backdrop = document.createElement('div');
         backdrop.id = 'sneed-featured-backdrop';
         backdrop.style.cssText = `
@@ -233,7 +199,6 @@
         document.body.appendChild(backdrop);
         document.body.appendChild(dialog);
 
-        // Event handlers
         document.getElementById('sneed-featured-cancel').addEventListener('click', closeDialog);
         document.getElementById('sneed-featured-start').addEventListener('click', () => {
             const pagesBack = parseInt(document.getElementById('sneed-pages-back').value, 10) || 0;
@@ -259,14 +224,9 @@
         if (progressText) progressText.textContent = text;
     }
 
-    // ============================================
-    // CONSOLIDATION LOGIC
-    // ============================================
-
     async function startConsolidation(pagesBack, pagesFwd) {
         const { currentPage, baseUrl, maxPage } = getCurrentPageInfo();
 
-        // Disable the start button
         const startBtn = document.getElementById('sneed-featured-start');
         if (startBtn) {
             startBtn.disabled = true;
@@ -287,7 +247,6 @@
 
             let doc;
             if (page === currentPage) {
-                // Use current page document
                 doc = document;
             } else {
                 doc = await fetchPage(pageUrl);
@@ -302,7 +261,6 @@
             pagesProcessed++;
             updateProgress(pagesProcessed, totalPages, `Processed ${pagesProcessed}/${totalPages} pages`);
 
-            // Small delay between requests
             if (page !== endPage && page !== currentPage) {
                 await new Promise(r => setTimeout(r, 200));
             }
@@ -312,12 +270,7 @@
         showFeaturedPostsView(allFeaturedPosts, startPage, endPage);
     }
 
-    // ============================================
-    // UI: FEATURED POSTS VIEW
-    // ============================================
-
     function showFeaturedPostsView(posts, startPage, endPage) {
-        // Create overlay container
         const overlay = document.createElement('div');
         overlay.id = 'sneed-featured-overlay';
         overlay.style.cssText = `
@@ -332,7 +285,6 @@
             padding: 20px;
         `;
 
-        // Header
         const header = document.createElement('div');
         header.style.cssText = `
             max-width: 1200px;
@@ -369,7 +321,6 @@
 
         overlay.appendChild(header);
 
-        // Posts container
         const postsContainer = document.createElement('div');
         postsContainer.style.cssText = `
             max-width: 1200px;
@@ -394,7 +345,6 @@
                     overflow: hidden;
                 `;
 
-                // Page indicator
                 const pageIndicator = document.createElement('div');
                 pageIndicator.style.cssText = `
                     padding: 8px 16px;
@@ -412,7 +362,6 @@
 
                 postWrapper.appendChild(pageIndicator);
 
-                // The actual post content
                 const postContent = document.createElement('div');
                 postContent.className = 'sneed-featured-post-content';
                 postContent.appendChild(post.element);
@@ -425,16 +374,13 @@
         overlay.appendChild(postsContainer);
         document.body.appendChild(overlay);
 
-        // Prevent body scroll
         document.body.style.overflow = 'hidden';
 
-        // Close button handler
         document.getElementById('sneed-close-featured').addEventListener('click', () => {
             overlay.remove();
             document.body.style.overflow = '';
         });
 
-        // Escape key to close
         const escHandler = (e) => {
             if (e.key === 'Escape') {
                 overlay.remove();
@@ -445,17 +391,11 @@
         document.addEventListener('keydown', escHandler);
     }
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
-
     function init() {
-        // Only run on thread pages
         if (!window.location.pathname.includes('/threads/')) {
             return;
         }
 
-        // Wait for page to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', addConsolidationButton);
         } else {
@@ -465,7 +405,6 @@
         console.log('[SNEED] Featured posts consolidation initialized');
     }
 
-    // Export
     SNEED.features = SNEED.features || {};
     SNEED.features.featuredPosts = {
         init,
@@ -473,7 +412,6 @@
         showConsolidationDialog
     };
 
-    // Auto-init
     init();
 
 })();

@@ -1,10 +1,6 @@
-/**
- * wave-edit-page.js - Page-level script for sending edits via WebSocket
- * Injected as a web-accessible resource to bypass CSP.
- * Listens for custom events from the content script.
- */
+// wave-edit-page.js - Page-level script for sending edits via WebSocket
+// Injected as a web-accessible resource to bypass CSP.
 (function() {
-    // Hook into the WebSocket to get a reference
     let wsRef = null;
     const origWS = WebSocket.prototype.send;
     WebSocket.prototype.send = function(data) {

@@ -1,7 +1,4 @@
-/**
- * ui/size-picker.js - Size picker popup
- * Handles the text size selection UI for formatting.
- */
+// ui/size-picker.js - Text size selection popup
 (function() {
     'use strict';
 
@@ -19,15 +16,7 @@
         { label: 'Max', value: 190 }
     ];
 
-    /**
-     * Show the size picker popup
-     * @param {Element} input - Input element
-     * @param {Selection} selection - Current selection
-     * @param {Range} range - Current range
-     * @param {Document} doc - Document context
-     */
     function showSizePicker(input, selection, range, doc) {
-        // Remove existing picker
         const existing = doc.getElementById('size-picker-popup');
         if (existing) {
             existing.remove();
@@ -49,7 +38,6 @@
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
         });
 
-        // Position near the input
         const inputRect = input.getBoundingClientRect();
         picker.style.left = (inputRect.left + 20) + 'px';
         picker.style.top = (inputRect.top - 160) + 'px';
@@ -147,7 +135,6 @@
             picker.appendChild(btn);
         });
 
-        // Close button
         const closeButton = doc.createElement('button');
         closeButton.type = 'button';
         closeButton.textContent = '\u00d7';
@@ -162,7 +149,6 @@
 
         picker.appendChild(closeButton);
 
-        // Click outside to close
         const clickOutside = (e) => {
             if (!picker.contains(e.target)) {
                 picker.remove();
@@ -175,10 +161,6 @@
         doc.body.appendChild(picker);
         setTimeout(() => doc.addEventListener('click', clickOutside), 0);
     }
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.ui.showSizePicker = showSizePicker;
 

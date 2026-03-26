@@ -1,15 +1,8 @@
-/**
- * core/state.js - Application state and configuration
- * Holds default configuration, runtime state, and constants.
- */
+// core/state.js - Application state and configuration
 (function() {
     'use strict';
 
     const SNEED = window.SNEED;
-
-    // ============================================
-    // DEFAULT EMOTES
-    // ============================================
 
     const defaultEmotes = [
         {
@@ -54,18 +47,10 @@
         }
     ];
 
-    // ============================================
-    // TOGGLE BUTTON CONFIG
-    // ============================================
-
     const toggleButtonConfig = {
         image: 'https://kiwifarms.st/styles/custom/emotes/bmj_ross_hq.png',
         title: 'Toggle emote bar'
     };
-
-    // ============================================
-    // FORMAT TOOLS
-    // ============================================
 
     const formatTools = [
         {
@@ -168,10 +153,6 @@
         }
     ];
 
-    // ============================================
-    // CONFIGURATION CONSTANTS
-    // ============================================
-
     const CONFIG = {
         MAX_INPUT_HEIGHT: 200,
         RESIZE_DEBOUNCE_DELAY: 16, // ~60fps
@@ -181,10 +162,6 @@
         MAX_REINJECT_ATTEMPTS: 10,
         SEND_TIMEOUT: 3000
     };
-
-    // ============================================
-    // STORAGE KEYS
-    // ============================================
 
     const STORAGE_KEYS = {
         EMOTES: 'sneedchat-custom-emotes',
@@ -211,24 +188,16 @@
         BOT_COLUMN_HIDE_MAIN: 'kees-bot-column-hide-main'
     };
 
-    // ============================================
-    // RUNTIME STATE
-    // ============================================
-
     const runtimeState = {
         emoteBarVisible: false,
         reinjectAttempts: 0,
-        emotes: null, // Will be loaded from storage
+        emotes: null,
         initialized: false,
         pendingTimers: new Set(),
-        wysiwygMode: true, // true = rich/WYSIWYG, false = raw BBCode
-        disableHomepageChat: false, // true = hide chat on homepage
-        everyoneList: [] // usernames for @everyone expansion
+        wysiwygMode: true,
+        disableHomepageChat: false,
+        everyoneList: []
     };
-
-    // ============================================
-    // EXPORT TO NAMESPACE
-    // ============================================
 
     SNEED.state = SNEED.state || {};
     Object.assign(SNEED.state, {
@@ -239,7 +208,6 @@
         STORAGE_KEYS,
         runtime: runtimeState,
 
-        // Getters/setters for runtime state
         isEmoteBarVisible() {
             return runtimeState.emoteBarVisible;
         },
@@ -277,7 +245,6 @@
             return runtimeState.initialized;
         },
 
-        // Timer management
         addTimer(id) {
             runtimeState.pendingTimers.add(id);
             return id;
@@ -292,7 +259,6 @@
             runtimeState.pendingTimers.clear();
         },
 
-        // WYSIWYG mode
         isWysiwygMode() {
             return runtimeState.wysiwygMode;
         },
@@ -306,7 +272,6 @@
             return runtimeState.wysiwygMode;
         },
 
-        // Disable homepage chat
         isHomepageChatDisabled() {
             return runtimeState.disableHomepageChat;
         },
@@ -320,7 +285,6 @@
             return runtimeState.disableHomepageChat;
         },
 
-        // @everyone list
         getEveryoneList() {
             return runtimeState.everyoneList;
         },
