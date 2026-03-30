@@ -27,13 +27,22 @@
     }
 
     const originalRemove = Element.prototype.remove;
+    let cachedMessagesEl = null;
 
     Element.prototype.remove = function() {
-        const messagesEl = document.getElementById('chat-messages');
-        if (messagesEl && this.parentNode === messagesEl && this.classList.contains('chat-message')) {
-            const currentCount = messagesEl.children.length;
+        // Fast path: skip getElementById for all non-chat-message elements
+        if (!this.classList || !this.classList.contains('chat-message')) {
+            originalRemove.call(this);
+            return;
+        }
 
-            if (currentCount > messageLimit) {
+        // Lazy-init and invalidate cache if element was detached
+        if (!cachedMessagesEl || !cachedMessagesEl.isConnected) {
+            cachedMessagesEl = document.getElementById('chat-messages');
+        }
+
+        if (cachedMessagesEl && this.parentNode === cachedMessagesEl) {
+            if (cachedMessagesEl.children.length > messageLimit) {
                 originalRemove.call(this);
             }
             // Under our custom limit - prevent removal (do nothing)

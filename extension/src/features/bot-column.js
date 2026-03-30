@@ -92,11 +92,14 @@
     }
 
     function start(doc) {
-        chrome.storage.local.get([
+        const keys = [
             SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED,
             SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN,
             SNEED.state.STORAGE_KEYS.BOT_USERS
-        ], (result) => {
+        ];
+
+        // Use callback style — Firefox's chrome.* compat doesn't support Promise return
+        chrome.storage.local.get(keys, (result) => {
             enabled = result[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED] === true;
             hideFromMain = result[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN] === true;
             const users = result[SNEED.state.STORAGE_KEYS.BOT_USERS] || [];
@@ -105,30 +108,30 @@
             if (enabled && botUsersLower.length > 0) {
                 setupColumn(doc);
             }
+        });
 
-            chrome.storage.onChanged.addListener((changes) => {
-                let needsRefresh = false;
+        chrome.storage.onChanged.addListener((changes) => {
+            let needsRefresh = false;
 
-                if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED]) {
-                    enabled = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED].newValue === true;
-                    needsRefresh = true;
-                }
-                if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN]) {
-                    hideFromMain = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN].newValue === true;
-                }
-                if (changes[SNEED.state.STORAGE_KEYS.BOT_USERS]) {
-                    const users = changes[SNEED.state.STORAGE_KEYS.BOT_USERS].newValue || [];
-                    botUsersLower = users.map(u => u.toLowerCase());
-                    needsRefresh = true;
-                }
+            if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED]) {
+                enabled = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_ENABLED].newValue === true;
+                needsRefresh = true;
+            }
+            if (changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN]) {
+                hideFromMain = changes[SNEED.state.STORAGE_KEYS.BOT_COLUMN_HIDE_MAIN].newValue === true;
+            }
+            if (changes[SNEED.state.STORAGE_KEYS.BOT_USERS]) {
+                const users = changes[SNEED.state.STORAGE_KEYS.BOT_USERS].newValue || [];
+                botUsersLower = users.map(u => u.toLowerCase());
+                needsRefresh = true;
+            }
 
-                if (needsRefresh) {
-                    teardownColumn(doc);
-                    if (enabled && botUsersLower.length > 0) {
-                        setupColumn(doc);
-                    }
+            if (needsRefresh) {
+                teardownColumn(doc);
+                if (enabled && botUsersLower.length > 0) {
+                    setupColumn(doc);
                 }
-            });
+            }
         });
     }
 
@@ -154,6 +157,8 @@
             processMessage(msg, botMessages, doc);
         });
 
+        let scrollPending = false;
+
         const observer = new MutationObserver((mutations) => {
             let added = false;
             for (const m of mutations) {
@@ -164,8 +169,12 @@
                     }
                 }
             }
-            if (added) {
-                botMessages.scrollTop = botMessages.scrollHeight;
+            if (added && !scrollPending) {
+                scrollPending = true;
+                requestAnimationFrame(() => {
+                    botMessages.scrollTop = botMessages.scrollHeight;
+                    scrollPending = false;
+                });
             }
         });
 

@@ -372,7 +372,7 @@
     ]);
     const ALLOWED_ATTRS = {
         'a': ['href', 'title', 'target', 'rel'],
-        'img': ['src', 'alt', 'width', 'height', 'title'],
+        'img': ['src', 'alt', 'width', 'height', 'title', 'class'],
         'span': ['class', 'style'],
         'div': ['class', 'style']
     };
@@ -409,7 +409,12 @@
                 child.setAttribute('rel', 'noopener noreferrer');
             }
             if (tag === 'img') {
-                const src = child.getAttribute('src');
+                let src = child.getAttribute('src');
+                if (src && src.startsWith('/') && !SAFE_URL_RE.test(src)) {
+                    const origin = window.location.origin || 'https://kiwifarms.st';
+                    src = origin + src;
+                    child.setAttribute('src', src);
+                }
                 if (src && !SAFE_URL_RE.test(src)) { child.remove(); continue; }
             }
             if (child.hasAttribute('style')) {

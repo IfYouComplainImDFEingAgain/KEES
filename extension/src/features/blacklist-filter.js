@@ -35,26 +35,13 @@
     function startBlacklistFilter(doc) {
         if (doc.__sneed_blacklistFilter) return;
 
-        const container = util.findMessageContainer(doc);
-        if (!container) {
-            log.warn('Could not find message container for blacklist filter');
-            return;
-        }
-
         scanExistingMessages(doc);
 
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType === 1) {
-                        filterBlacklistedImages(node);
-                    }
-                }
+        events.addMessageHandler(doc, (addedElements) => {
+            for (const node of addedElements) {
+                filterBlacklistedImages(node);
             }
         });
-
-        observer.observe(container, { childList: true, subtree: true });
-        events.addManagedObserver(container, observer);
 
         doc.__sneed_blacklistFilter = true;
         log.info('Blacklist filter started');

@@ -130,35 +130,117 @@
         resizeCache.delete(element);
     }
 
+    // Shared message observer - one MutationObserver per document, many handlers
+    const messageObservers = new WeakMap(); // doc -> { handlers, observer, container }
+    const pendingHandlers = new WeakMap(); // doc -> Set of handlers waiting for container
+
+    function findChatContainer(doc) {
+        // Find actual chat message container, excluding doc.body fallback
+        return (
+            doc.querySelector('#chat-messages') ||
+            doc.querySelector('.messages') ||
+            doc.querySelector('#messages') ||
+            doc.querySelector('[class*="messages"]') ||
+            doc.querySelector('[class*="chat-messages"]') ||
+            doc.querySelector('.chat-log') ||
+            doc.querySelector('[role="log"]')
+        );
+    }
+
+    function ensureSharedMessageObserver(doc) {
+        if (messageObservers.has(doc)) return messageObservers.get(doc);
+
+        const container = findChatContainer(doc);
+        if (!container) return null;
+
+        const entry = {
+            handlers: new Set(),
+            observer: null,
+            container: container
+        };
+
+        // Flush any handlers that were queued before the container existed
+        const pending = pendingHandlers.get(doc);
+        if (pending) {
+            for (const h of pending) entry.handlers.add(h);
+            pendingHandlers.delete(doc);
+        }
+
+        entry.observer = new MutationObserver((mutations) => {
+            if (entry.handlers.size === 0) return;
+
+            const addedElements = [];
+            for (const m of mutations) {
+                for (const n of m.addedNodes) {
+                    if (n.nodeType === 1) addedElements.push(n);
+                }
+            }
+
+            if (addedElements.length === 0) return;
+
+            for (const handler of entry.handlers) {
+                try {
+                    handler(addedElements);
+                } catch (e) {
+                    console.error('[KEES] Message handler error:', e);
+                }
+            }
+        });
+
+        entry.observer.observe(container, { childList: true, subtree: true });
+        addManagedObserver(container, entry.observer);
+
+        messageObservers.set(doc, entry);
+        return entry;
+    }
+
+    function addMessageHandler(doc, handler) {
+        const entry = ensureSharedMessageObserver(doc);
+        if (entry) {
+            entry.handlers.add(handler);
+        } else {
+            // Container not ready yet — queue the handler
+            if (!pendingHandlers.has(doc)) pendingHandlers.set(doc, new Set());
+            pendingHandlers.get(doc).add(handler);
+        }
+        return handler;
+    }
+
+    function removeMessageHandler(doc, handler) {
+        const entry = messageObservers.get(doc);
+        if (entry) {
+            entry.handlers.delete(handler);
+        }
+        const pending = pendingHandlers.get(doc);
+        if (pending) {
+            pending.delete(handler);
+        }
+    }
+
     // Monitors for message confirmation in chat
     function ensureSendWatcher(doc) {
         if (doc.__sneed_sendWatcher) return doc.__sneed_sendWatcher;
 
         const state = { pending: null, timer: null };
-        const container = SNEED.util.findMessageContainer(doc);
 
-        const obs = new MutationObserver((mutations) => {
+        function sendWatcherHandler(addedElements) {
             if (!state.pending) return;
             const want = (state.pending.text || '').trim();
             if (!want) return;
 
-            for (const m of mutations) {
-                for (const n of m.addedNodes) {
-                    if (!n || n.nodeType !== 1) continue;
-                    const t = n.textContent || '';
-                    if (t.includes(want)) {
-                        const done = state.pending;
-                        state.pending = null;
-                        if (state.timer) { clearTimeout(state.timer); state.timer = null; }
-                        done.onConfirm && done.onConfirm();
-                        return;
-                    }
+            for (const n of addedElements) {
+                const t = n.textContent || '';
+                if (t.includes(want)) {
+                    const done = state.pending;
+                    state.pending = null;
+                    if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+                    done.onConfirm && done.onConfirm();
+                    return;
                 }
             }
-        });
+        }
 
-        obs.observe(container, { childList: true, subtree: true });
-        addManagedObserver(container, obs);
+        addMessageHandler(doc, sendWatcherHandler);
 
         doc.__sneed_sendWatcher = {
             arm(pending) {
@@ -176,7 +258,7 @@
             },
             destroy() {
                 this.clear();
-                obs.disconnect();
+                removeMessageHandler(doc, sendWatcherHandler);
                 delete doc.__sneed_sendWatcher;
             }
         };
@@ -198,6 +280,9 @@
         getResizeCache,
         setResizeCache,
         deleteResizeCache,
+        addMessageHandler,
+        removeMessageHandler,
+        initMessageObserver: ensureSharedMessageObserver,
         ensureSendWatcher
     };
 

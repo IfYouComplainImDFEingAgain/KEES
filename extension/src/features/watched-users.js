@@ -105,10 +105,9 @@
             }
         }
 
-        list.innerHTML = '';
-
         if (foundElements.length > 0) {
             panel.style.display = 'block';
+            const frag = doc.createDocumentFragment();
             for (const element of foundElements) {
                 element.style.cssText = `
                     background: rgba(255, 200, 0, 0.1);
@@ -116,10 +115,12 @@
                     padding-left: 6px;
                     margin: 0;
                 `;
-                list.appendChild(element);
+                frag.appendChild(element);
             }
+            list.replaceChildren(frag);
         } else {
             panel.style.display = 'none';
+            list.replaceChildren();
         }
     }
 

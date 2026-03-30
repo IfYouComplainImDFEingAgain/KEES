@@ -199,28 +199,17 @@
     }
 
     function setupObserver(doc) {
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        if (node.matches && node.matches('a[href*="youtube.com"], a[href*="youtu.be"]')) {
-                            processLink(doc, node);
-                        }
-
-                        const links = node.querySelectorAll ?
-                            node.querySelectorAll('a[href*="youtube.com"], a[href*="youtu.be"]') : [];
-                        links.forEach(link => processLink(doc, link));
-                    }
+        SNEED.core.events.addMessageHandler(doc, (addedElements) => {
+            for (const node of addedElements) {
+                if (node.matches && node.matches('a[href*="youtube.com"], a[href*="youtu.be"]')) {
+                    processLink(doc, node);
                 }
+
+                const links = node.querySelectorAll ?
+                    node.querySelectorAll('a[href*="youtube.com"], a[href*="youtu.be"]') : [];
+                links.forEach(link => processLink(doc, link));
             }
         });
-
-        observer.observe(doc.body, {
-            childList: true,
-            subtree: true
-        });
-
-        return observer;
     }
 
     function start(doc) {

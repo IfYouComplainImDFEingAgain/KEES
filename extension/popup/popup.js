@@ -24,6 +24,7 @@
     const STORAGE_KEY_WHISPER_HIDE_MAIN = 'kees-whisper-hide-main';
     const STORAGE_KEY_WHISPER_RETENTION = 'kees-whisper-retention';
     const STORAGE_KEY_GLOBAL_CHAT = 'kees-global-chat';
+    const STORAGE_KEY_BOSSMAN_LIVE_NOTIFY = 'kees-bossman-live-notify';
     const STORAGE_KEY_BOT_USERS = 'kees-bot-users';
     const STORAGE_KEY_BOT_COLUMN_ENABLED = 'kees-bot-column-enabled';
     const STORAGE_KEY_BOT_COLUMN_HIDE_MAIN = 'kees-bot-column-hide-main';
@@ -83,7 +84,10 @@
     const whisperGlobal = document.getElementById('whisper-global');
     const whisperHideMain = document.getElementById('whisper-hide-main');
 
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN], (result) => {
+    // Bossman live alert element
+    const bossmanLiveNotify = document.getElementById('bossman-live-notify');
+
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -95,6 +99,7 @@
         whisperGlobal.checked = result[STORAGE_KEY_WHISPER_GLOBAL] === true;
         // Default to true
         whisperHideMain.checked = result[STORAGE_KEY_WHISPER_HIDE_MAIN] !== false;
+        bossmanLiveNotify.checked = result[STORAGE_KEY_BOSSMAN_LIVE_NOTIFY] === true;
     });
 
     // Save homepage chat setting on change
@@ -149,6 +154,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Save bossman live alert setting on change
+    bossmanLiveNotify.addEventListener('change', () => {
+        const enabled = bossmanLiveNotify.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_BOSSMAN_LIVE_NOTIFY]: enabled }, () => {
+            showStatus(enabled ? 'Bossman live alerts enabled' : 'Bossman live alerts disabled');
         });
     });
 
