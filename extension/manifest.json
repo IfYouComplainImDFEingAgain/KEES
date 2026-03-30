@@ -142,7 +142,8 @@
     "128": "icons/kiwi-logo-extension-128.png"
   },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "scripts": ["src/background.js"]
   },
   "web_accessible_resources": [
     {

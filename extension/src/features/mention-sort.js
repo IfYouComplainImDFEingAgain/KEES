@@ -7,20 +7,41 @@
     let sorting = false;
     let pendingSort = false;
 
-    // Build activity map from visible chat messages (bottom = most recent)
-    function buildActivityMap(doc) {
-        const activity = {};
+    // Persistent activity map updated incrementally via shared observer
+    let activityMap = {};
+    let activityIndex = 0;
+    let mapInitialized = false;
+
+    function initActivityMap(doc) {
+        if (mapInitialized) return;
+        mapInitialized = true;
+
+        // Build initial map once
         const messages = doc.querySelectorAll('.chat-message');
-        messages.forEach((msg, i) => {
+        messages.forEach((msg) => {
             const authorEl = msg.querySelector('.author');
             if (authorEl) {
                 const username = (authorEl.textContent || '').trim().toLowerCase();
                 if (username) {
-                    activity[username] = i;
+                    activityMap[username] = activityIndex++;
                 }
             }
         });
-        return activity;
+
+        // Update incrementally as new messages arrive
+        SNEED.core.events.addMessageHandler(doc, (addedElements) => {
+            for (const node of addedElements) {
+                if (node.classList && node.classList.contains('chat-message')) {
+                    const authorEl = node.querySelector('.author');
+                    if (authorEl) {
+                        const username = (authorEl.textContent || '').trim().toLowerCase();
+                        if (username) {
+                            activityMap[username] = activityIndex++;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     function resortDropdown(dropdown, activity) {
@@ -66,6 +87,8 @@
         const input = doc.getElementById('new-message-input');
         if (!input) return;
 
+        initActivityMap(doc);
+
         SNEED.core.events.addManagedEventListener(input, 'input', () => {
             if (pendingSort) return;
 
@@ -78,8 +101,7 @@
             if (afterAt.includes(' ')) return;
 
             pendingSort = true;
-            const activity = buildActivityMap(doc);
-            sortWhenReady(doc, activity, 0);
+            sortWhenReady(doc, activityMap, 0);
         });
     }
 

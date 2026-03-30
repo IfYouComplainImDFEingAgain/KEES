@@ -53,6 +53,9 @@
             const messageForm = document.getElementById('new-message-form');
 
             if (messageForm && !document.getElementById('custom-emote-bar')) {
+                // Initialize shared message observer before features register handlers
+                events.initMessageObserver(document);
+
                 hideOfficialToolbar(document);
 
                 const emoteBar = ui.createEmoteBar(document);
@@ -124,6 +127,9 @@
                         const messageForm = iframeDoc.getElementById('new-message-form');
 
                         if (messageForm && !iframeDoc.getElementById('custom-emote-bar')) {
+                            // Initialize shared message observer before features register handlers
+                            events.initMessageObserver(iframeDoc);
+
                             hideOfficialToolbar(iframeDoc);
 
                             const emoteBar = ui.createEmoteBar(iframeDoc);

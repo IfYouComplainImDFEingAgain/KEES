@@ -7,13 +7,18 @@
 
     const STORAGE_KEY_ENABLED = 'kees-mention-notifications';
     const STORAGE_KEY_SHOW_BODY = 'kees-mention-show-body';
+    const STORAGE_KEY_BOSSMAN_LIVE = 'kees-bossman-live-notify';
     const MENTION_SELECTOR = '.chat-message--highlightYou';
+
+    const BOSSMAN_TRIGGER = 'ImBossmanJack is LIVE on Discord!';
+    const BOSSMAN_BOT = 'kenogpt';
 
     const initializedDocs = new WeakSet();
     const processedMessages = new WeakSet();
 
     let isEnabled = false;
     let showBody = false;
+    let bossmanLiveEnabled = false;
 
     function checkForMention(messageElement, doc) {
         if (!isEnabled) return;
@@ -35,7 +40,24 @@
         sendNotification(author || 'Someone', content, doc);
     }
 
-    function sendNotification(author, content, doc) {
+    function checkForBossmanLive(messageElement, doc) {
+        if (!bossmanLiveEnabled) return;
+        if (processedMessages.has(messageElement)) return;
+
+        const author = messageElement.querySelector('.chat-user-name')?.textContent?.trim()
+            || messageElement.querySelector('.username')?.textContent?.trim()
+            || messageElement.querySelector('[class*="user"]')?.textContent?.trim()
+            || '';
+
+        if (author.toLowerCase() !== BOSSMAN_BOT) return;
+
+        const content = messageElement.textContent || '';
+        if (!content.includes(BOSSMAN_TRIGGER)) return;
+
+        sendNotification('KenoGPT', BOSSMAN_TRIGGER, doc, true);
+    }
+
+    function sendNotification(author, content, doc, alwaysNotify) {
         if (!('Notification' in window)) return;
 
         if (Notification.permission === 'default') {
@@ -45,15 +67,17 @@
 
         if (Notification.permission !== 'granted') return;
 
-        // Don't notify if page is focused
-        const docHasFocus = doc.hasFocus();
-        let parentHasFocus = false;
-        try {
-            parentHasFocus = window.parent && window.parent.document.hasFocus();
-        } catch (e) {
-            // Cross-origin
+        // Don't notify if page is focused (unless alwaysNotify is set)
+        if (!alwaysNotify) {
+            const docHasFocus = doc.hasFocus();
+            let parentHasFocus = false;
+            try {
+                parentHasFocus = window.parent && window.parent.document.hasFocus();
+            } catch (e) {
+                // Cross-origin
+            }
+            if (docHasFocus || parentHasFocus) return;
         }
-        if (docHasFocus || parentHasFocus) return;
 
         let body = '';
         if (showBody && content) {
@@ -88,24 +112,19 @@
         existingMessages.forEach(msg => processedMessages.add(msg));
         console.log('[KEES] Marked', existingMessages.length, 'existing messages as processed');
 
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
-
-                    if (node.matches && node.matches('.chat-message')) {
-                        checkForMention(node, doc);
-                    } else if (node.querySelectorAll) {
-                        const messages = node.querySelectorAll('.chat-message');
-                        messages.forEach(msg => checkForMention(msg, doc));
-                    }
+        SNEED.core.events.addMessageHandler(doc, (addedElements) => {
+            for (const node of addedElements) {
+                if (node.matches && node.matches('.chat-message')) {
+                    checkForBossmanLive(node, doc);
+                    checkForMention(node, doc);
+                } else if (node.querySelectorAll) {
+                    const messages = node.querySelectorAll('.chat-message');
+                    messages.forEach(msg => {
+                        checkForBossmanLive(msg, doc);
+                        checkForMention(msg, doc);
+                    });
                 }
             }
-        });
-
-        observer.observe(chatContainer, {
-            childList: true,
-            subtree: true
         });
 
         console.log('[KEES] Mention notification observer started');
@@ -116,11 +135,12 @@
         initializedDocs.add(doc);
 
         const settings = await new Promise(resolve => {
-            chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY], resolve);
+            chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY, STORAGE_KEY_BOSSMAN_LIVE], resolve);
         });
 
         isEnabled = settings[STORAGE_KEY_ENABLED] === true;
         showBody = settings[STORAGE_KEY_SHOW_BODY] === true;
+        bossmanLiveEnabled = settings[STORAGE_KEY_BOSSMAN_LIVE] === true;
 
         if (!isEnabled) {
             console.log('[KEES] Mention notifications disabled');
@@ -144,6 +164,10 @@
                 if (changes[STORAGE_KEY_SHOW_BODY]) {
                     showBody = changes[STORAGE_KEY_SHOW_BODY].newValue === true;
                     console.log('[KEES] Show body in notifications:', showBody);
+                }
+                if (changes[STORAGE_KEY_BOSSMAN_LIVE]) {
+                    bossmanLiveEnabled = changes[STORAGE_KEY_BOSSMAN_LIVE].newValue === true;
+                    console.log('[KEES] Bossman live alerts', bossmanLiveEnabled ? 'enabled' : 'disabled');
                 }
             }
         });
