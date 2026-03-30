@@ -110,6 +110,10 @@
                     SNEED.features.botColumn.start(document);
                 }
 
+                if (SNEED.features.chatMuting && SNEED.features.chatMuting.start) {
+                    SNEED.features.chatMuting.start(document);
+                }
+
                 if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
                     SNEED.features.waveAnimation.start(document);
                 }
@@ -182,6 +186,10 @@
 
                             if (SNEED.features.botColumn && SNEED.features.botColumn.start) {
                                 SNEED.features.botColumn.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.chatMuting && SNEED.features.chatMuting.start) {
+                                SNEED.features.chatMuting.start(iframeDoc);
                             }
 
                             if (SNEED.features.waveAnimation && SNEED.features.waveAnimation.start) {
