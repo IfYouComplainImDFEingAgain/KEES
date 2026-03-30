@@ -83,7 +83,9 @@
         let panel = doc.getElementById('sneed-watched-users');
         if (!panel) {
             panel = createWatchedUsersPanel(doc);
-            chatActivity.insertBefore(panel, chatActivity.firstChild);
+            // Insert before #chat-activity, not inside it, so panel
+            // updates don't re-trigger the activity observer
+            chatActivity.parentNode.insertBefore(panel, chatActivity);
         }
 
         const list = doc.getElementById('sneed-watched-users-list');
