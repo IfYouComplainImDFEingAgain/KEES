@@ -28,6 +28,7 @@
     const STORAGE_KEY_BOT_USERS = 'kees-bot-users';
     const STORAGE_KEY_BOT_COLUMN_ENABLED = 'kees-bot-column-enabled';
     const STORAGE_KEY_BOT_COLUMN_HIDE_MAIN = 'kees-bot-column-hide-main';
+    const STORAGE_KEY_MUTE_GAMBLING = 'kees-mute-gambling';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -84,10 +85,13 @@
     const whisperGlobal = document.getElementById('whisper-global');
     const whisperHideMain = document.getElementById('whisper-hide-main');
 
+    // Gambling mute element
+    const muteGambling = document.getElementById('mute-gambling');
+
     // Bossman live alert element
     const bossmanLiveNotify = document.getElementById('bossman-live-notify');
 
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY, STORAGE_KEY_MUTE_GAMBLING], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -100,6 +104,7 @@
         // Default to true
         whisperHideMain.checked = result[STORAGE_KEY_WHISPER_HIDE_MAIN] !== false;
         bossmanLiveNotify.checked = result[STORAGE_KEY_BOSSMAN_LIVE_NOTIFY] === true;
+        muteGambling.checked = result[STORAGE_KEY_MUTE_GAMBLING] === true;
     });
 
     // Save homepage chat setting on change
@@ -154,6 +159,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MENTION_SHOW_BODY]: enabled }, () => {
             showStatus('Settings saved!');
+        });
+    });
+
+    // Save mute gambling setting on change
+    muteGambling.addEventListener('change', () => {
+        const enabled = muteGambling.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_MUTE_GAMBLING]: enabled }, () => {
+            showStatus(enabled ? 'Gambling messages muted' : 'Gambling messages unmuted');
         });
     });
 

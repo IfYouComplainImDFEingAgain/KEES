@@ -115,6 +115,7 @@
         "src/features/whisper-box.js",
         "src/features/bot-column.js",
         "src/features/chat-muting.js",
+        "src/features/gambling-filter.js",
         "src/features/wave-animation.js",
         "src/bootstrap.js"
       ],

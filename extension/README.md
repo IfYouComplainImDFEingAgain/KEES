@@ -25,6 +25,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Whisper Persistence** - Save whisper history with configurable retention per conversation
 - **Hide Whispers in Main Chat** - Only show whispers in the whisper box (enabled by default)
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
+- **Mute Gambling** - Hide gambling commands (slots, roulette, blackjack, dice, coinflip, etc.) and bot responses including animated game boards and images
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
@@ -63,7 +64,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 Click the extension icon in your browser toolbar to access settings:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
-- **Chat Settings** - Mention notifications, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
+- **Chat Settings** - Mention notifications, mute gambling, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
 - **@everyone List** - Manage usernames for @everyone expansion
 - **Muted Users** - Manage your muted users list
