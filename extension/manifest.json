@@ -1,13 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Kiwi Extra Enhancement Suite (KEES)",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Enhanced features for specific Xenforo chat and forums",
   "permissions": ["storage", "notifications"],
   "host_permissions": [
-    "https://kiwifarms.st/*",
-    "https://kiwifarms.tw/*",
-    "https://kiwifarms.net/*"
+    "https://kiwifarms.st/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
@@ -20,9 +18,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://kiwifarms.st/",
-        "https://kiwifarms.tw/",
-        "https://kiwifarms.net/"
+        "https://kiwifarms.st/"
       ],
       "css": ["src/homepage-hide.css"],
       "js": ["src/homepage-content.js"],
@@ -31,26 +27,16 @@
     {
       "matches": [
         "https://kiwifarms.st/threads/*",
-        "https://kiwifarms.tw/threads/*",
-        "https://kiwifarms.net/threads/*",
         "https://kiwifarms.st/forums/*",
-        "https://kiwifarms.tw/forums/*",
-        "https://kiwifarms.net/forums/*",
         "https://kiwifarms.st/conversations/*",
-        "https://kiwifarms.tw/conversations/*",
-        "https://kiwifarms.net/conversations/*",
-        "https://kiwifarms.st/direct-messages/*",
-        "https://kiwifarms.tw/direct-messages/*",
-        "https://kiwifarms.net/direct-messages/*"
+        "https://kiwifarms.st/direct-messages/*"
       ],
       "js": ["src/attachment-exif-inject.js"],
       "run_at": "document_start"
     },
     {
       "matches": [
-        "https://kiwifarms.st/threads/*",
-        "https://kiwifarms.tw/threads/*",
-        "https://kiwifarms.net/threads/*"
+        "https://kiwifarms.st/threads/*"
       ],
       "js": [
         "src/features/featured-posts.js",
@@ -62,9 +48,7 @@
     },
     {
       "matches": [
-        "https://kiwifarms.st/members/*",
-        "https://kiwifarms.tw/members/*",
-        "https://kiwifarms.net/members/*"
+        "https://kiwifarms.st/members/*"
       ],
       "js": ["src/features/user-forum-activity.js"],
       "run_at": "document_idle"
@@ -72,11 +56,7 @@
     {
       "matches": [
         "https://kiwifarms.st/chat/*",
-        "https://kiwifarms.st/test-chat*",
-        "https://kiwifarms.tw/chat/*",
-        "https://kiwifarms.tw/test-chat*",
-        "https://kiwifarms.net/chat/*",
-        "https://kiwifarms.net/test-chat*"
+        "https://kiwifarms.st/test-chat*"
       ],
       "js": ["src/features/scrollback.js"],
       "run_at": "document_start"
@@ -84,11 +64,7 @@
     {
       "matches": [
         "https://kiwifarms.st/chat/*",
-        "https://kiwifarms.st/test-chat*",
-        "https://kiwifarms.tw/chat/*",
-        "https://kiwifarms.tw/test-chat*",
-        "https://kiwifarms.net/chat/*",
-        "https://kiwifarms.net/test-chat*"
+        "https://kiwifarms.st/test-chat*"
       ],
       "js": [
         "src/core/namespace.js",
@@ -123,17 +99,11 @@
     },
     {
       "matches": [
-        "https://kiwifarms.st/*",
-        "https://kiwifarms.tw/*",
-        "https://kiwifarms.net/*"
+        "https://kiwifarms.st/*"
       ],
       "exclude_matches": [
         "https://kiwifarms.st/chat/*",
-        "https://kiwifarms.st/test-chat*",
-        "https://kiwifarms.tw/chat/*",
-        "https://kiwifarms.tw/test-chat*",
-        "https://kiwifarms.net/chat/*",
-        "https://kiwifarms.net/test-chat*"
+        "https://kiwifarms.st/test-chat*"
       ],
       "js": ["src/whisper-content.js"],
       "run_at": "document_idle"
@@ -151,15 +121,13 @@
     {
       "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/capture-chat-config.js"],
       "matches": [
-        "https://kiwifarms.st/*",
-        "https://kiwifarms.tw/*",
-        "https://kiwifarms.net/*"
+        "https://kiwifarms.st/*"
       ]
     }
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "kees@kiwifarms.extension",
+      "id": "kees@xenforo-enhancer.extension",
       "data_collection_permissions": {
         "required": ["none"]
       }
