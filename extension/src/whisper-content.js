@@ -157,7 +157,7 @@
             for (const msg of parsed.messages) {
                 const author = msg.author ? msg.author.username : null;
                 const text = msg.message || '';
-                chatAddMessage(author, text, msg.message_date);
+                chatAddMessage(msg.message_uuid, author, text, msg.message_date, msg.message_edit_date);
             }
         }
 
@@ -196,12 +196,24 @@
         if (viewMode === 'chat') renderChatMessages();
     }
 
-    function chatAddMessage(author, html, timestamp) {
+    function chatAddMessage(uuid, author, html, timestamp, editDate) {
+        if (uuid) {
+            const existing = chatMessages.find(m => !m.system && m.uuid === uuid);
+            if (existing) {
+                existing.author = author || existing.author;
+                existing.html = html;
+                existing.edited = true;
+                if (viewMode === 'chat') renderChatMessages(true);
+                return;
+            }
+        }
         chatMessages.push({
             system: false,
+            uuid: uuid || null,
             author: author || 'Unknown',
             html: html,
-            timestamp: timestamp || Math.floor(Date.now() / 1000)
+            timestamp: timestamp || Math.floor(Date.now() / 1000),
+            edited: editDate > 0
         });
         if (chatMessages.length > CHAT_MAX_MESSAGES) {
             chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
@@ -214,10 +226,12 @@
         chatWs.send(text);
     }
 
-    function renderChatMessages() {
+    function renderChatMessages(isEdit) {
         if (!boxElement) return;
         const container = boxElement.querySelector('.whisper-messages');
         if (!container) return;
+        const prevScrollTop = container.scrollTop;
+        const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 4;
         container.replaceChildren();
 
         if (chatMessages.length === 0) {
@@ -254,7 +268,11 @@
             container.appendChild(el);
         }
 
-        container.scrollTop = container.scrollHeight;
+        if (isEdit && !wasAtBottom) {
+            container.scrollTop = prevScrollTop;
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     // ============================================
