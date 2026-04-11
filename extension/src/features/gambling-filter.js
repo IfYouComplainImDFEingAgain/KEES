@@ -4,8 +4,24 @@
 
     const SNEED = window.SNEED;
     const STORAGE_KEY = 'kees-mute-gambling';
+    const STORAGE_KEY_SCORCHED = 'kees-scorched-earth';
 
     let enabled = false;
+    let scorched = false;
+
+    // Scorched-earth allowlist: messages matching any of these stay visible.
+    // Everything else is hidden when scorched mode is on.
+    const ALLOWLIST_HTML_PATTERNS = [
+        /discord16\.png/i,   // Bossman Discord relays (chat, presence, live alerts, channel events)
+        /twitch16\.png/i,    // Bossman Twitch relays (chat, live alert)
+        /kick16\.png/i       // Bossman Kick chat relays
+    ];
+    const ALLOWLIST_TEXT_PATTERNS = [
+        /\bLIVE on Discord\b/i,
+        /\bLIVE on Twitch\b/i,
+        /\bis no longer live\b/i,   // Twitch stream-end message (no icon, e.g. "imbossmanjack is no longer live! :lossmanjack:")
+        /\brestream is live\b/i     // Owncast bossmanjack.tv restream alert (no icon)
+    ];
 
     // User command prefixes that trigger gambling
     const GAMBLING_COMMANDS = [
@@ -54,8 +70,9 @@
         /the hostess has given you/i,
         /\d+\.?\d*\s*KKK/,
         /kasino/i,
-        /\brainbet\b/i,
-        /\bhowl(?:gg)?\b.*(?:stats|recent|bets)/i
+        /\brainbet\b.*(?:stats|recent|bets|value|payout|multiplier)/i,
+        /\bhowl(?:gg)?\b.*(?:stats|recent|bets)/i,
+        /please wait \d+ seconds?.*before attempting to run \w+command again/i
     ];
 
     // Image URL patterns for gambling animations
@@ -72,18 +89,22 @@
         /[🐑🟡🟣🟢🔴🌳🏜️🐺🛸⚡☠🏅💰🏯]{3,}/, // lambchop
         /[⬜🔶💠⬛]{3,}/,              // keno board
         /[💨🛫🛬🔥❌⛴🌊⬜]{3,}/,      // planes
-        /🎲.*[─┃]{3,}/,               // dice meter
+        /(?=.*🎲)(?=.*[─┃]{5,})/,     // dice meter (🎲 may appear before or after the meter line)
         /[♠♥♦♣🃏]{2,}/                // blackjack cards
     ];
 
+    function getMessageBody(msgEl) {
+        return msgEl.querySelector('.message') || msgEl.querySelector('.chat-message-content') || msgEl.querySelector('.message-body') || msgEl;
+    }
+
     function getMessageText(msgEl) {
-        const body = msgEl.querySelector('.message-body') || msgEl;
-        return (body.textContent || '').trim();
+        const raw = msgEl.getAttribute && msgEl.getAttribute('data-raw');
+        if (raw) return raw.trim();
+        return (getMessageBody(msgEl).textContent || '').trim();
     }
 
     function getMessageHtml(msgEl) {
-        const body = msgEl.querySelector('.message-body') || msgEl;
-        return body.innerHTML || '';
+        return getMessageBody(msgEl).innerHTML || '';
     }
 
     function isGamblingCommand(text) {
@@ -135,20 +156,42 @@
         return false;
     }
 
+    function isAllowlisted(msgEl) {
+        const text = getMessageText(msgEl);
+        // Nora-to-user bot: prefix appears at the start of the rendered text.
+        if (/^Nora to\b/i.test(text)) return true;
+
+        for (const pattern of ALLOWLIST_TEXT_PATTERNS) {
+            if (pattern.test(text)) return true;
+        }
+
+        const html = getMessageHtml(msgEl);
+        for (const pattern of ALLOWLIST_HTML_PATTERNS) {
+            if (pattern.test(html)) return true;
+        }
+
+        return false;
+    }
+
+    function shouldHide(msgEl) {
+        if (scorched) return !isAllowlisted(msgEl);
+        if (enabled) return isGamblingMessage(msgEl);
+        return false;
+    }
+
     function resolveMessageEl(node) {
         if (node.classList && node.classList.contains('chat-message')) return node;
         return node.closest ? node.closest('.chat-message') : null;
     }
 
     function hideIfGambling(node) {
-        if (!enabled) return;
+        if (!enabled && !scorched) return;
 
         const msgEl = resolveMessageEl(node);
         if (!msgEl) return;
-        // Don't re-check messages already hidden by this filter
         if (msgEl.dataset.keesGamblingMuted) return;
 
-        if (isGamblingMessage(msgEl)) {
+        if (shouldHide(msgEl)) {
             msgEl.style.display = 'none';
             msgEl.dataset.keesGamblingMuted = 'true';
         }
@@ -160,7 +203,7 @@
 
         const messages = container.querySelectorAll('.chat-message');
         for (const msg of messages) {
-            if (enabled && isGamblingMessage(msg)) {
+            if (shouldHide(msg)) {
                 msg.style.display = 'none';
                 msg.dataset.keesGamblingMuted = 'true';
             } else if (msg.dataset.keesGamblingMuted) {
@@ -171,13 +214,14 @@
     }
 
     function start(doc) {
-        chrome.storage.local.get([STORAGE_KEY], (result) => {
+        chrome.storage.local.get([STORAGE_KEY, STORAGE_KEY_SCORCHED], (result) => {
             enabled = result[STORAGE_KEY] === true;
+            scorched = result[STORAGE_KEY_SCORCHED] === true;
 
             rescanAll(doc);
 
             SNEED.core.events.addMessageHandler(doc, (addedElements) => {
-                if (!enabled) return;
+                if (!enabled && !scorched) return;
                 for (const node of addedElements) {
                     hideIfGambling(node);
                 }
@@ -185,10 +229,17 @@
         });
 
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes[STORAGE_KEY]) {
+            if (areaName !== 'local') return;
+            let changed = false;
+            if (changes[STORAGE_KEY]) {
                 enabled = changes[STORAGE_KEY].newValue === true;
-                rescanAll(doc);
+                changed = true;
             }
+            if (changes[STORAGE_KEY_SCORCHED]) {
+                scorched = changes[STORAGE_KEY_SCORCHED].newValue === true;
+                changed = true;
+            }
+            if (changed) rescanAll(doc);
         });
     }
 

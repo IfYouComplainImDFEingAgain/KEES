@@ -29,6 +29,7 @@
     const STORAGE_KEY_BOT_COLUMN_ENABLED = 'kees-bot-column-enabled';
     const STORAGE_KEY_BOT_COLUMN_HIDE_MAIN = 'kees-bot-column-hide-main';
     const STORAGE_KEY_MUTE_GAMBLING = 'kees-mute-gambling';
+    const STORAGE_KEY_SCORCHED_EARTH = 'kees-scorched-earth';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -88,10 +89,13 @@
     // Gambling mute element
     const muteGambling = document.getElementById('mute-gambling');
 
+    // Scorched earth element
+    const scorchedEarth = document.getElementById('scorched-earth');
+
     // Bossman live alert element
     const bossmanLiveNotify = document.getElementById('bossman-live-notify');
 
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY, STORAGE_KEY_MUTE_GAMBLING], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY, STORAGE_KEY_MUTE_GAMBLING, STORAGE_KEY_SCORCHED_EARTH], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -105,6 +109,7 @@
         whisperHideMain.checked = result[STORAGE_KEY_WHISPER_HIDE_MAIN] !== false;
         bossmanLiveNotify.checked = result[STORAGE_KEY_BOSSMAN_LIVE_NOTIFY] === true;
         muteGambling.checked = result[STORAGE_KEY_MUTE_GAMBLING] === true;
+        scorchedEarth.checked = result[STORAGE_KEY_SCORCHED_EARTH] === true;
     });
 
     // Save homepage chat setting on change
@@ -168,6 +173,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_MUTE_GAMBLING]: enabled }, () => {
             showStatus(enabled ? 'Gambling messages muted' : 'Gambling messages unmuted');
+        });
+    });
+
+    // Save scorched earth setting on change
+    scorchedEarth.addEventListener('change', () => {
+        const enabled = scorchedEarth.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_SCORCHED_EARTH]: enabled }, () => {
+            showStatus(enabled ? 'Scorched earth enabled' : 'Scorched earth disabled');
         });
     });
 
