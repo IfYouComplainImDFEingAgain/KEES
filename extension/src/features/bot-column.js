@@ -156,10 +156,16 @@
         existing.forEach(msg => {
             processMessage(msg, botMessages, doc);
         });
+        botMessages.scrollTop = botMessages.scrollHeight;
 
         let scrollPending = false;
 
         const observer = new MutationObserver((mutations) => {
+            // Capture scroll state before we append anything — otherwise the
+            // first append in this batch inflates scrollHeight and the check
+            // always reports "not at bottom."
+            const wasAtBottom = botMessages.scrollHeight - botMessages.scrollTop - botMessages.clientHeight < 4;
+
             let added = false;
             for (const m of mutations) {
                 for (const node of m.addedNodes) {
@@ -169,7 +175,7 @@
                     }
                 }
             }
-            if (added && !scrollPending) {
+            if (added && wasAtBottom && !scrollPending) {
                 scrollPending = true;
                 requestAnimationFrame(() => {
                     botMessages.scrollTop = botMessages.scrollHeight;
