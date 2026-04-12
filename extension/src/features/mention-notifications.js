@@ -10,8 +10,11 @@
     const STORAGE_KEY_BOSSMAN_LIVE = 'kees-bossman-live-notify';
     const MENTION_SELECTOR = '.chat-message--highlightYou';
 
-    const BOSSMAN_TRIGGER = 'ImBossmanJack is LIVE on Discord!';
     const BOSSMAN_BOT = 'kenogpt';
+    const BOSSMAN_LIVE_PATTERNS = [
+        { pattern: /\bLIVE\b.*on Discord/i, label: 'Bossman is LIVE on Discord!' },
+        { pattern: /\bLIVE\b.*on Twitch/i, label: 'Bossman is LIVE on Twitch!' }
+    ];
 
     const initializedDocs = new WeakSet();
     const processedMessages = new WeakSet();
@@ -46,15 +49,18 @@
 
         const author = messageElement.querySelector('.chat-user-name')?.textContent?.trim()
             || messageElement.querySelector('.username')?.textContent?.trim()
-            || messageElement.querySelector('[class*="user"]')?.textContent?.trim()
+            || messageElement.querySelector('.author')?.textContent?.trim()
             || '';
 
         if (author.toLowerCase() !== BOSSMAN_BOT) return;
 
         const content = messageElement.textContent || '';
-        if (!content.includes(BOSSMAN_TRIGGER)) return;
-
-        sendNotification('KenoGPT', BOSSMAN_TRIGGER, doc, true);
+        for (const { pattern, label } of BOSSMAN_LIVE_PATTERNS) {
+            if (pattern.test(content)) {
+                sendNotification('KenoGPT', label, doc, true);
+                return;
+            }
+        }
     }
 
     function sendNotification(author, content, doc, alwaysNotify) {

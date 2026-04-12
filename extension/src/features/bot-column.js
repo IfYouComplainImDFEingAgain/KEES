@@ -204,6 +204,9 @@
             const existing = botContainer.querySelector(`[id="${msgId}"], [data-id="${msgId}"]`);
             if (existing) {
                 const clone = msgEl.cloneNode(true);
+                clone.style.display = '';
+                delete clone.dataset.keesGamblingMuted;
+                delete clone.dataset.keesMuted;
                 existing.replaceWith(clone);
                 if (hideFromMain) msgEl.style.display = 'none';
                 return false;
@@ -211,6 +214,12 @@
         }
 
         const clone = msgEl.cloneNode(true);
+        // The source message may have been hidden by the gambling filter or
+        // scorched earth before the clone happens (observer ordering varies
+        // across browsers). Always force the clone visible in the bot column.
+        clone.style.display = '';
+        delete clone.dataset.keesGamblingMuted;
+        delete clone.dataset.keesMuted;
         botContainer.appendChild(clone);
 
         if (hideFromMain) {
