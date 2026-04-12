@@ -262,13 +262,18 @@
 
         editor.appendChild(createTitle(doc, isNew ? 'Add New Emote' : 'Edit Emote'));
 
+        const description = doc.createElement('p');
+        description.textContent = 'Adds emotes to the bar below. The message is raw BBCode, exactly like what you would type in the chat input bar.';
+        description.style.cssText = 'color: rgba(255, 255, 255, 0.7); font-size: 11px; line-height: 1.4; margin: 0 0 12px 0;';
+        editor.appendChild(description);
+
         const fieldStyle = 'display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;';
         const labelStyle = 'color: rgba(255, 255, 255, 0.9); font-size: 12px; font-weight: 500;';
 
         const codeField = doc.createElement('div');
         codeField.style.cssText = fieldStyle;
         const codeLabel = doc.createElement('label');
-        codeLabel.textContent = 'Code (required):';
+        codeLabel.textContent = 'Message (Raw BBCode):';
         codeLabel.style.cssText = labelStyle;
         const codeInput = doc.createElement('input');
         codeInput.type = 'text';
@@ -294,15 +299,17 @@
         const typeField = doc.createElement('div');
         typeField.style.cssText = fieldStyle;
         const typeLabel = doc.createElement('label');
-        typeLabel.textContent = 'Type:';
+        typeLabel.textContent = 'Emote Bar Icon Type:';
         typeLabel.style.cssText = labelStyle;
         const typeSelect = doc.createElement('select');
-        typeSelect.style.cssText = stylesToString(STYLES.input);
+        typeSelect.style.cssText = stylesToString(STYLES.input) + 'background-color: #1a1a1a; color: rgba(255, 255, 255, 0.9);';
 
-        [{ value: 'url', label: 'Image URL' }, { value: 'emoji', label: 'Emoji' }, { value: 'text', label: 'Text' }].forEach(type => {
+        [{ value: 'url', label: 'Image' }, { value: 'emoji', label: 'Emoji (slightly bigger than text emoji)' }, { value: 'text', label: 'Text' }].forEach(type => {
             const option = doc.createElement('option');
             option.value = type.value;
             option.textContent = type.label;
+            option.style.backgroundColor = '#1a1a1a';
+            option.style.color = 'rgba(255, 255, 255, 0.9)';
             typeSelect.appendChild(option);
         });
 

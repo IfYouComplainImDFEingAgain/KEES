@@ -60,9 +60,7 @@
     }
 
     function getMessageAuthor(msgEl) {
-        const authorEl = msgEl.querySelector('.author');
-        if (authorEl) return authorEl.textContent.trim();
-        return null;
+        return SNEED.util.getMessageAuthor(msgEl);
     }
 
     function injectStyles(doc) {

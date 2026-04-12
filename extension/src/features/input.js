@@ -28,7 +28,7 @@
             return;
         }
 
-        const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]');
+        const hasFormatting = inputElement.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img], a[data-bbcode-url]');
         if (!hasFormatting) {
             return;
         }
@@ -114,22 +114,16 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                const win = doc.defaultView || window;
-                const selection = win.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    const textNode = doc.createTextNode('\n');
-                    range.deleteContents();
-                    range.insertNode(textNode);
-                    range.setStartAfter(textNode);
-                    range.setEndAfter(textNode);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                // `insertLineBreak` inserts a single `<br>` and, critically,
+                // handles the trailing-<br> rendering bug so a break at the
+                // end of a contenteditable block actually shows up. The old
+                // code inserted a `\n` text node, which collapses visually —
+                // that was the "press twice to get a newline" bug.
+                doc.execCommand('insertLineBreak');
 
-                    const inputElement = e.target;
-                    const event = new Event('input', { bubbles: true, cancelable: true });
-                    inputElement.dispatchEvent(event);
-                }
+                const inputElement = e.target;
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                inputElement.dispatchEvent(event);
                 return false;
             }
         };

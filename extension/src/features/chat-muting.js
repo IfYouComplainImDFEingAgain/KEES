@@ -7,14 +7,14 @@
 
     let mutedUsersLower = new Set();
 
-    function getAuthor(msgEl) {
-        const authorEl = msgEl.querySelector('.author');
-        return authorEl ? authorEl.textContent.trim().toLowerCase() : null;
+    function getAuthorLower(msgEl) {
+        const author = SNEED.util.getMessageAuthor(msgEl);
+        return author ? author.toLowerCase() : null;
     }
 
     function hideIfMuted(msgEl) {
         if (!msgEl.classList || !msgEl.classList.contains('chat-message')) return;
-        const author = getAuthor(msgEl);
+        const author = getAuthorLower(msgEl);
         if (!author) return;
 
         if (mutedUsersLower.has(author)) {
@@ -29,7 +29,7 @@
 
         const messages = container.querySelectorAll('.chat-message');
         for (const msg of messages) {
-            const author = getAuthor(msg);
+            const author = getAuthorLower(msg);
             if (!author) continue;
 
             if (mutedUsersLower.has(author)) {

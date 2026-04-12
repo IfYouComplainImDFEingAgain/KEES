@@ -12,7 +12,7 @@
         { label: 'Small', value: 3 },
         { label: 'Normal', value: 5 },
         { label: 'Large', value: 7 },
-        { label: 'Huge', value: 50 },
+        { label: 'Huge', value: 170 },
         { label: 'Max', value: 190 }
     ];
 

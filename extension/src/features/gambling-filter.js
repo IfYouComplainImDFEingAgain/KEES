@@ -9,19 +9,10 @@
     let enabled = false;
     let scorched = false;
 
-    // Scorched-earth allowlist: messages matching any of these stay visible.
-    // Everything else is hidden when scorched mode is on.
-    const ALLOWLIST_HTML_PATTERNS = [
-        /discord16\.png/i,   // Bossman Discord relays (chat, presence, live alerts, channel events)
-        /twitch16\.png/i,    // Bossman Twitch relays (chat, live alert)
-        /kick16\.png/i       // Bossman Kick chat relays
-    ];
-    const ALLOWLIST_TEXT_PATTERNS = [
-        /\bLIVE on Discord\b/i,
-        /\bLIVE on Twitch\b/i,
-        /\bis no longer live\b/i,   // Twitch stream-end message (no icon, e.g. "imbossmanjack is no longer live! :lossmanjack:")
-        /\brestream is live\b/i     // Owncast bossmanjack.tv restream alert (no icon)
-    ];
+    // Scorched-earth mode hides every message authored by the KenoGPT bot —
+    // that's where all the gambling spam, dice meters, slot animations, and
+    // betting relays come from. Normal chat stays visible.
+    const SCORCHED_TARGET_AUTHOR = 'kenogpt';
 
     // User command prefixes that trigger gambling
     const GAMBLING_COMMANDS = [
@@ -156,25 +147,44 @@
         return false;
     }
 
-    function isAllowlisted(msgEl) {
+    function isNoraMessage(msgEl) {
+        // Nora bot prefixes every message with "Nora to @user:" — in raw
+        // BBCode the prefix is wrapped in `[b]...[/b]`, so the canonical form
+        // on `data-raw` is either `Nora to ` at index 0 or `[b]Nora to ` with
+        // the `[b]` prefix. Also fall back to rendered text in case data-raw
+        // isn't set.
+        const raw = (msgEl.getAttribute && msgEl.getAttribute('data-raw')) || '';
+        if (/^(?:\[b\])?Nora to /i.test(raw)) return true;
+
+        const body = getMessageBody(msgEl);
+        const rendered = body ? (body.textContent || '').replace(/^\s+/, '') : '';
+        if (rendered.startsWith('Nora to ')) return true;
+
+        return false;
+    }
+
+    function isScorchedTarget(msgEl) {
+        const author = SNEED.util.getMessageAuthor(msgEl);
+        const isKenoGPT = !!(author && author.toLowerCase() === SCORCHED_TARGET_AUTHOR);
+
+        if (isKenoGPT) {
+            // Nora bot-in-bot posts through KenoGPT — keep those visible.
+            if (isNoraMessage(msgEl)) return false;
+            return true;
+        }
+
+        // Human messages: hide gambling commands (!bal, !lambchop, !dice...).
+        // Only the command check, not the full isGamblingMessage suite, so
+        // normal chat containing "you won" or an emoji sequence doesn't get
+        // swept up.
         const text = getMessageText(msgEl);
-        // Nora-to-user bot: prefix appears at the start of the rendered text.
-        if (/^Nora to\b/i.test(text)) return true;
-
-        for (const pattern of ALLOWLIST_TEXT_PATTERNS) {
-            if (pattern.test(text)) return true;
-        }
-
-        const html = getMessageHtml(msgEl);
-        for (const pattern of ALLOWLIST_HTML_PATTERNS) {
-            if (pattern.test(html)) return true;
-        }
+        if (text && isGamblingCommand(text)) return true;
 
         return false;
     }
 
     function shouldHide(msgEl) {
-        if (scorched) return !isAllowlisted(msgEl);
+        if (scorched) return isScorchedTarget(msgEl);
         if (enabled) return isGamblingMessage(msgEl);
         return false;
     }

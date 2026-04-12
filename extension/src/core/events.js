@@ -169,18 +169,47 @@
         entry.observer = new MutationObserver((mutations) => {
             if (entry.handlers.size === 0) return;
 
-            const addedElements = [];
+            // Pre-filter to only `.chat-message` elements. With subtree:true
+            // on a busy container, this observer fires on *every* mutation —
+            // reaction updates, edit spans, emote renders. Every handler used
+            // to get the raw addedNodes list (avatar imgs, reaction icons,
+            // etc.) and each then re-filtered to find actual messages.
+            // Filter once here; dedupe across mutations so a single message
+            // insertion can't be delivered twice if it shows up in overlapping
+            // records. Allocations stay in the fast path only when there's
+            // real work to dispatch.
+            let addedMessages = null;
+            let seen = null;
+
             for (const m of mutations) {
                 for (const n of m.addedNodes) {
-                    if (n.nodeType === 1) addedElements.push(n);
+                    if (n.nodeType !== 1) continue;
+
+                    if (n.classList && n.classList.contains('chat-message')) {
+                        if (!seen) { seen = new Set(); addedMessages = []; }
+                        if (!seen.has(n)) {
+                            seen.add(n);
+                            addedMessages.push(n);
+                        }
+                    } else if (n.querySelectorAll) {
+                        const nested = n.querySelectorAll('.chat-message');
+                        if (nested.length === 0) continue;
+                        if (!seen) { seen = new Set(); addedMessages = []; }
+                        for (const nm of nested) {
+                            if (!seen.has(nm)) {
+                                seen.add(nm);
+                                addedMessages.push(nm);
+                            }
+                        }
+                    }
                 }
             }
 
-            if (addedElements.length === 0) return;
+            if (!addedMessages) return;
 
             for (const handler of entry.handlers) {
                 try {
-                    handler(addedElements);
+                    handler(addedMessages);
                 } catch (e) {
                     console.error('[KEES] Message handler error:', e);
                 }

@@ -122,6 +122,7 @@
                 if (selectedText) {
                     const div = doc.createElement('div');
                     div.style.textAlign = 'center';
+                    div.style.display = 'block';
                     div.setAttribute('data-bbcode-center', 'true');
                     const fragment = range.extractContents();
                     div.appendChild(fragment);
@@ -133,6 +134,7 @@
                 } else {
                     const div = doc.createElement('div');
                     div.style.textAlign = 'center';
+                    div.style.display = 'block';
                     div.setAttribute('data-bbcode-center', 'true');
                     div.textContent = '\u200B';
                     range.insertNode(div);
@@ -221,7 +223,7 @@
 
             if (SNEED.core.bbcode) {
                 if (wasWysiwyg && !isWysiwyg) {
-                    const hasFormatting = input.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img]');
+                    const hasFormatting = input.querySelector('strong, b, em, i, u, s, strike, del, code, div[data-bbcode-center], span[data-bbcode-size], span[data-bbcode-color], img[data-bbcode-img], a[data-bbcode-url]');
                     if (hasFormatting) {
                         const bbcode = SNEED.core.bbcode.convertToBBCode(input);
                         input.textContent = bbcode;

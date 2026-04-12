@@ -130,6 +130,18 @@
         selection.addRange(range);
     }
 
+    // Cached author lookup. Every feature that filters by sender used to run
+    // its own `querySelector('.author')` + textContent.trim() per message.
+    // Memoize on the element so the second-through-Nth feature is free.
+    function getMessageAuthor(msgEl) {
+        if (!msgEl) return null;
+        if (msgEl.__sneedAuthor !== undefined) return msgEl.__sneedAuthor;
+        const authorEl = msgEl.querySelector && msgEl.querySelector('.author');
+        const author = authorEl ? (authorEl.textContent || '').trim() : null;
+        msgEl.__sneedAuthor = author;
+        return author;
+    }
+
     SNEED.util = SNEED.util || {};
     Object.assign(SNEED.util, {
         stylesToString,
@@ -140,7 +152,8 @@
         createButton,
         getSelectionAndRange,
         insertTextAtCursor,
-        positionCursorAtEnd
+        positionCursorAtEnd,
+        getMessageAuthor
     });
 
 })();

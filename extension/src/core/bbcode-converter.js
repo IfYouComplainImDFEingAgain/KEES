@@ -123,6 +123,17 @@
                 return childContent;
             }
 
+            case 'a': {
+                const href = node.getAttribute('href');
+                if (href) {
+                    if (childContent === href) {
+                        return '[url]' + href + '[/url]';
+                    }
+                    return '[url=' + href + ']' + childContent + '[/url]';
+                }
+                return childContent;
+            }
+
             case 'img': {
                 const src = node.getAttribute('src');
                 if (src) {
@@ -180,13 +191,18 @@
         html = html.replace(/\[s\]([\s\S]*?)\[\/s\]/gi, '<s>$1</s>');
         html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, '<code>$1</code>');
         html = html.replace(/\[center\]([\s\S]*?)\[\/center\]/gi,
-            '<div style="text-align:center" data-bbcode-center="true">$1</div>');
+            '<div style="text-align:center;display:block" data-bbcode-center="true">$1</div>');
         html = html.replace(/\[size=(\d+)\]([\s\S]*?)\[\/size\]/gi,
             '<span style="font-size:$1px" data-bbcode-size="$1">$2</span>');
         html = html.replace(/\[color=(#[0-9a-fA-F]{3,6})\]([\s\S]*?)\[\/color\]/gi,
             '<span style="color:$1" data-bbcode-color="$1">$2</span>');
         html = html.replace(/\[img\](https?:\/\/[^\[]+)\[\/img\]/gi,
             '<img src="$1" data-bbcode-img="true" style="max-height:150px;max-width:100%;vertical-align:middle">');
+        html = html.replace(/\[url=(https?:\/\/[^\]]+)\]([\s\S]*?)\[\/url\]/gi,
+            '<a href="$1" data-bbcode-url="$1">$2</a>');
+        html = html.replace(/\[url\](https?:\/\/[^\[]+)\[\/url\]/gi,
+            '<a href="$1" data-bbcode-url="$1">$1</a>');
+        html = html.replace(/\[br\]/gi, '<br>');
 
         return html;
     }
