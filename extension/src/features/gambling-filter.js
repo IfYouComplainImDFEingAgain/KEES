@@ -147,15 +147,25 @@
         return false;
     }
 
-    function isNoraMessage(msgEl) {
-        // Nora bot prefixes every message with "Nora to @user:" — in raw
-        // BBCode the prefix is wrapped in `[b]...[/b]`, so the canonical form
-        // on `data-raw` is either `Nora to ` at index 0 or `[b]Nora to ` with
-        // the `[b]` prefix. Also fall back to rendered text in case data-raw
-        // isn't set.
+    // KenoGPT messages to keep visible in scorched-earth mode.
+    const RELAY_ICON_PATTERNS = [
+        /discord16/i,
+        /twitch16/i,
+        /kick16/i
+    ];
+
+    function isExemptKenoGPTMessage(msgEl) {
         const raw = (msgEl.getAttribute && msgEl.getAttribute('data-raw')) || '';
+
+        // Nora bot-in-bot: data-raw starts with [b]Nora to or plain Nora to
         if (/^(?:\[b\])?Nora to /i.test(raw)) return true;
 
+        // Bossman Discord/Twitch/Kick relays: data-raw contains the relay icon
+        for (const pattern of RELAY_ICON_PATTERNS) {
+            if (pattern.test(raw)) return true;
+        }
+
+        // Fallback to rendered text for Nora (in case data-raw isn't set)
         const body = getMessageBody(msgEl);
         const rendered = body ? (body.textContent || '').replace(/^\s+/, '') : '';
         if (rendered.startsWith('Nora to ')) return true;
@@ -168,8 +178,7 @@
         const isKenoGPT = !!(author && author.toLowerCase() === SCORCHED_TARGET_AUTHOR);
 
         if (isKenoGPT) {
-            // Nora bot-in-bot posts through KenoGPT — keep those visible.
-            if (isNoraMessage(msgEl)) return false;
+            if (isExemptKenoGPTMessage(msgEl)) return false;
             return true;
         }
 
