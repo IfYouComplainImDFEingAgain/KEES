@@ -26,6 +26,8 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Hide Whispers in Main Chat** - Only show whispers in the whisper box (enabled by default)
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 - **Mute Gambling** - Hide gambling commands (slots, roulette, blackjack, dice, coinflip, etc.) and bot responses including animated game boards and images
+- **Keyword Filter** - Hide incoming chat messages containing specified words or phrases (case-insensitive substring matching)
+- **PII Guard** - Block outgoing messages that contain protected personal information (e.g. real name, phone number, address). Protected strings are stored in `chrome.storage.local` which is inaccessible to the website, patterns are never injected into the DOM, and blocked messages never leave the client
 
 ### Forum Features
 - **Featured Posts Consolidation** - Collect featured posts from multiple pages into a single view
@@ -66,7 +68,10 @@ Click the extension icon in your browser toolbar to access settings:
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
 - **Chat Settings** - Mention notifications, mute gambling, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
+- **Bot Column** - Move bot messages to a separate column
 - **@everyone List** - Manage usernames for @everyone expansion
+- **PII Guard** - Toggle outgoing message protection and manage protected strings (displayed masked in the UI for shoulder-surfing resistance)
+- **Filtered Keywords** - Manage words/phrases to hide from incoming chat messages
 - **Muted Users** - Manage your muted users list
 
 ### Chat Page

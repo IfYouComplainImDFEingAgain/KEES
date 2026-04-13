@@ -22,6 +22,8 @@ A browser extension that adds enhanced features Xenforo chat and forum pages.
 - Whisper persistence with configurable retention (messages per conversation)
 - Option to hide whispers from main chat
 - Configurable scrollback limit (up to 5000 messages)
+- Keyword filter to hide incoming messages containing specified words or phrases
+- PII guard to block outgoing messages containing protected personal information (stored securely in extension storage, invisible to the website)
 
 **Forum:**
 - Featured posts consolidation

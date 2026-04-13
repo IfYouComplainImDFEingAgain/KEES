@@ -79,6 +79,7 @@
         "src/ui/whisper-box.js",
         "src/ui/dialogs.js",
         "src/ui/bars.js",
+        "src/features/pii-guard.js",
         "src/features/formatting.js",
         "src/features/input.js",
         "src/features/blacklist-filter.js",
@@ -91,6 +92,7 @@
         "src/features/whisper-box.js",
         "src/features/bot-column.js",
         "src/features/chat-muting.js",
+        "src/features/keyword-filter.js",
         "src/features/gambling-filter.js",
         "src/features/wave-animation.js",
         "src/bootstrap.js"

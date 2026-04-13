@@ -1,6 +1,6 @@
 # KEES Privacy Policy
 
-_Last updated: 2026-04-11_
+_Last updated: 2026-04-12_
 
 Kiwi Extra Enhancement Suite (KEES) is a browser extension that adds quality-of-life features to the Kiwi Farms chat and forum interface. This document describes what data the extension handles and how.
 
@@ -19,7 +19,9 @@ KEES uses `chrome.storage.local` to persist your settings and state across brows
 - Muted users list and chat-mute preferences
 - `@everyone` mention list
 - BBCode / WYSIWYG editor mode preference
-- Feature toggles (gambling filter, homepage cleanup, etc.)
+- Keyword filter list (words/phrases to hide from incoming chat messages)
+- PII guard protected strings (personal information patterns used to block outgoing messages — stored locally, never transmitted, never injected into the page DOM)
+- Feature toggles (keyword filter, PII guard, gambling filter, homepage cleanup, etc.)
 - UI state (collapsed panels, tab selections, last visited chat room)
 - Zipline image host URL and API key (only if you choose to configure Zipline uploads)
 

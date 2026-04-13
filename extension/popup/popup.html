@@ -174,12 +174,26 @@
             margin-bottom: 10px;
         }
         .muted-users-list:empty::after {
-            content: "No muted users";
             display: block;
             padding: 12px;
             color: #666;
             text-align: center;
             font-style: italic;
+        }
+        #muted-users-list:empty::after {
+            content: "No muted users";
+        }
+        #pii-patterns-list:empty::after {
+            content: "No protected patterns";
+        }
+        #filtered-keywords-list:empty::after {
+            content: "No filtered keywords";
+        }
+        #everyone-list:empty::after {
+            content: "No users in list";
+        }
+        #bot-users-list:empty::after {
+            content: "No bot users";
         }
         .muted-user {
             display: flex;
@@ -499,6 +513,46 @@
         <div class="add-muted-user">
             <input type="text" id="everyone-user-input" placeholder="Username to add">
             <button id="add-everyone-user-btn">Add</button>
+        </div>
+    </div>
+
+    <div class="muted-users-section">
+        <h2>PII Guard</h2>
+        <div class="setting" style="border-bottom: none; padding-bottom: 4px;">
+            <div class="setting-label">
+                <span class="setting-title">Block Outgoing PII</span>
+                <span class="setting-desc">Prevent sending messages containing protected strings</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="pii-guard-enabled">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div id="pii-guard-options" style="display: none;">
+            <div class="setting" style="border-bottom: none; padding: 4px 0 8px 0;">
+                <div class="setting-label">
+                    <span class="setting-desc">These values never leave the extension and are invisible to the website</span>
+                </div>
+            </div>
+            <div id="pii-patterns-list" class="muted-users-list"></div>
+            <div class="add-muted-user">
+                <input type="text" id="pii-pattern-input" placeholder="String to block (e.g. phone, address)">
+                <button id="add-pii-pattern-btn">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="muted-users-section">
+        <h2>Filtered Keywords</h2>
+        <div class="setting" style="border-bottom: none; padding-bottom: 8px;">
+            <div class="setting-label">
+                <span class="setting-desc">Hide chat messages containing these words or phrases</span>
+            </div>
+        </div>
+        <div id="filtered-keywords-list" class="muted-users-list"></div>
+        <div class="add-muted-user">
+            <input type="text" id="keyword-input" placeholder="Keyword or phrase to filter">
+            <button id="add-keyword-btn">Add</button>
         </div>
     </div>
 

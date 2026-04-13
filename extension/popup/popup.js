@@ -522,6 +522,160 @@
     loadEveryoneList();
 
     // ============================================
+    // PII GUARD MANAGEMENT
+    // ============================================
+
+    const STORAGE_KEY_PII_PATTERNS = 'kees-pii-patterns';
+    const STORAGE_KEY_PII_ENABLED = 'kees-pii-guard-enabled';
+    const piiGuardEnabled = document.getElementById('pii-guard-enabled');
+    const piiGuardOptions = document.getElementById('pii-guard-options');
+    const piiPatternsList = document.getElementById('pii-patterns-list');
+    const piiPatternInput = document.getElementById('pii-pattern-input');
+    const addPiiPatternBtn = document.getElementById('add-pii-pattern-btn');
+
+    chrome.storage.local.get([STORAGE_KEY_PII_ENABLED], (result) => {
+        piiGuardEnabled.checked = result[STORAGE_KEY_PII_ENABLED] === true;
+        piiGuardOptions.style.display = piiGuardEnabled.checked ? 'block' : 'none';
+    });
+
+    piiGuardEnabled.addEventListener('change', () => {
+        const on = piiGuardEnabled.checked;
+        piiGuardOptions.style.display = on ? 'block' : 'none';
+        chrome.storage.local.set({ [STORAGE_KEY_PII_ENABLED]: on }, () => {
+            showStatus(on ? 'PII guard enabled' : 'PII guard disabled');
+        });
+    });
+
+    function renderPiiPatterns(list) {
+        piiPatternsList.innerHTML = '';
+        list.forEach(pattern => {
+            const item = document.createElement('div');
+            item.className = 'muted-user';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'muted-user-name';
+            // Mask the pattern in the UI to limit exposure
+            nameSpan.textContent = pattern.length <= 4
+                ? '*'.repeat(pattern.length)
+                : pattern.slice(0, 2) + '*'.repeat(pattern.length - 4) + pattern.slice(-2);
+            nameSpan.title = 'Pattern is masked for security';
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'muted-user-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => removePiiPattern(pattern));
+            item.appendChild(nameSpan);
+            item.appendChild(removeBtn);
+            piiPatternsList.appendChild(item);
+        });
+    }
+
+    function loadPiiPatterns() {
+        chrome.storage.local.get([STORAGE_KEY_PII_PATTERNS], (result) => {
+            renderPiiPatterns(result[STORAGE_KEY_PII_PATTERNS] || []);
+        });
+    }
+
+    function addPiiPattern(pattern) {
+        if (!pattern || !pattern.trim()) return;
+        pattern = pattern.trim();
+        chrome.storage.local.get([STORAGE_KEY_PII_PATTERNS], (result) => {
+            const list = result[STORAGE_KEY_PII_PATTERNS] || [];
+            const lower = pattern.toLowerCase();
+            if (list.some(p => p.toLowerCase() === lower)) {
+                showStatus('Pattern already exists');
+                return;
+            }
+            list.push(pattern);
+            chrome.storage.local.set({ [STORAGE_KEY_PII_PATTERNS]: list }, () => {
+                renderPiiPatterns(list);
+                piiPatternInput.value = '';
+                showStatus('Protected pattern added');
+            });
+        });
+    }
+
+    function removePiiPattern(pattern) {
+        chrome.storage.local.get([STORAGE_KEY_PII_PATTERNS], (result) => {
+            let list = result[STORAGE_KEY_PII_PATTERNS] || [];
+            list = list.filter(p => p !== pattern);
+            chrome.storage.local.set({ [STORAGE_KEY_PII_PATTERNS]: list }, () => {
+                renderPiiPatterns(list);
+                showStatus('Protected pattern removed');
+            });
+        });
+    }
+
+    addPiiPatternBtn.addEventListener('click', () => addPiiPattern(piiPatternInput.value));
+    piiPatternInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addPiiPattern(piiPatternInput.value); });
+    loadPiiPatterns();
+
+    // ============================================
+    // KEYWORD FILTER MANAGEMENT
+    // ============================================
+
+    const STORAGE_KEY_FILTERED_KEYWORDS = 'kees-filtered-keywords';
+    const filteredKeywordsList = document.getElementById('filtered-keywords-list');
+    const keywordInput = document.getElementById('keyword-input');
+    const addKeywordBtn = document.getElementById('add-keyword-btn');
+
+    function renderKeywords(keywords) {
+        filteredKeywordsList.innerHTML = '';
+        keywords.forEach(keyword => {
+            const item = document.createElement('div');
+            item.className = 'muted-user';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'muted-user-name';
+            nameSpan.textContent = keyword;
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'muted-user-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => removeKeyword(keyword));
+            item.appendChild(nameSpan);
+            item.appendChild(removeBtn);
+            filteredKeywordsList.appendChild(item);
+        });
+    }
+
+    function loadKeywords() {
+        chrome.storage.local.get([STORAGE_KEY_FILTERED_KEYWORDS], (result) => {
+            renderKeywords(result[STORAGE_KEY_FILTERED_KEYWORDS] || []);
+        });
+    }
+
+    function addKeyword(keyword) {
+        if (!keyword || !keyword.trim()) return;
+        keyword = keyword.trim();
+        chrome.storage.local.get([STORAGE_KEY_FILTERED_KEYWORDS], (result) => {
+            const keywords = result[STORAGE_KEY_FILTERED_KEYWORDS] || [];
+            const lower = keyword.toLowerCase();
+            if (keywords.some(k => k.toLowerCase() === lower)) {
+                showStatus('Keyword already in list');
+                return;
+            }
+            keywords.push(keyword);
+            chrome.storage.local.set({ [STORAGE_KEY_FILTERED_KEYWORDS]: keywords }, () => {
+                renderKeywords(keywords);
+                keywordInput.value = '';
+                showStatus(`Filtering "${keyword}"`);
+            });
+        });
+    }
+
+    function removeKeyword(keyword) {
+        chrome.storage.local.get([STORAGE_KEY_FILTERED_KEYWORDS], (result) => {
+            let keywords = result[STORAGE_KEY_FILTERED_KEYWORDS] || [];
+            keywords = keywords.filter(k => k !== keyword);
+            chrome.storage.local.set({ [STORAGE_KEY_FILTERED_KEYWORDS]: keywords }, () => {
+                renderKeywords(keywords);
+                showStatus(`Removed "${keyword}"`);
+            });
+        });
+    }
+
+    addKeywordBtn.addEventListener('click', () => addKeyword(keywordInput.value));
+    keywordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addKeyword(keywordInput.value); });
+    loadKeywords();
+
+    // ============================================
     // MUTED USERS MANAGEMENT
     // ============================================
 

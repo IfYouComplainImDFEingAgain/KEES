@@ -56,6 +56,11 @@
                 // Initialize shared message observer before features register handlers
                 events.initMessageObserver(document);
 
+                // PII guard must attach capture-phase handlers before other input handlers
+                if (SNEED.features.piiGuard && SNEED.features.piiGuard.start) {
+                    SNEED.features.piiGuard.start(document);
+                }
+
                 hideOfficialToolbar(document);
 
                 const emoteBar = ui.createEmoteBar(document);
@@ -114,6 +119,10 @@
                     SNEED.features.chatMuting.start(document);
                 }
 
+                if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {
+                    SNEED.features.keywordFilter.start(document);
+                }
+
                 if (SNEED.features.gamblingFilter && SNEED.features.gamblingFilter.start) {
                     SNEED.features.gamblingFilter.start(document);
                 }
@@ -137,6 +146,11 @@
                         if (messageForm && !iframeDoc.getElementById('custom-emote-bar')) {
                             // Initialize shared message observer before features register handlers
                             events.initMessageObserver(iframeDoc);
+
+                            // PII guard must attach capture-phase handlers before other input handlers
+                            if (SNEED.features.piiGuard && SNEED.features.piiGuard.start) {
+                                SNEED.features.piiGuard.start(iframeDoc);
+                            }
 
                             hideOfficialToolbar(iframeDoc);
 
@@ -194,6 +208,10 @@
 
                             if (SNEED.features.chatMuting && SNEED.features.chatMuting.start) {
                                 SNEED.features.chatMuting.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {
+                                SNEED.features.keywordFilter.start(iframeDoc);
                             }
 
                             if (SNEED.features.gamblingFilter && SNEED.features.gamblingFilter.start) {
