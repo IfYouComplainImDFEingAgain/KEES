@@ -154,11 +154,25 @@
         /kick16/i
     ];
 
+    // Check if relayed content is unambiguously gambling. Only uses
+    // high-confidence signals — emoji game boards, KKK balances, and
+    // gambling commands. Generic patterns like "you won/lost" are too
+    // broad and false-positive on normal chat.
+    function isNoraGamblingRelay(text) {
+        if (!text) return false;
+        if (hasGamblingEmoji(text)) return true;
+        if (/\d+\.?\d*\s*KKK/.test(text)) return true;
+        if (hasGamblingImages(text)) return true;
+        return false;
+    }
+
     function isExemptKenoGPTMessage(msgEl) {
         const raw = (msgEl.getAttribute && msgEl.getAttribute('data-raw')) || '';
 
-        // Nora bot-in-bot: data-raw starts with [b]Nora to or plain Nora to
-        if (/^(?:\[b\])?Nora to /i.test(raw)) return true;
+        // Nora bot-in-bot relay — exempt unless the content is gambling
+        if (/^(?:\[b\])?Nora to /i.test(raw)) {
+            return !isNoraGamblingRelay(raw);
+        }
 
         // Bossman Discord/Twitch/Kick relays: data-raw contains the relay icon
         for (const pattern of RELAY_ICON_PATTERNS) {
@@ -168,7 +182,9 @@
         // Fallback to rendered text for Nora (in case data-raw isn't set)
         const body = getMessageBody(msgEl);
         const rendered = body ? (body.textContent || '').replace(/^\s+/, '') : '';
-        if (rendered.startsWith('Nora to ')) return true;
+        if (rendered.startsWith('Nora to ')) {
+            return !isNoraGamblingRelay(rendered);
+        }
 
         return false;
     }
@@ -182,14 +198,9 @@
             return true;
         }
 
-        // Human messages: hide gambling commands (!bal, !lambchop, !dice...).
-        // Only the command check, not the full isGamblingMessage suite, so
-        // normal chat containing "you won" or an emoji sequence doesn't get
-        // swept up.
-        const text = getMessageText(msgEl);
-        if (text && isGamblingCommand(text)) return true;
-
-        return false;
+        // Scorched earth nukes all gambling content regardless of author —
+        // catches bot relays, renamed bots, and human commands alike.
+        return isGamblingMessage(msgEl);
     }
 
     function shouldHide(msgEl) {

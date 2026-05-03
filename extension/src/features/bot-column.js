@@ -197,6 +197,9 @@
         const author = getMessageAuthor(msgEl);
         if (!author || !isBotUser(author)) return false;
 
+        // Respect gambling filter / scorched earth — don't clone muted messages
+        if (msgEl.dataset.keesGamblingMuted) return false;
+
         const msgId = msgEl.id || msgEl.dataset.id;
 
         // Check if this message already exists in bot column (edit/replace)
@@ -205,7 +208,6 @@
             if (existing) {
                 const clone = msgEl.cloneNode(true);
                 clone.style.display = '';
-                delete clone.dataset.keesGamblingMuted;
                 delete clone.dataset.keesMuted;
                 existing.replaceWith(clone);
                 if (hideFromMain) msgEl.style.display = 'none';
@@ -214,11 +216,10 @@
         }
 
         const clone = msgEl.cloneNode(true);
-        // The source message may have been hidden by the gambling filter or
-        // scorched earth before the clone happens (observer ordering varies
-        // across browsers). Always force the clone visible in the bot column.
+        // The source message may have been hidden by the bot-column hide-from-main
+        // setting or chat-muting before the clone happens. Force the clone visible
+        // in the bot column, but respect gambling filter muting (checked above).
         clone.style.display = '';
-        delete clone.dataset.keesGamblingMuted;
         delete clone.dataset.keesMuted;
         botContainer.appendChild(clone);
 

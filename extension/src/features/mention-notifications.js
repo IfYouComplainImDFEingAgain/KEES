@@ -8,6 +8,7 @@
     const STORAGE_KEY_ENABLED = 'kees-mention-notifications';
     const STORAGE_KEY_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_BOSSMAN_LIVE = 'kees-bossman-live-notify';
+    const STORAGE_KEY_MUTED = 'sneedchat-muted-users';
     const MENTION_SELECTOR = '.chat-message--highlightYou';
 
     const BOSSMAN_BOT = 'kenogpt';
@@ -22,6 +23,7 @@
     let isEnabled = false;
     let showBody = false;
     let bossmanLiveEnabled = false;
+    let mutedUsersLower = new Set();
 
     function checkForMention(messageElement, doc) {
         if (!isEnabled) return;
@@ -31,9 +33,13 @@
 
         if (!messageElement.classList.contains('chat-message--highlightYou')) return;
 
-        let author = messageElement.querySelector('.chat-user-name')?.textContent?.trim()
+        let author = SNEED.util.getMessageAuthor(messageElement)
+            || messageElement.querySelector('.chat-user-name')?.textContent?.trim()
             || messageElement.querySelector('.username')?.textContent?.trim()
             || messageElement.querySelector('[class*="user"]')?.textContent?.trim();
+
+        // Skip notifications from muted users
+        if (author && mutedUsersLower.has(author.toLowerCase())) return;
 
         let content = messageElement.querySelector('.chat-message-content')?.textContent?.trim()
             || messageElement.querySelector('.message-content')?.textContent?.trim()
@@ -141,12 +147,14 @@
         initializedDocs.add(doc);
 
         const settings = await new Promise(resolve => {
-            chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY, STORAGE_KEY_BOSSMAN_LIVE], resolve);
+            chrome.storage.local.get([STORAGE_KEY_ENABLED, STORAGE_KEY_SHOW_BODY, STORAGE_KEY_BOSSMAN_LIVE, STORAGE_KEY_MUTED], resolve);
         });
 
         isEnabled = settings[STORAGE_KEY_ENABLED] === true;
         showBody = settings[STORAGE_KEY_SHOW_BODY] === true;
         bossmanLiveEnabled = settings[STORAGE_KEY_BOSSMAN_LIVE] === true;
+        const mutedUsers = settings[STORAGE_KEY_MUTED] || [];
+        mutedUsersLower = new Set(mutedUsers.map(u => u.toLowerCase()));
 
         if (!isEnabled) {
             console.log('[KEES] Mention notifications disabled');
@@ -174,6 +182,10 @@
                 if (changes[STORAGE_KEY_BOSSMAN_LIVE]) {
                     bossmanLiveEnabled = changes[STORAGE_KEY_BOSSMAN_LIVE].newValue === true;
                     console.log('[KEES] Bossman live alerts', bossmanLiveEnabled ? 'enabled' : 'disabled');
+                }
+                if (changes[STORAGE_KEY_MUTED]) {
+                    const users = changes[STORAGE_KEY_MUTED].newValue || [];
+                    mutedUsersLower = new Set(users.map(u => u.toLowerCase()));
                 }
             }
         });
