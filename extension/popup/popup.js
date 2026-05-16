@@ -30,6 +30,7 @@
     const STORAGE_KEY_BOT_COLUMN_HIDE_MAIN = 'kees-bot-column-hide-main';
     const STORAGE_KEY_MUTE_GAMBLING = 'kees-mute-gambling';
     const STORAGE_KEY_SCORCHED_EARTH = 'kees-scorched-earth';
+    const STORAGE_KEY_NATIVE_VIDEO = 'kees-native-video-player';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -65,6 +66,9 @@
     // Attachment EXIF element
     const attachmentStripExif = document.getElementById('attachment-strip-exif');
 
+    // Native video player element
+    const nativeVideoPlayer = document.getElementById('native-video-player');
+
     // ============================================
     // STATUS MESSAGE
     // ============================================
@@ -95,7 +99,7 @@
     // Bossman live alert element
     const bossmanLiveNotify = document.getElementById('bossman-live-notify');
 
-    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY, STORAGE_KEY_MUTE_GAMBLING, STORAGE_KEY_SCORCHED_EARTH], (result) => {
+    chrome.storage.local.get([STORAGE_KEY_HOMEPAGE_CHAT, STORAGE_KEY_SPONSORED, STORAGE_KEY_MENTION_NOTIFICATIONS, STORAGE_KEY_MENTION_SHOW_BODY, STORAGE_KEY_MUTE_DISRUPTIVE, STORAGE_KEY_ATTACHMENT_STRIP_EXIF, STORAGE_KEY_WHISPER_GLOBAL, STORAGE_KEY_WHISPER_HIDE_MAIN, STORAGE_KEY_BOSSMAN_LIVE_NOTIFY, STORAGE_KEY_MUTE_GAMBLING, STORAGE_KEY_SCORCHED_EARTH, STORAGE_KEY_NATIVE_VIDEO], (result) => {
         disableHomepageChatCheckbox.checked = result[STORAGE_KEY_HOMEPAGE_CHAT] === true;
         disableSponsoredCheckbox.checked = result[STORAGE_KEY_SPONSORED] === true;
         mentionNotifications.checked = result[STORAGE_KEY_MENTION_NOTIFICATIONS] === true;
@@ -110,6 +114,7 @@
         bossmanLiveNotify.checked = result[STORAGE_KEY_BOSSMAN_LIVE_NOTIFY] === true;
         muteGambling.checked = result[STORAGE_KEY_MUTE_GAMBLING] === true;
         scorchedEarth.checked = result[STORAGE_KEY_SCORCHED_EARTH] === true;
+        nativeVideoPlayer.checked = result[STORAGE_KEY_NATIVE_VIDEO] === true;
     });
 
     // Save homepage chat setting on change
@@ -145,6 +150,15 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_ATTACHMENT_STRIP_EXIF]: enabled }, () => {
             showStatus(enabled ? 'Attachment EXIF stripping enabled' : 'Attachment EXIF stripping disabled');
+        });
+    });
+
+    // Save native video player setting on change
+    nativeVideoPlayer.addEventListener('change', () => {
+        const enabled = nativeVideoPlayer.checked;
+
+        chrome.storage.local.set({ [STORAGE_KEY_NATIVE_VIDEO]: enabled }, () => {
+            showStatus(enabled ? 'Native video player enabled' : 'Native video player disabled');
         });
     });
 

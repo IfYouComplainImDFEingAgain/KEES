@@ -114,6 +114,17 @@
       "matches": [
         "https://kiwifarms.st/*"
       ],
+      "exclude_matches": [
+        "https://kiwifarms.st/chat/*",
+        "https://kiwifarms.st/test-chat*"
+      ],
+      "js": ["src/features/native-video-player.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/*"
+      ],
       "js": ["src/features/sheep-rain.js"],
       "run_at": "document_idle",
       "all_frames": true
