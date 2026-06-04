@@ -14,6 +14,10 @@
     let contextValid = true;
     let observer = null;
 
+    // Track active replacements so we can restore even after the original
+    // player has been detached from the DOM.
+    const replacements = new Set();
+
     function isExtensionContextValid() {
         try {
             return contextValid && chrome.runtime && !!chrome.runtime.id;
@@ -122,23 +126,38 @@
             }
         }
 
-        player.style.display = 'none';
-        if (player.parentNode) {
-            player.parentNode.insertBefore(media, player);
-        }
+        const parent = player.parentNode;
+        if (!parent) return;
+
+        // Detach the original player rather than hiding it. The site's Ephyra
+        // init rewrites the player's inline style with `display: block !important`
+        // after we run, which defeats any display:none we set. Removing the node
+        // from the DOM is the only reliable way to keep it from re-appearing.
+        const placeholder = document.createComment('kees-native-player');
+        parent.insertBefore(media, player);
+        parent.insertBefore(placeholder, player);
+        parent.removeChild(player);
+
+        media._keesPlayer = player;
+        media._keesPlaceholder = placeholder;
+        media._keesContainer = container || null;
+        replacements.add(media);
     }
 
-    function restorePlayer(player) {
-        if (!player || player.dataset[REPLACED_ATTR] !== 'true') return;
+    function restorePlayer(media) {
+        if (!media) return;
+        const player = media._keesPlayer;
+        const placeholder = media._keesPlaceholder;
+        const container = media._keesContainer;
 
-        const prev = player.previousElementSibling;
-        if (prev && prev.classList.contains(REPLACEMENT_CLASS)) {
-            prev.remove();
+        if (placeholder && placeholder.parentNode) {
+            if (player) {
+                placeholder.parentNode.insertBefore(player, placeholder);
+                delete player.dataset[REPLACED_ATTR];
+            }
+            placeholder.parentNode.removeChild(placeholder);
         }
-        player.style.display = '';
-        delete player.dataset[REPLACED_ATTR];
 
-        const container = player.closest('.ephyra-media');
         if (container && 'keesContainerOriginalStyle' in container.dataset) {
             const original = container.dataset.keesContainerOriginalStyle;
             if (original) {
@@ -148,6 +167,9 @@
             }
             delete container.dataset.keesContainerOriginalStyle;
         }
+
+        media.remove();
+        replacements.delete(media);
     }
 
     function replaceAll() {
@@ -155,7 +177,7 @@
     }
 
     function restoreAll() {
-        document.querySelectorAll(`[data-kees-native-replaced="true"]`).forEach(restorePlayer);
+        Array.from(replacements).forEach(restorePlayer);
     }
 
     function setupObserver() {
