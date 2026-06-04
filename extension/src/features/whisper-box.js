@@ -81,7 +81,6 @@
     }
 
     async function loadHistory() {
-        if (!globalEnabled) return;
         try {
             const history = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY);
             if (history && typeof history === 'object') {
@@ -99,7 +98,6 @@
     }
 
     function saveHistory() {
-        if (!globalEnabled) return;
         if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
         saveDebounceTimer = setTimeout(() => {
             const serialized = {};
