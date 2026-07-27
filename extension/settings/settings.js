@@ -1,5 +1,5 @@
 /**
- * popup.js - Extension popup settings UI
+ * settings.js - KEES full-page settings UI (opened in a tab via the toolbar icon)
  */
 (function() {
     'use strict';
@@ -31,6 +31,10 @@
     const STORAGE_KEY_MUTE_GAMBLING = 'kees-mute-gambling';
     const STORAGE_KEY_SCORCHED_EARTH = 'kees-scorched-earth';
     const STORAGE_KEY_NATIVE_VIDEO = 'kees-native-video-player';
+    const STORAGE_KEY_FORUM_ACTIVITY_MAX_PAGES = 'kees-forum-activity-max-pages';
+    const STORAGE_KEY_FORUM_ACTIVITY_DEEP = 'kees-forum-activity-deep-search';
+    const STORAGE_KEY_FORUM_ACTIVITY_WINDOW = 'kees-forum-activity-window-days';
+    const STORAGE_KEY_FORUM_ACTIVITY_MAX_SEARCHES = 'kees-forum-activity-max-searches';
 
     const disableHomepageChatCheckbox = document.getElementById('disable-homepage-chat');
     const disableSponsoredCheckbox = document.getElementById('disable-sponsored');
@@ -68,6 +72,13 @@
 
     // Native video player element
     const nativeVideoPlayer = document.getElementById('native-video-player');
+
+    // Forum activity elements
+    const forumActivityMaxPages = document.getElementById('forum-activity-max-pages');
+    const forumActivityDeepSearch = document.getElementById('forum-activity-deep-search');
+    const forumActivityDeepOptions = document.getElementById('forum-activity-deep-options');
+    const forumActivityWindowDays = document.getElementById('forum-activity-window-days');
+    const forumActivityMaxSearches = document.getElementById('forum-activity-max-searches');
 
     // ============================================
     // STATUS MESSAGE
@@ -274,6 +285,61 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_SCROLLBACK_LIMIT]: scrollbackLimit.value }, () => {
             showStatus('Scrollback limit saved');
+        });
+    });
+
+    // ============================================
+    // FORUM ACTIVITY SETTINGS
+    // ============================================
+
+    // Load forum activity settings
+    chrome.storage.local.get([
+        STORAGE_KEY_FORUM_ACTIVITY_MAX_PAGES,
+        STORAGE_KEY_FORUM_ACTIVITY_DEEP,
+        STORAGE_KEY_FORUM_ACTIVITY_WINDOW,
+        STORAGE_KEY_FORUM_ACTIVITY_MAX_SEARCHES
+    ], (result) => {
+        forumActivityMaxPages.value = result[STORAGE_KEY_FORUM_ACTIVITY_MAX_PAGES] ?? 10;
+        forumActivityDeepSearch.checked = result[STORAGE_KEY_FORUM_ACTIVITY_DEEP] === true;
+        forumActivityWindowDays.value = result[STORAGE_KEY_FORUM_ACTIVITY_WINDOW] ?? 90;
+        forumActivityMaxSearches.value = result[STORAGE_KEY_FORUM_ACTIVITY_MAX_SEARCHES] ?? 24;
+        forumActivityDeepOptions.style.display = forumActivityDeepSearch.checked ? 'flex' : 'none';
+    });
+
+    // Save forum activity max pages on change (site caps a single search at 10)
+    forumActivityMaxPages.addEventListener('change', () => {
+        const value = parseInt(forumActivityMaxPages.value, 10) || 10;
+        forumActivityMaxPages.value = Math.max(1, Math.min(10, value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_FORUM_ACTIVITY_MAX_PAGES]: parseInt(forumActivityMaxPages.value, 10) }, () => {
+            showStatus('Forum activity page limit saved');
+        });
+    });
+
+    // Toggle deep history search
+    forumActivityDeepSearch.addEventListener('change', () => {
+        const enabled = forumActivityDeepSearch.checked;
+        forumActivityDeepOptions.style.display = enabled ? 'flex' : 'none';
+        chrome.storage.local.set({ [STORAGE_KEY_FORUM_ACTIVITY_DEEP]: enabled }, () => {
+            showStatus(enabled ? 'Deep history search enabled' : 'Deep history search disabled');
+        });
+    });
+
+    // Save deep-search window size
+    forumActivityWindowDays.addEventListener('change', () => {
+        const value = parseInt(forumActivityWindowDays.value, 10) || 90;
+        forumActivityWindowDays.value = Math.max(7, Math.min(365, value));
+        chrome.storage.local.set({ [STORAGE_KEY_FORUM_ACTIVITY_WINDOW]: parseInt(forumActivityWindowDays.value, 10) }, () => {
+            showStatus('Search window saved');
+        });
+    });
+
+    // Save deep-search max searches
+    forumActivityMaxSearches.addEventListener('change', () => {
+        const value = parseInt(forumActivityMaxSearches.value, 10) || 24;
+        forumActivityMaxSearches.value = Math.max(1, Math.min(200, value));
+        chrome.storage.local.set({ [STORAGE_KEY_FORUM_ACTIVITY_MAX_SEARCHES]: parseInt(forumActivityMaxSearches.value, 10) }, () => {
+            showStatus('Max searches saved');
         });
     });
 
@@ -770,5 +836,40 @@
 
     // Initial load
     loadMutedUsers();
+
+    // ============================================
+    // USER TAGS
+    // ============================================
+    // Full tag management lives in the dedicated Tag Manager page (tags/tags.html);
+    // here we keep just the auto-tag toggle and a launcher. Uses the SNEED.tagging
+    // API from tag-store.js (included before this script).
+
+    const tagging = (window.SNEED && window.SNEED.tagging) || null;
+
+    if (tagging) {
+        const tagAutoEnabled = document.getElementById('tag-auto-enabled');
+        const tagDisplayShow = document.getElementById('tag-display-show');
+        const openTagManagerBtn = document.getElementById('open-tag-manager-btn');
+
+        tagging.getSettings().then((s) => {
+            tagAutoEnabled.checked = s.autoEnabled;
+            tagDisplayShow.checked = !s.displayHidden;
+        });
+
+        tagAutoEnabled.addEventListener('change', async () => {
+            await tagging.saveSettings({ autoEnabled: tagAutoEnabled.checked });
+            await tagging.refreshAllAutoTags();
+            showStatus(tagAutoEnabled.checked ? 'Auto-tagging enabled' : 'Auto-tagging disabled');
+        });
+
+        tagDisplayShow.addEventListener('change', async () => {
+            await tagging.saveSettings({ displayHidden: !tagDisplayShow.checked });
+            showStatus(tagDisplayShow.checked ? 'Tag chips shown' : 'Tag chips hidden');
+        });
+
+        openTagManagerBtn.addEventListener('click', () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL('tags/tags.html') });
+        });
+    }
 
 })();

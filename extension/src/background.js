@@ -5,6 +5,16 @@
  */
 
 // ============================================
+// TOOLBAR ICON -> SETTINGS TAB
+// ============================================
+// The action has no default_popup, so clicking the icon fires onClicked. Open the
+// full settings page in a tab (openOptionsPage focuses an existing tab if open).
+
+chrome.action.onClicked.addListener(() => {
+    chrome.runtime.openOptionsPage();
+});
+
+// ============================================
 // ZIPLINE UPLOAD
 // ============================================
 
@@ -97,6 +107,14 @@ async function fetchYouTubeInfo(videoUrl) {
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'kees-open-tags') {
+        // Open the Tag Manager page (requested from content scripts, which can't
+        // open an extension page directly).
+        chrome.tabs.create({ url: chrome.runtime.getURL('tags/tags.html') });
+        sendResponse({ success: true });
+        return true;
+    }
+
     if (message.type === 'fetchYouTubeInfo') {
         fetchYouTubeInfo(message.videoUrl).then(sendResponse);
         return true; // Keep channel open for async response

@@ -1,0 +1,8 @@
+{
+  "kind": "kees-user-tags",
+  "preloadVersion": 0,
+  "note": "Placeholder. The author's crawler overwrites this with the real prebuilt activity + tags. preloadVersion 0 means nothing is imported; bump it (1, 2, ...) when shipping real data.",
+  "tags": {},
+  "aliases": {},
+  "activity": {}
+}

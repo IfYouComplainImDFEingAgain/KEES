@@ -3,17 +3,20 @@
   "name": "Kiwi Extra Enhancement Suite (KEES)",
   "version": "4.7.3",
   "description": "Enhanced features for specific Xenforo chat and forums",
-  "permissions": ["storage", "notifications"],
+  "permissions": ["storage", "unlimitedStorage", "notifications"],
   "host_permissions": [
     "https://kiwifarms.st/*"
   ],
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "48": "icons/kiwi-logo-extension-48.png",
       "128": "icons/kiwi-logo-extension-128.png"
     },
     "default_title": "KEES Settings"
+  },
+  "options_ui": {
+    "page": "settings/settings.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {
@@ -51,6 +54,23 @@
         "https://kiwifarms.st/members/*"
       ],
       "js": ["src/features/user-forum-activity.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/threads/*",
+        "https://kiwifarms.st/forums/*",
+        "https://kiwifarms.st/members/*"
+      ],
+      "js": [
+        "src/features/tagging/tag-store.js",
+        "src/features/tagging/preload.js",
+        "src/features/tagging/post-scanner.js",
+        "src/features/tagging/tag-display.js",
+        "src/features/tagging/member-tagging.js",
+        "src/features/tagging/crawler.js",
+        "src/features/tagging/crawl-ui.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -140,7 +160,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/capture-chat-config.js", "src/img/sheep.png"],
+      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/capture-chat-config.js", "src/img/sheep.png", "data/preload.json"],
       "matches": [
         "https://kiwifarms.st/*"
       ]

@@ -39,6 +39,18 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 ### User Profile Features
 - **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results
 
+### User Tagging
+- **Manual Tags** - Tag any user from their profile. Tags render as colored chips below the author's name in posts and on the member profile header
+- **Auto Tags from Forum Activity** - Automatically tag users by the forums/sub-forums they post in most, using your short names (configurable threshold and max tags per user). Auto tags are stored separately from manual tags, so regenerating never overwrites tags you added by hand. The shipped dataset can also include per-megathread tags for specific threads (chips link to the thread); everything else stays lumped into its forum
+- **Forum Short Names** - Map long forum names to short labels used on tags. Forums populate this list automatically as you browse
+- **Passive Activity Collection** - As you read threads, each post is counted toward its author's per-forum activity table. No extra network requests — the table builds up as you browse normally. Each thread page is recorded once it's counted, so reloads, revisits, and re-crawls never double-count it
+- **Hide Tags** - Hide all tag chips globally (a toggle in settings and on the dashboard) or hide a specific user's chips from the Tag Manager. Chips update live everywhere
+- **Accurate Per-User Counts** - On a profile, "Generate from forum activity" crawls that user's own posts for an exact per-forum breakdown (and refreshes their auto tags)
+- **Bounded Crawler** - Opt-in, throttled crawl to populate the activity table for many users at once. Crawl buttons appear directly on the pages: on a forum — "Crawl this forum", a "Crawl" button per sub-forum box, and "Crawl all sub-forums"; on a thread — "Crawl this thread" (reads every page, ideal for megathreads). A floating progress/Stop HUD shows status. Hard caps bound the work and it auto-stops the moment it sees a non-200 response or a proof-of-work challenge page
+- **Tag Manager** - A dedicated full-page dashboard (opened in its own tab) listing every tagged user with their manual and auto tags, forum activity, and top forums; plus auto-tag settings, forum short names, live crawl status, recent-crawl history, and JSON export/import
+- **Export / Import** - Back up or transfer all tags, forum short names, and activity as a JSON file
+- **Preloaded Dataset** - The extension can ship with a prebuilt activity + tags dataset (`data/preload.json`), imported once per release in merge mode (never overwrites your own manual tags) so users get tags out of the box without crawling. It is generated offline by the author's crawler ([`kf-tag-crawler`](#preloaded-dataset-generation)); nothing is ever uploaded from the user's browser
+
 ### Homepage Features
 - **Disable Homepage Chat** - Hide the chat widget on the forum homepage
 - **Remove Sponsored Content** - Hide sponsored banners on the homepage
@@ -62,8 +74,8 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 
 ## Usage
 
-### Extension Popup
-Click the extension icon in your browser toolbar to access settings:
+### Settings Page
+Click the extension icon in your browser toolbar to open the full settings page in a **new browser tab** (also reachable via `chrome://extensions` → KEES → Details → Extension options). Settings are laid out as a responsive multi-column grid of cards:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
 - **Chat Settings** - Mention notifications, mute gambling, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
@@ -73,6 +85,16 @@ Click the extension icon in your browser toolbar to access settings:
 - **PII Guard** - Toggle outgoing message protection and manage protected strings (displayed masked in the UI for shoulder-surfing resistance)
 - **Filtered Keywords** - Manage words/phrases to hide from incoming chat messages
 - **Muted Users** - Manage your muted users list
+- **User Tags** - Toggle auto-tagging and open the **Tag Manager** — the dedicated page where all other tagging controls now live (tagged-user list, activity, crawls, short names, backup)
+
+### Tag Manager
+Open it from the settings page ("Open Tag Manager →") or the "Manage all tags →" link on any member profile. It opens in its own tab and provides:
+- **Summary stats** - Tagged users, manual/auto tag counts, forums tracked, total posts recorded
+- **Tagged Users table** - Every user with tags or recorded activity; search by username or tag, sort by posts/name/manual count, add/remove manual tags inline, and expand a user's full per-forum breakdown. Auto-tag chips and the per-forum breakdown link to the source forum/sub-forum
+- **Auto-tagging** - Enable/disable, threshold %, max tags per user, and a recompute button
+- **Forum Crawler** - Live crawl status (updates across tabs), a recent-crawl history log, crawl limits (delay, threads per forum, thread-page cap), and start-by-ID controls for forums or a single thread/megathread (needs an open kiwifarms.st tab)
+- **Forum Short Names** - Edit the short label used on tags for each forum; the forum name links to that forum/sub-forum
+- **Backup** - Export/import all tagging data as JSON
 
 ### Chat Page
 The emote bar and format bar appear above the chat input when you're on a chat page.
@@ -85,6 +107,11 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 
 ### User Profiles
 - **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally)
+- **User Tags** - In the "User Tags" box, add manual tags or click "Generate from forum activity" to produce accurate forum-based auto tags. Tags appear as chips next to the user's name across the site
+
+### Forum Threads & Profiles
+- **Tag Chips** - Users you've tagged show colored chips below the author's name in posts and on their profile header. Browsing threads also passively builds the per-user forum activity table used for auto tags
+- **Crawl Buttons** - On a forum page, use "⟳ Crawl this forum" next to the title, the "Crawl" button on any sub-forum box, or "⟳ Crawl all sub-forums". On a thread page, use "⟳ Crawl this thread" to read every page of that thread (built for megathreads). A floating HUD shows progress and a Stop button; the crawl runs while you stay on the page
 
 ## Development
 
@@ -95,11 +122,16 @@ No build step required. All source files are loaded directly by the browser — 
 extension/
 ├── manifest.json          # Extension manifest (MV3)
 ├── icons/
-├── popup/
-│   ├── popup.html
-│   └── popup.js
+├── data/
+│   └── preload.json       # Prebuilt activity + tags shipped with the extension (author-generated)
+├── settings/              # Full-page settings UI (opens in a tab)
+│   ├── settings.html
+│   └── settings.js
+├── tags/                  # Tag Manager dashboard (opens in a tab)
+│   ├── tags.html
+│   └── tags.js
 └── src/
-    ├── background.js      # Service worker
+    ├── background.js      # Service worker (also opens the settings tab on icon click)
     ├── homepage-content.js # Homepage script
     ├── whisper-content.js  # Global whisper/chat box
     ├── bootstrap.js        # Chat page initialization
@@ -107,9 +139,24 @@ extension/
     ├── core/              # Core modules
     ├── ui/                # UI components
     ├── features/          # Feature modules
+    │   └── tagging/       # User tagging (store, preload, passive scanner, display, member UI, crawler + in-page buttons)
     ├── util/              # Utilities
     └── bootstrap.js       # Initialization
 ```
+
+## Preloaded Dataset Generation
+
+The built-in tag dataset (`data/preload.json`) is produced offline by a separate,
+author-run tool: **kf-tag-crawler** (Python). It logs into the forum with your own
+session, solves the Tartarus proof-of-work, crawls the forums/threads you choose,
+tallies per-user activity, computes auto-tags, and writes the bundle here.
+
+Workflow:
+1. In `kf-tag-crawler`, run e.g. `python crawl.py --cookies-file cookies.txt --forums 41,19 --out /path/to/this-extension/data/preload.json --preload-version N`.
+2. Bump `preloadVersion` each time you ship new data — the extension re-imports it once per release.
+3. Commit the updated `data/preload.json` and release.
+
+The dataset uses the same JSON shape as the Tag Manager's Export, so you can also hand-craft or edit it. Importing is merge-only and never touches users' own manual tags or preferences. See the kf-tag-crawler README for full options and the (one-account) ban-risk caveats.
 
 ## License
 

@@ -1,6 +1,6 @@
 # KEES Privacy Policy
 
-_Last updated: 2026-04-12_
+_Last updated: 2026-06-05_
 
 Kiwi Extra Enhancement Suite (KEES) is a browser extension that adds quality-of-life features to the Kiwi Farms chat and forum interface. This document describes what data the extension handles and how.
 
@@ -24,6 +24,12 @@ KEES uses `chrome.storage.local` to persist your settings and state across brows
 - Feature toggles (keyword filter, PII guard, gambling filter, homepage cleanup, etc.)
 - UI state (collapsed panels, tab selections, last visited chat room)
 - Zipline image host URL and API key (only if you choose to configure Zipline uploads)
+- User tags you create — both manual tags and auto-generated forum-activity tags — including the usernames and user IDs of the forum members they apply to
+- Per-user forum post-activity counts collected as you browse threads or run the tagging crawler
+- Forum short-name (alias) mappings and tagging settings (auto-tag threshold, crawler scope and limits, tag-chip visibility and per-user hide list)
+- A per-thread record of which page numbers have already been counted, used only to avoid double-counting activity
+
+Some tag and forum-activity data may arrive as a **prebuilt dataset shipped inside the extension** (generated offline by the author) rather than collected on your device. It is loaded into local storage on update, in merge mode so it never overwrites tags you created, and — like everything else here — is never sent anywhere.
 
 You can inspect or clear this data at any time via `chrome://extensions` → KEES → "Storage" (or by removing the extension).
 
@@ -34,6 +40,7 @@ KEES makes network requests only in response to explicit user actions or to feat
 | Destination | When | What is sent |
 |---|---|---|
 | `kiwifarms.st` (chat WebSocket and forum pages) | Whenever you use Kiwi Farms normally | The same requests your browser would make without the extension. KEES adds no tracking. |
+| `kiwifarms.st` (forum, thread, and member-search pages) | Only when you click "Analyze Forum Activity" / "Generate from forum activity" on a profile, or start the tagging crawler | Authenticated same-site page requests (using your existing session) to read public post/forum data for building the activity table. Throttled, bounded, and never sent anywhere off your device. |
 | `www.youtube.com` (oEmbed API) | When the chat contains a YouTube link and the "YouTube titles" feature is enabled | The public URL of the YouTube video, to retrieve its title and thumbnail. No cookies, no user info. |
 | Your Zipline instance | Only if you have configured a Zipline server and manually upload a file through KEES | The file you chose to upload, plus your Zipline API key (used for authentication with _your own_ Zipline server). |
 

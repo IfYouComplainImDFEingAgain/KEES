@@ -7,21 +7,51 @@
             box-sizing: border-box;
         }
         body {
-            width: 300px;
-            padding: 16px;
+            padding: 24px;
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 13px;
             background: #1a1a1a;
             color: #e0e0e0;
         }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
         h1 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
+            margin: 0 0 20px 0;
+            font-size: 20px;
             font-weight: 600;
             color: #fff;
             border-bottom: 1px solid #333;
-            padding-bottom: 8px;
+            padding-bottom: 12px;
+        }
+        /* Multi-column masonry grid of setting cards */
+        .grid {
+            column-width: 340px;
+            column-gap: 20px;
+        }
+        .card {
+            break-inside: avoid;
+            -webkit-column-break-inside: avoid;
+            display: inline-block;
+            width: 100%;
+            margin: 0 0 20px;
+            padding: 14px 18px 18px;
+            background: #1f1f1f;
+            border: 1px solid #2b2b2b;
+            border-radius: 8px;
+            vertical-align: top;
+        }
+        /* Neutralize the old top-border section dividers inside cards */
+        .card.section,
+        .card.muted-users-section {
+            margin-top: 0;
+            padding-top: 14px;
+            border-top: none;
+        }
+        .card > h2:first-child {
+            margin-top: 0;
         }
         h2 {
             margin: 16px 0 10px 0;
@@ -94,13 +124,18 @@
             transform: translateX(20px);
         }
         .status {
-            margin-top: 12px;
-            padding: 8px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 10px 16px;
             background: #2a2a2a;
-            border-radius: 4px;
-            font-size: 11px;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            font-size: 12px;
             color: #4caf50;
             text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
             display: none;
         }
         .status.show {
@@ -259,8 +294,12 @@
     </style>
 </head>
 <body>
-    <h1>KEES</h1>
+    <div class="wrap">
+    <h1>KEES Settings</h1>
 
+    <div class="grid">
+
+    <div class="card">
     <h2>Cosmetics</h2>
     <div class="setting">
         <div class="setting-label">
@@ -283,8 +322,9 @@
             <span class="toggle-slider"></span>
         </label>
     </div>
+    </div>
 
-    <div class="section">
+    <div class="section card">
         <h2>Post Settings</h2>
         <div class="setting">
             <div class="setting-label">
@@ -336,9 +376,38 @@
                 <input type="number" id="reaction-bad-threshold" value="50" min="1" max="100">
             </div>
         </div>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Forum Activity Max Pages</span>
+                <span class="setting-desc">Pages to crawl for a quick forum-activity analysis (the site caps a single search at 10)</span>
+            </div>
+            <div class="input-group" style="flex: 0 0 140px;">
+                <input type="number" id="forum-activity-max-pages" value="10" min="1" max="10" style="text-align: center;">
+            </div>
+        </div>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Deep History Search</span>
+                <span class="setting-desc">Pull a member's full history by running many date-windowed searches instead of one. Slower and heavier on the site &mdash; use sparingly.</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="forum-activity-deep-search">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="setting-row" id="forum-activity-deep-options" style="display: none;">
+            <div class="input-group">
+                <label for="forum-activity-window-days">Search window (days)</label>
+                <input type="number" id="forum-activity-window-days" value="90" min="7" max="365">
+            </div>
+            <div class="input-group">
+                <label for="forum-activity-max-searches">Max searches</label>
+                <input type="number" id="forum-activity-max-searches" value="24" min="1" max="200">
+            </div>
+        </div>
     </div>
 
-    <div class="section">
+    <div class="section card">
         <h2>Chat Settings</h2>
         <div class="setting" style="border-bottom: none;">
             <div class="setting-label">
@@ -449,7 +518,7 @@
         </div>
     </div>
 
-    <div class="section">
+    <div class="section card">
         <h2>Zipline Upload</h2>
         <div class="setting">
             <div class="setting-label">
@@ -483,7 +552,7 @@
         </div>
     </div>
 
-    <div class="section">
+    <div class="section card">
         <h2>Bot Column</h2>
         <div class="setting">
             <div class="setting-label">
@@ -512,7 +581,7 @@
         </div>
     </div>
 
-    <div class="muted-users-section">
+    <div class="muted-users-section card">
         <h2>@everyone List</h2>
         <div class="setting" style="border-bottom: none; padding-bottom: 8px;">
             <div class="setting-label">
@@ -526,7 +595,7 @@
         </div>
     </div>
 
-    <div class="muted-users-section">
+    <div class="muted-users-section card">
         <h2>PII Guard</h2>
         <div class="setting" style="border-bottom: none; padding-bottom: 4px;">
             <div class="setting-label">
@@ -552,7 +621,7 @@
         </div>
     </div>
 
-    <div class="muted-users-section">
+    <div class="muted-users-section card">
         <h2>Filtered Keywords</h2>
         <div class="setting" style="border-bottom: none; padding-bottom: 8px;">
             <div class="setting-label">
@@ -566,7 +635,7 @@
         </div>
     </div>
 
-    <div class="muted-users-section">
+    <div class="muted-users-section card">
         <h2>Muted Users</h2>
         <div id="muted-users-list" class="muted-users-list"></div>
         <div class="add-muted-user">
@@ -575,8 +644,44 @@
         </div>
     </div>
 
+    <div class="section card">
+        <h2>User Tags</h2>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Auto-tag from forum activity</span>
+                <span class="setting-desc">Tag users by the forums they post in most</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="tag-auto-enabled">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Show tag chips</span>
+                <span class="setting-desc">Display tags below names in posts and on profiles</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="tag-display-show">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="setting" style="border-bottom: none; padding-bottom: 6px;">
+            <div class="setting-label">
+                <span class="setting-desc">View tagged users, automated tags, forum activity, crawls, short names and backup in the dedicated Tag Manager.</span>
+            </div>
+        </div>
+        <div class="add-muted-user" style="margin-top: 6px;">
+            <button id="open-tag-manager-btn" style="flex: 1;">Open Tag Manager →</button>
+        </div>
+    </div>
+
+    </div>
+    </div>
+
     <div id="status" class="status">Settings saved!</div>
 
-    <script src="popup.js"></script>
+    <script src="../src/features/tagging/tag-store.js"></script>
+    <script src="settings.js"></script>
 </body>
 </html>

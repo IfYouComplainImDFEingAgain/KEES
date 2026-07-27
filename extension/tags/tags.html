@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>KEES Tag Manager</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+        }
+        .wrap { max-width: 1200px; margin: 0 auto; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 16px; }
+        h1 { margin: 0; font-size: 20px; color: #fff; }
+        h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #aaa; }
+        h3 { margin: 14px 0 6px; font-size: 12px; color: #999; }
+
+        .btn { cursor: pointer; border: 1px solid #3a6ea5; background: #27496d; color: #fff; border-radius: 4px; padding: 6px 12px; font-size: 12px; }
+        .btn:hover { background: #2f5780; }
+        .btn:disabled { opacity: .5; cursor: default; }
+        .btn-danger { border-color: #a83246; background: #7a2738; }
+        .btn-ghost { background: #2a2a2a; border-color: #444; }
+
+        .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .stat { background: #1f1f1f; border: 1px solid #2b2b2b; border-radius: 8px; padding: 10px 16px; min-width: 110px; }
+        .stat .n { font-size: 20px; font-weight: 600; color: #fff; }
+        .stat .l { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: #1f1f1f; border: 1px solid #2b2b2b; border-radius: 8px; padding: 14px 16px; }
+        .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+        .row span { color: #ccc; }
+        .hint { font-size: 11px; color: #777; margin: 4px 0 8px; }
+        input[type="text"], input[type="number"] { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; }
+        input[type="number"] { width: 70px; text-align: center; }
+        select { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #fff; padding: 6px 8px; font-size: 12px; }
+        .chk { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #888; }
+        .btn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .crawl-live { background: #222; border-radius: 4px; padding: 8px 10px; font-size: 12px; color: #cfcfcf; margin-bottom: 8px; }
+        .crawl-live.running { color: #d8a657; }
+        .crawl-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+        .crawl-controls input[type="text"] { flex: 1; }
+        .limits { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
+        .limits label { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; }
+        .limits input { width: 64px; }
+        .history { max-height: 160px; overflow-y: auto; }
+        .hist-item { font-size: 11px; color: #999; padding: 5px 0; border-bottom: 1px solid #2a2a2a; }
+        .hist-item:last-child { border-bottom: none; }
+        .hist-item .when { color: #ccc; }
+        .hist-item.err .when { color: #d87c7c; }
+
+        .alias-list { max-height: 220px; overflow-y: auto; }
+        .alias { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #2a2a2a; }
+        .alias:last-child { border-bottom: none; }
+        .alias .name { flex: 1; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .alias input { width: 90px; }
+        .alias-list:empty::after { content: "No forums recorded yet"; color: #666; font-style: italic; display: block; padding: 8px 0; }
+
+        .users { background: #1f1f1f; border: 1px solid #2b2b2b; border-radius: 8px; padding: 14px 16px; }
+        .users-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+        .users-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .users-controls input[type="text"] { width: 220px; }
+        .muted { color: #777; font-weight: normal; font-size: 12px; }
+
+        table.users-table { width: 100%; border-collapse: collapse; }
+        .users-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #888; border-bottom: 1px solid #333; padding: 8px 8px; }
+        .users-table th.num { text-align: right; }
+        .users-table td { padding: 8px 8px; border-bottom: 1px solid #262626; vertical-align: top; }
+        .users-table td.num { text-align: right; color: #ccc; font-variant-numeric: tabular-nums; }
+        .users-table tr:hover td { background: #232323; }
+        .uname { color: #6fb3ff; text-decoration: none; }
+        .uname:hover { text-decoration: underline; }
+        .uid { color: #666; font-size: 11px; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 7px; border-radius: 9px; color: #fff; }
+        .chip.auto { border: 1px dashed rgba(255,255,255,.5); opacity: .9; }
+        .chip .x { cursor: pointer; font-weight: bold; opacity: .8; }
+        .chip .x:hover { opacity: 1; }
+        .addtag { cursor: pointer; border: 1px dashed #555; color: #aaa; background: none; border-radius: 9px; font-size: 11px; padding: 1px 7px; }
+        .addtag:hover { color: #fff; border-color: #888; }
+        .forum-link { color: #6fb3ff; text-decoration: none; }
+        .forum-link:hover { text-decoration: underline; }
+        .chip-link { text-decoration: none; }
+        .alias .name a { color: #6fb3ff; text-decoration: none; }
+        .alias .name a:hover { text-decoration: underline; }
+        .forum-mini { font-size: 11px; color: #aaa; }
+        .forum-mini .more { color: #6fb3ff; cursor: pointer; }
+        .forum-full { margin-top: 4px; font-size: 11px; color: #999; display: none; }
+        .forum-full.open { display: block; }
+        .empty { color: #666; font-style: italic; padding: 16px 8px; }
+
+        .toast { position: fixed; bottom: 20px; right: 20px; z-index: 100; padding: 10px 16px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 6px; color: #4caf50; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.4); display: none; }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header class="topbar">
+            <h1>KEES Tag Manager</h1>
+            <div style="display:flex;align-items:center;gap:14px;">
+                <label class="chk"><input type="checkbox" id="show-chips"> Show tag chips</label>
+                <button id="refresh-btn" class="btn btn-ghost">Refresh</button>
+            </div>
+        </header>
+
+        <div id="summary" class="summary"></div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Auto-tagging</h2>
+                <div class="hint">Tags users by the forums they post in most. Manual tags are never touched.</div>
+                <label class="row"><span>Enabled</span> <input type="checkbox" id="auto-enabled"></label>
+                <label class="row"><span>Threshold %</span> <input type="number" id="auto-threshold" min="1" max="100"></label>
+                <label class="row"><span>Max tags / user</span> <input type="number" id="auto-max" min="1" max="10"></label>
+                <button id="recompute-btn" class="btn" style="margin-top:8px;">Recompute auto-tags</button>
+            </div>
+
+            <div class="card">
+                <h2>Forum Crawler</h2>
+                <div id="crawl-live" class="crawl-live">No crawl running</div>
+                <div class="crawl-controls">
+                    <input type="text" id="crawl-ids" placeholder="Forum IDs e.g. 41, 19">
+                    <button id="crawl-start" class="btn">Crawl forums</button>
+                </div>
+                <div class="crawl-controls">
+                    <input type="text" id="crawl-thread" placeholder="Thread ID or URL (megathread)">
+                    <button id="crawl-thread-start" class="btn">Crawl thread</button>
+                </div>
+                <div class="crawl-controls">
+                    <button id="crawl-stop" class="btn btn-danger" disabled>Stop crawl</button>
+                </div>
+                <div class="limits">
+                    <label>Delay ms <input type="number" id="lim-delay" min="800" max="20000" step="100"></label>
+                    <label>Threads/forum <input type="number" id="lim-threads" min="1" max="100"></label>
+                    <label>Thread pages <input type="number" id="lim-threadpages" min="1" max="500"></label>
+                </div>
+                <div class="hint">Crawl buttons also appear on forum and thread pages. Crawling needs an open kiwifarms.st tab.</div>
+                <h3>Recent crawls <span id="hist-clear" class="muted" style="cursor:pointer;float:right;">clear</span></h3>
+                <div id="crawl-history" class="history"></div>
+            </div>
+
+            <div class="card">
+                <h2>Short Names</h2>
+                <div class="hint">Short labels used on auto-tags, for forums and tracked megathreads. Recompute after editing.</div>
+                <div id="alias-list" class="alias-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>Backup</h2>
+                <div class="hint">Export or import all tags, forum names, activity and settings as JSON.</div>
+                <div class="btn-row">
+                    <button id="export-btn" class="btn">Export JSON</button>
+                    <button id="import-btn" class="btn">Import JSON</button>
+                    <label class="chk"><input type="checkbox" id="import-replace"> replace</label>
+                </div>
+                <input type="file" id="import-file" accept="application/json,.json" hidden>
+            </div>
+        </div>
+
+        <section class="users">
+            <div class="users-head">
+                <h2 style="margin:0;">Tagged Users <span id="users-count" class="muted"></span></h2>
+                <div class="users-controls">
+                    <input type="text" id="user-search" placeholder="Search username or tag…">
+                    <select id="user-sort">
+                        <option value="posts">Sort: Posts</option>
+                        <option value="name">Sort: Name</option>
+                        <option value="manual">Sort: Manual tags</option>
+                    </select>
+                    <label class="chk"><input type="checkbox" id="only-tagged"> only tagged</label>
+                </div>
+            </div>
+            <table class="users-table">
+                <thead>
+                    <tr><th>User</th><th>Manual tags</th><th>Auto tags</th><th class="num">Posts</th><th>Top sources</th></tr>
+                </thead>
+                <tbody id="users-body"></tbody>
+            </table>
+            <div id="users-empty" class="empty"></div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="../src/features/tagging/tag-store.js"></script>
+    <script src="tags.js"></script>
+</body>
+</html>
