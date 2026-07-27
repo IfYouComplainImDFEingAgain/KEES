@@ -102,6 +102,13 @@
         let userId = byData && /^\d+$/.test(byData) ? byData : null;
         let href = null;
 
+        // The meta row's author span carries the poster's id directly.
+        if (!userId) {
+            const authorEl = msgEl.querySelector('.author[data-id]');
+            const byAuthor = authorEl && authorEl.getAttribute('data-id');
+            if (byAuthor && /^\d+$/.test(byAuthor)) userId = byAuthor;
+        }
+
         for (const a of msgEl.querySelectorAll('a[href*="/members/"]')) {
             if (a.closest('.message')) continue;
             href = a.getAttribute('href');
