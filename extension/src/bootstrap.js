@@ -119,6 +119,10 @@
                     SNEED.features.chatMuting.start(document);
                 }
 
+                if (SNEED.features.newUserBadge && SNEED.features.newUserBadge.start) {
+                    SNEED.features.newUserBadge.start(document);
+                }
+
                 if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {
                     SNEED.features.keywordFilter.start(document);
                 }
@@ -208,6 +212,10 @@
 
                             if (SNEED.features.chatMuting && SNEED.features.chatMuting.start) {
                                 SNEED.features.chatMuting.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.newUserBadge && SNEED.features.newUserBadge.start) {
+                                SNEED.features.newUserBadge.start(iframeDoc);
                             }
 
                             if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {

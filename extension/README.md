@@ -14,6 +14,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Custom Emotes** - Add and manage your own custom emotes
 - **Image Blacklist** - Filter images from chat (supports bulk adding multiple URLs)
 - **Watched Users** - Highlight messages from users you're watching
+- **New Account Badge** - Flags chat messages from recently-joined accounts (default: under 30 days) with a `NEW·<age>` chip. Join dates are scraped once per user from their profile, throttled, and cached locally forever
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
 - **Zipline Upload** - Upload media to your Zipline instance (images auto-wrapped in [img] tags, EXIF stripping enabled by default)

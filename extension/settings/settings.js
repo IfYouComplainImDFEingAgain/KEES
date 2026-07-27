@@ -17,6 +17,9 @@
     const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
+    const STORAGE_KEY_NEW_USER_BADGE = 'kees-new-user-badge';
+    const STORAGE_KEY_NEW_USER_DAYS = 'kees-new-user-days';
+    const JOIN_DATE_PREFIX = 'kees-joined-';
     const STORAGE_KEY_MUTE_DISRUPTIVE = 'kees-mute-disruptive-guests';
     const STORAGE_KEY_ATTACHMENT_STRIP_EXIF = 'kees-attachment-strip-exif';
     const STORAGE_KEY_EVERYONE_LIST = 'sneedchat-everyone-list';
@@ -63,6 +66,14 @@
 
     // Scrollback elements
     const scrollbackLimit = document.getElementById('scrollback-limit');
+
+    // New-account badge elements
+    const newUserBadge = document.getElementById('new-user-badge');
+    const newUserOptions = document.getElementById('new-user-options');
+    const newUserDays = document.getElementById('new-user-days');
+    const newUserCacheRow = document.getElementById('new-user-cache-row');
+    const newUserCacheCount = document.getElementById('new-user-cache-count');
+    const clearJoinCacheBtn = document.getElementById('clear-join-cache-btn');
 
     // Disruptive guests element
     const muteDisruptiveGuests = document.getElementById('mute-disruptive-guests');
@@ -285,6 +296,61 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_SCROLLBACK_LIMIT]: scrollbackLimit.value }, () => {
             showStatus('Scrollback limit saved');
+        });
+    });
+
+    // ============================================
+    // NEW ACCOUNT BADGE SETTINGS
+    // ============================================
+
+    function updateNewUserVisibility() {
+        const show = newUserBadge.checked ? '' : 'none';
+        newUserOptions.style.display = show;
+        newUserCacheRow.style.display = show;
+    }
+
+    // Count the per-user kees-joined-<id> cache entries for the "Clear" row.
+    function refreshJoinCacheCount() {
+        chrome.storage.local.get(null, (all) => {
+            const count = Object.keys(all || {}).filter(k => k.startsWith(JOIN_DATE_PREFIX)).length;
+            newUserCacheCount.textContent = count;
+        });
+    }
+
+    chrome.storage.local.get([STORAGE_KEY_NEW_USER_BADGE, STORAGE_KEY_NEW_USER_DAYS], (result) => {
+        newUserBadge.checked = result[STORAGE_KEY_NEW_USER_BADGE] !== false;
+        newUserDays.value = result[STORAGE_KEY_NEW_USER_DAYS] ?? 30;
+        updateNewUserVisibility();
+        refreshJoinCacheCount();
+    });
+
+    newUserBadge.addEventListener('change', () => {
+        updateNewUserVisibility();
+        chrome.storage.local.set({ [STORAGE_KEY_NEW_USER_BADGE]: newUserBadge.checked }, () => {
+            showStatus(newUserBadge.checked ? 'New account badge enabled' : 'New account badge disabled');
+        });
+    });
+
+    newUserDays.addEventListener('change', () => {
+        const value = parseInt(newUserDays.value, 10) || 30;
+        newUserDays.value = Math.max(1, Math.min(365, value));
+
+        chrome.storage.local.set({ [STORAGE_KEY_NEW_USER_DAYS]: newUserDays.value }, () => {
+            showStatus('New account age saved');
+        });
+    });
+
+    clearJoinCacheBtn.addEventListener('click', () => {
+        chrome.storage.local.get(null, (all) => {
+            const keys = Object.keys(all || {}).filter(k => k.startsWith(JOIN_DATE_PREFIX));
+            if (!keys.length) {
+                showStatus('No cached join dates');
+                return;
+            }
+            chrome.storage.local.remove(keys, () => {
+                refreshJoinCacheCount();
+                showStatus('Cleared ' + keys.length + ' cached join dates');
+            });
         });
     });
 

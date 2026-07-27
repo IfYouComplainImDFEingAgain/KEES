@@ -28,6 +28,7 @@ KEES uses `chrome.storage.local` to persist your settings and state across brows
 - Per-user forum post-activity counts collected as you browse threads or run the tagging crawler
 - Forum short-name (alias) mappings and tagging settings (auto-tag threshold, crawler scope and limits, tag-chip visibility and per-user hide list)
 - A per-thread record of which page numbers have already been counted, used only to avoid double-counting activity
+- Join dates of chat participants (one entry per user id), cached so the "New Account Badge" feature only ever reads a given member's profile once
 
 Some tag and forum-activity data may arrive as a **prebuilt dataset shipped inside the extension** (generated offline by the author) rather than collected on your device. It is loaded into local storage on update, in merge mode so it never overwrites tags you created, and — like everything else here — is never sent anywhere.
 
@@ -41,6 +42,7 @@ KEES makes network requests only in response to explicit user actions or to feat
 |---|---|---|
 | `kiwifarms.st` (chat WebSocket and forum pages) | Whenever you use Kiwi Farms normally | The same requests your browser would make without the extension. KEES adds no tracking. |
 | `kiwifarms.st` (forum, thread, and member-search pages) | Only when you click "Analyze Forum Activity" / "Generate from forum activity" on a profile, or start the tagging crawler | Authenticated same-site page requests (using your existing session) to read public post/forum data for building the activity table. Throttled, bounded, and never sent anywhere off your device. |
+| `kiwifarms.st` (member profile pages) | When the "New Account Badge" feature is enabled and someone posts in chat whose join date is not already cached | An authenticated same-site request for that member's public profile page, to read the "Joined" date. One request per user, ever; serialised with a delay; the result stays on your device. |
 | `www.youtube.com` (oEmbed API) | When the chat contains a YouTube link and the "YouTube titles" feature is enabled | The public URL of the YouTube video, to retrieve its title and thumbnail. No cookies, no user info. |
 | Your Zipline instance | Only if you have configured a Zipline server and manually upload a file through KEES | The file you chose to upload, plus your Zipline API key (used for authentication with _your own_ Zipline server). |
 

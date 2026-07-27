@@ -507,6 +507,35 @@
             </label>
         </div>
 
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">New Account Badge</span>
+                <span class="setting-desc">Mark chat messages from recently-joined accounts (join dates are fetched once per user and cached)</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="new-user-badge" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="setting" id="new-user-options" style="display: none;">
+            <div class="setting-label">
+                <span class="setting-title">New Account Age</span>
+                <span class="setting-desc">Days since joining that still count as new</span>
+            </div>
+            <div class="input-group" style="width: 80px; flex-shrink: 0;">
+                <input type="number" id="new-user-days" value="30" min="1" max="365" style="text-align: center;">
+            </div>
+        </div>
+
+        <div class="setting" id="new-user-cache-row" style="display: none;">
+            <div class="setting-label">
+                <span class="setting-title">Cached Join Dates</span>
+                <span class="setting-desc"><span id="new-user-cache-count">0</span> users cached locally</span>
+            </div>
+            <button id="clear-join-cache-btn">Clear</button>
+        </div>
+
         <div class="setting" style="border-bottom: none;">
             <div class="setting-label">
                 <span class="setting-title">Scrollback Limit</span>
