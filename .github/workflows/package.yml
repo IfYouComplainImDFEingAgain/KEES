@@ -31,14 +31,46 @@ jobs:
         run: |
           jq '.version = "${{ steps.version.outputs.version }}" | .browser_specific_settings.gecko.id = "kees@kiwifarms.extension"' extension/manifest.json > tmp.json && mv tmp.json extension/manifest.json
 
+      - name: Verify packaged paths exist
+        run: |
+          cd extension
+          status=0
+          for path in manifest.json src icons settings tags data; do
+            if [ ! -e "$path" ]; then
+              echo "::error::missing packaged path: extension/$path"
+              status=1
+            fi
+          done
+          # Every local file the manifest points at must be present, or the
+          # build silently ships an extension with dead pages/resources.
+          while read -r ref; do
+            if [ ! -e "$ref" ]; then
+              echo "::error::manifest references missing file: extension/$ref"
+              status=1
+            fi
+          done < <(jq -r '
+            [ .options_ui.page?,
+              .background.service_worker?,
+              (.background.scripts // [] | .[]),
+              (.content_scripts // [] | .[] | (.js // [] | .[])),
+              (.content_scripts // [] | .[] | (.css // [] | .[])),
+              (.web_accessible_resources // [] | .[] | (.resources // [] | .[])),
+              (.icons // {} | .[]),
+              (.action.default_icon // {} | .[])
+            ] | map(select(type == "string")) | unique | .[]' manifest.json)
+          exit $status
+
       - name: Package extension
         run: |
           cd extension
           zip -r ../kees-${{ steps.version.outputs.version }}.zip \
             manifest.json \
             src/ \
-            popup/ \
-            icons/
+            settings/ \
+            tags/ \
+            data/ \
+            icons/ \
+            -x '*/.*' '.*'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
