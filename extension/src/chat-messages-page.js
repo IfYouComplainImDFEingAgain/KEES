@@ -17,8 +17,9 @@
 // being injected as a web-accessible resource (see core/chat-page.js).
 //
 // Settings arrive as attributes on <html>, written by the content-script halves:
-//   data-kees-undelete   '1' | '0'
-//   data-kees-scrollback  messages to keep, '' / absent while unconfigured
+//   data-kees-undelete         '1' | '0'
+//   data-kees-undelete-exempt  newline-separated usernames undelete ignores
+//   data-kees-scrollback       messages to keep, '' / absent while unconfigured
 (function() {
     'use strict';
 
@@ -29,7 +30,9 @@
     const MESSAGE_CLASS = 'chat-message';
     const MARK_ATTR = 'data-kees-deleted';
     const UNDELETE_ATTR = 'data-kees-undelete';
+    const EXEMPT_ATTR = 'data-kees-undelete-exempt';
     const LIMIT_ATTR = 'data-kees-scrollback';
+    const AUTHOR_SELECTOR = '.author';
 
     // Sneedchat's own cap, i.e. the number the prune loop compares against.
     const SITE_CAP = 200;
@@ -41,6 +44,7 @@
 
     let container = null;
     let undelete = false;
+    let exempt = new Set();
     let limit = 0;
 
     let clampInstalled = false;
@@ -76,6 +80,15 @@
     function readSettings() {
         const root = document.documentElement;
         undelete = root.getAttribute(UNDELETE_ATTR) === '1';
+
+        // Newline-separated rather than JSON: a username can't contain a newline,
+        // and there is nothing to fail to parse.
+        const names = (root.getAttribute(EXEMPT_ATTR) || '').split('\n');
+        exempt = new Set();
+        for (const name of names) {
+            const trimmed = name.trim().toLowerCase();
+            if (trimmed) exempt.add(trimmed);
+        }
 
         const parsed = parseInt(root.getAttribute(LIMIT_ATTR), 10);
         limit = (!isNaN(parsed) && parsed > 0) ? Math.min(parsed, MAX_LIMIT) : 0;
@@ -165,6 +178,24 @@
 
     // ---------- undelete ----------
 
+    function isExempt(el) {
+        if (!exempt.size) return false;
+        const authorEl = el.querySelector && el.querySelector(AUTHOR_SELECTOR);
+        if (!authorEl) return false;
+        return exempt.has((authorEl.textContent || '').trim().toLowerCase());
+    }
+
+    // Messages held back before their author was added to the bot list. Removed
+    // with nativeRemove so the interception below never sees them again.
+    function purgeExempt() {
+        const messages = chatContainer();
+        if (!messages || !exempt.size) return;
+
+        for (const el of messages.querySelectorAll('.' + MESSAGE_CLASS + '[' + MARK_ATTR + ']')) {
+            if (isExempt(el)) nativeRemove.call(el);
+        }
+    }
+
     function shouldPreserve(el) {
         if (!undelete) return false;
 
@@ -181,6 +212,12 @@
         // have been appended and pruned — the room is never over the cap at that
         // point, so anything removed while over it is the prune loop.
         if (!clampActive() && liveChildren(messages).length > SITE_CAP) return false;
+
+        // Bots delete their own messages as a matter of routine — command echoes,
+        // game boards, expired rolls — and a log full of red DELETED chips from
+        // that is noise, so the user's bot list is exempt. Checked last: it is the
+        // only test here that touches the DOM.
+        if (isExempt(el)) return false;
 
         return true;
     }
@@ -213,10 +250,11 @@
     new MutationObserver(() => {
         readSettings();
         installClamp();
+        purgeExempt();
         trim();
     }).observe(document.documentElement, {
         attributes: true,
-        attributeFilter: [UNDELETE_ATTR, LIMIT_ATTR]
+        attributeFilter: [UNDELETE_ATTR, EXEMPT_ATTR, LIMIT_ATTR]
     });
 
     function watchContainer() {

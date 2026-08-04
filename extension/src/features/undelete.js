@@ -2,7 +2,11 @@
 //
 // The interception itself has to run in the page realm (see chat-messages-page.js);
 // this module injects that script into the chat document, carries the on/off
-// setting across to it via a documentElement attribute, and owns the styling.
+// setting and the exempt-user list across to it via documentElement attributes,
+// and owns the styling.
+//
+// The exempt list is the Bot Column's user list: bots routinely delete their own
+// messages, and holding those back buries the room in DELETED chips.
 //
 // A message that has already been preserved is marked with data-kees-deleted, so
 // turning the feature off can undo the preservation by removing those messages
@@ -15,7 +19,9 @@
     const log = SNEED.log;
 
     const ENABLED_KEY = 'kees-undelete';
+    const BOT_USERS_KEY = SNEED.state.STORAGE_KEYS.BOT_USERS;
     const FLAG_ATTR = 'data-kees-undelete';
+    const EXEMPT_ATTR = 'data-kees-undelete-exempt';
     const MARK_SELECTOR = '.chat-message[data-kees-deleted]';
 
     const STYLES = `
@@ -40,7 +46,15 @@
     `;
 
     let enabled = true;
+    let exemptUsers = [];
     const docs = new Set();
+
+    function exemptValue() {
+        return exemptUsers
+            .map(name => String(name).trim())
+            .filter(Boolean)
+            .join('\n');
+    }
 
     function injectStyles(doc) {
         if (doc.getElementById('kees-undelete-styles')) return;
@@ -59,6 +73,9 @@
     }
 
     function applyFlag(doc) {
+        // Exempt list first: the page script re-reads every setting on either
+        // attribute change, so it never sees the flag with a stale list.
+        doc.documentElement.setAttribute(EXEMPT_ATTR, exemptValue());
         doc.documentElement.setAttribute(FLAG_ATTR, enabled ? '1' : '0');
         if (!enabled) purge(doc);
     }
@@ -75,8 +92,9 @@
 
     function loadSettings() {
         return new Promise((resolve) => {
-            chrome.storage.local.get([ENABLED_KEY], (result) => {
+            chrome.storage.local.get([ENABLED_KEY, BOT_USERS_KEY], (result) => {
                 enabled = result[ENABLED_KEY] !== false;
+                exemptUsers = result[BOT_USERS_KEY] || [];
                 resolve();
             });
         });
@@ -89,8 +107,11 @@
         storageHooked = true;
 
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName !== 'local' || !changes[ENABLED_KEY]) return;
-            enabled = changes[ENABLED_KEY].newValue !== false;
+            if (areaName !== 'local') return;
+            if (!changes[ENABLED_KEY] && !changes[BOT_USERS_KEY]) return;
+
+            if (changes[ENABLED_KEY]) enabled = changes[ENABLED_KEY].newValue !== false;
+            if (changes[BOT_USERS_KEY]) exemptUsers = changes[BOT_USERS_KEY].newValue || [];
             applyAll();
         });
     }
