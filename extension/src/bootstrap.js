@@ -127,6 +127,10 @@
                     SNEED.features.undelete.start(document);
                 }
 
+                if (SNEED.features.scrollback && SNEED.features.scrollback.start) {
+                    SNEED.features.scrollback.start(document);
+                }
+
                 if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {
                     SNEED.features.keywordFilter.start(document);
                 }
@@ -224,6 +228,10 @@
 
                             if (SNEED.features.undelete && SNEED.features.undelete.start) {
                                 SNEED.features.undelete.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.scrollback && SNEED.features.scrollback.start) {
+                                SNEED.features.scrollback.start(iframeDoc);
                             }
 
                             if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {

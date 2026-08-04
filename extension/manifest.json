@@ -78,20 +78,13 @@
         "https://kiwifarms.st/chat/*",
         "https://kiwifarms.st/test-chat*"
       ],
-      "js": ["src/features/scrollback.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://kiwifarms.st/chat/*",
-        "https://kiwifarms.st/test-chat*"
-      ],
       "js": [
         "src/core/namespace.js",
         "src/util/dom.js",
         "src/core/state.js",
         "src/core/storage.js",
         "src/core/events.js",
+        "src/core/chat-page.js",
         "src/core/bbcode-converter.js",
         "src/ui/styles.js",
         "src/ui/color-picker.js",
@@ -114,6 +107,7 @@
         "src/features/chat-muting.js",
         "src/features/new-user-badge.js",
         "src/features/undelete.js",
+        "src/features/scrollback.js",
         "src/features/keyword-filter.js",
         "src/features/gambling-filter.js",
         "src/features/wave-animation.js",
@@ -162,7 +156,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/undelete-page.js", "src/capture-chat-config.js", "src/img/sheep.png", "data/preload.json"],
+      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/chat-messages-page.js", "src/capture-chat-config.js", "src/img/sheep.png", "data/preload.json"],
       "matches": [
         "https://kiwifarms.st/*"
       ]

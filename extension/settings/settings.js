@@ -288,15 +288,23 @@
     // SCROLLBACK SETTINGS
     // ============================================
 
+    // Sneedchat's own cap is 200 messages, so the limit only ever raises the log:
+    // anything lower would silently cost history that the site keeps today.
+    const SCROLLBACK_MIN = 200;
+    const SCROLLBACK_MAX = 1000;
+
     // Load scrollback setting
     chrome.storage.local.get([STORAGE_KEY_SCROLLBACK_LIMIT], (result) => {
-        scrollbackLimit.value = result[STORAGE_KEY_SCROLLBACK_LIMIT] ?? 100;
+        const stored = parseInt(result[STORAGE_KEY_SCROLLBACK_LIMIT], 10);
+        scrollbackLimit.value = isNaN(stored)
+            ? SCROLLBACK_MIN
+            : Math.max(SCROLLBACK_MIN, Math.min(SCROLLBACK_MAX, stored));
     });
 
     // Save scrollback limit on change
     scrollbackLimit.addEventListener('change', () => {
-        const value = parseInt(scrollbackLimit.value, 10) || 100;
-        scrollbackLimit.value = Math.max(50, Math.min(5000, value));
+        const value = parseInt(scrollbackLimit.value, 10) || SCROLLBACK_MIN;
+        scrollbackLimit.value = Math.max(SCROLLBACK_MIN, Math.min(SCROLLBACK_MAX, value));
 
         chrome.storage.local.set({ [STORAGE_KEY_SCROLLBACK_LIMIT]: scrollbackLimit.value }, () => {
             showStatus('Scrollback limit saved');

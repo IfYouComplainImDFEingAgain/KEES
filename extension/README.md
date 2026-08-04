@@ -26,7 +26,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Whisper Persistence** - Save whisper history with configurable retention per conversation
 - **Hide Whispers in Main Chat** - Only show whispers in the whisper box (enabled by default)
 - **Undelete Messages** - Deleted chat messages stay in the log with a dark red background and a `DELETED` chip instead of vanishing (enabled by default). The message is only held back locally in your own browser — nothing is re-sent to the site, and turning the setting off drops any messages that were being held
-- **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
+- **Scrollback Limit** - Keep more chat history than Sneedchat's own 200-message cap (default 200, up to 1000). The site's prune loop can't simply be blocked — that hangs the tab — so the cap is lifted by clamping what `#chat-messages` reports as its child count, and KEES trims to your limit instead. If the site ever prunes through the clamp anyway, it switches itself off and hands pruning back
 - **Mute Gambling** - Hide gambling commands (slots, roulette, blackjack, dice, coinflip, etc.) and bot responses including animated game boards and images
 - **Keyword Filter** - Hide incoming chat messages containing specified words or phrases (case-insensitive substring matching)
 - **PII Guard** - Block outgoing messages that contain protected personal information (e.g. real name, phone number, address). Protected strings are stored in `chrome.storage.local` which is inaccessible to the website, patterns are never injected into the DOM, and blocked messages never leave the client

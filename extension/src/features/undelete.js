@@ -1,6 +1,6 @@
 // features/undelete.js - Keep deleted chat messages visible, highlighted in dark red.
 //
-// The interception itself has to run in the page realm (see src/undelete-page.js);
+// The interception itself has to run in the page realm (see chat-messages-page.js);
 // this module injects that script into the chat document, carries the on/off
 // setting across to it via a documentElement attribute, and owns the styling.
 //
@@ -48,16 +48,6 @@
         style.id = 'kees-undelete-styles';
         style.textContent = STYLES;
         (doc.head || doc.documentElement).appendChild(style);
-    }
-
-    function injectPageScript(doc) {
-        if (doc.__kees_undelete_injected) return;
-        doc.__kees_undelete_injected = true;
-
-        const script = doc.createElement('script');
-        script.src = chrome.runtime.getURL('src/undelete-page.js');
-        doc.documentElement.appendChild(script);
-        script.addEventListener('load', () => script.remove());
     }
 
     // Drop the messages that were held back while the feature was on, so turning
@@ -114,7 +104,7 @@
         await loadSettings();
         hookStorage();
         applyFlag(doc);
-        injectPageScript(doc);
+        SNEED.core.chatPage.inject(doc);
 
         log.info('Message undelete started (' + (enabled ? 'on' : 'off') + ')');
     }

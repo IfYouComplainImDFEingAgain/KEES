@@ -1,56 +1,83 @@
-// features/scrollback.js - Increase chat message scrollback limit
-// Overrides Element.prototype.remove to prevent chat message removal.
-// Must run at document_start to intercept removals.
+// features/scrollback.js - Keep more chat history than Sneedchat would.
+//
+// Sneedchat hard-caps its log at 200 messages. The cap can only be lifted from
+// the page realm (src/chat-messages-page.js explains why refusing the removals
+// hangs the tab); this half owns the setting and hands it over as an attribute
+// on <html>, which the page script reads.
+//
+// The limit only ever raises the log — MIN_LIMIT is the site's own cap, so a
+// stale or low stored value can never cost you history you have today.
 (function() {
     'use strict';
 
+    const SNEED = window.SNEED;
+    const log = SNEED.log;
+
     const STORAGE_KEY = 'kees-scrollback-limit';
-    const DEFAULT_LIMIT = 100;
+    const LIMIT_ATTR = 'data-kees-scrollback';
 
-    let messageLimit = DEFAULT_LIMIT;
+    const MIN_LIMIT = 200;     // Sneedchat's own cap
+    const MAX_LIMIT = 1000;    // ~25 DOM nodes per message; past this, scrolling suffers
 
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.local.get([STORAGE_KEY], (result) => {
-            const stored = result[STORAGE_KEY];
-            if (stored !== undefined && stored !== null) {
-                messageLimit = parseInt(stored, 10) || DEFAULT_LIMIT;
+    let limit = MIN_LIMIT;
+    const docs = new Set();
+
+    function clampLimit(value) {
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) return MIN_LIMIT;
+        return Math.max(MIN_LIMIT, Math.min(MAX_LIMIT, parsed));
+    }
+
+    function applyLimit(doc) {
+        doc.documentElement.setAttribute(LIMIT_ATTR, String(limit));
+    }
+
+    function applyAll() {
+        for (const doc of docs) {
+            if (!doc.defaultView) {
+                docs.delete(doc);
+                continue;
             }
-            console.log(`[KEES] Scrollback limit set to ${messageLimit}`);
-        });
+            applyLimit(doc);
+        }
+    }
 
-        chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'local' && changes[STORAGE_KEY]) {
-                messageLimit = parseInt(changes[STORAGE_KEY].newValue, 10) || DEFAULT_LIMIT;
-                console.log(`[KEES] Scrollback limit updated to ${messageLimit}`);
-            }
+    function loadSettings() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get([STORAGE_KEY], (result) => {
+                limit = clampLimit(result[STORAGE_KEY]);
+                resolve();
+            });
         });
     }
 
-    const originalRemove = Element.prototype.remove;
-    let cachedMessagesEl = null;
+    let storageHooked = false;
 
-    Element.prototype.remove = function() {
-        // Fast path: skip getElementById for all non-chat-message elements
-        if (!this.classList || !this.classList.contains('chat-message')) {
-            originalRemove.call(this);
-            return;
-        }
+    function hookStorage() {
+        if (storageHooked) return;
+        storageHooked = true;
 
-        // Lazy-init and invalidate cache if element was detached
-        if (!cachedMessagesEl || !cachedMessagesEl.isConnected) {
-            cachedMessagesEl = document.getElementById('chat-messages');
-        }
+        chrome.storage.onChanged.addListener((changes, areaName) => {
+            if (areaName !== 'local' || !changes[STORAGE_KEY]) return;
+            limit = clampLimit(changes[STORAGE_KEY].newValue);
+            applyAll();
+        });
+    }
 
-        if (cachedMessagesEl && this.parentNode === cachedMessagesEl) {
-            if (cachedMessagesEl.children.length > messageLimit) {
-                originalRemove.call(this);
-            }
-            // Under our custom limit - prevent removal (do nothing)
-            return;
-        }
+    async function start(doc) {
+        if (doc.__kees_scrollback_started) return;
+        doc.__kees_scrollback_started = true;
 
-        originalRemove.call(this);
-    };
+        docs.add(doc);
+        await loadSettings();
+        hookStorage();
+        applyLimit(doc);
+        SNEED.core.chatPage.inject(doc);
 
-    console.log('[KEES] Scrollback module loaded');
+        log.info('Scrollback limit set to ' + limit);
+    }
+
+    SNEED.features = SNEED.features || {};
+    SNEED.features.scrollback = { start };
+
 })();
