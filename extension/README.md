@@ -25,6 +25,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Global Whisper Box** - Whisper box available on all site pages (forum, threads, profiles, etc.) with whispers relayed from the chat tab
 - **Whisper Persistence** - Save whisper history with configurable retention per conversation
 - **Hide Whispers in Main Chat** - Only show whispers in the whisper box (enabled by default)
+- **Undelete Messages** - Deleted chat messages stay in the log with a dark red background and a `DELETED` chip instead of vanishing (enabled by default). The message is only held back locally in your own browser — nothing is re-sent to the site, and turning the setting off drops any messages that were being held
 - **Scrollback Limit** - Configurable chat message history (default 100, up to 5000)
 - **Mute Gambling** - Hide gambling commands (slots, roulette, blackjack, dice, coinflip, etc.) and bot responses including animated game boards and images
 - **Keyword Filter** - Hide incoming chat messages containing specified words or phrases (case-insensitive substring matching)
@@ -79,7 +80,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 Click the extension icon in your browser toolbar to open the full settings page in a **new browser tab** (also reachable via `chrome://extensions` → KEES → Details → Extension options). Settings are laid out as a responsive multi-column grid of cards:
 - **Cosmetics** - Toggle homepage chat and sponsored content visibility
 - **Post Settings** - Attachment EXIF stripping, mute disruptive guests, reaction filter thresholds
-- **Chat Settings** - Mention notifications, mute gambling, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
+- **Chat Settings** - Mention notifications, mute gambling, undelete messages, scrollback limit, global whisper box, whisper retention, hide whispers in main chat
 - **Zipline Upload** - Configure URL, API key, and EXIF stripping for image uploads
 - **Bot Column** - Move bot messages to a separate column
 - **@everyone List** - Manage usernames for @everyone expansion

@@ -123,6 +123,10 @@
                     SNEED.features.newUserBadge.start(document);
                 }
 
+                if (SNEED.features.undelete && SNEED.features.undelete.start) {
+                    SNEED.features.undelete.start(document);
+                }
+
                 if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {
                     SNEED.features.keywordFilter.start(document);
                 }
@@ -216,6 +220,10 @@
 
                             if (SNEED.features.newUserBadge && SNEED.features.newUserBadge.start) {
                                 SNEED.features.newUserBadge.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.undelete && SNEED.features.undelete.start) {
+                                SNEED.features.undelete.start(iframeDoc);
                             }
 
                             if (SNEED.features.keywordFilter && SNEED.features.keywordFilter.start) {

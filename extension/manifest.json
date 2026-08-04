@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kiwi Extra Enhancement Suite (KEES)",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "description": "Enhanced features for specific Xenforo chat and forums",
   "permissions": ["storage", "unlimitedStorage", "notifications"],
   "host_permissions": [
@@ -113,6 +113,7 @@
         "src/features/bot-column.js",
         "src/features/chat-muting.js",
         "src/features/new-user-badge.js",
+        "src/features/undelete.js",
         "src/features/keyword-filter.js",
         "src/features/gambling-filter.js",
         "src/features/wave-animation.js",
@@ -161,7 +162,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/capture-chat-config.js", "src/img/sheep.png", "data/preload.json"],
+      "resources": ["src/attachment-exif-page.js", "src/wave-edit-page.js", "src/undelete-page.js", "src/capture-chat-config.js", "src/img/sheep.png", "data/preload.json"],
       "matches": [
         "https://kiwifarms.st/*"
       ]

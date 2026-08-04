@@ -17,6 +17,7 @@
     const STORAGE_KEY_MENTION_NOTIFICATIONS = 'kees-mention-notifications';
     const STORAGE_KEY_MENTION_SHOW_BODY = 'kees-mention-show-body';
     const STORAGE_KEY_SCROLLBACK_LIMIT = 'kees-scrollback-limit';
+    const STORAGE_KEY_UNDELETE = 'kees-undelete';
     const STORAGE_KEY_NEW_USER_BADGE = 'kees-new-user-badge';
     const STORAGE_KEY_NEW_USER_DAYS = 'kees-new-user-days';
     const JOIN_DATE_PREFIX = 'kees-joined-';
@@ -66,6 +67,9 @@
 
     // Scrollback elements
     const scrollbackLimit = document.getElementById('scrollback-limit');
+
+    // Undelete element
+    const undeleteMessages = document.getElementById('undelete-messages');
 
     // New-account badge elements
     const newUserBadge = document.getElementById('new-user-badge');
@@ -296,6 +300,20 @@
 
         chrome.storage.local.set({ [STORAGE_KEY_SCROLLBACK_LIMIT]: scrollbackLimit.value }, () => {
             showStatus('Scrollback limit saved');
+        });
+    });
+
+    // ============================================
+    // UNDELETE SETTINGS
+    // ============================================
+
+    chrome.storage.local.get([STORAGE_KEY_UNDELETE], (result) => {
+        undeleteMessages.checked = result[STORAGE_KEY_UNDELETE] !== false;
+    });
+
+    undeleteMessages.addEventListener('change', () => {
+        chrome.storage.local.set({ [STORAGE_KEY_UNDELETE]: undeleteMessages.checked }, () => {
+            showStatus(undeleteMessages.checked ? 'Undelete enabled' : 'Undelete disabled');
         });
     });
 
