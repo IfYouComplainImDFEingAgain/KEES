@@ -1,4 +1,5 @@
-// features/new-user-badge.js - Flag chat messages posted by recently-joined accounts.
+// features/new-user-badge.js - Flag recently-joined accounts in chat messages
+// and in the online-users column.
 //
 // Chat messages carry no join date, so the date is scraped once per user from
 // /members/<name>.<id> (the "Joined" pair in .memberHeader-blurb) and cached in
@@ -7,7 +8,11 @@
 // against the cached date at render time — no TTL, no re-fetching.
 //
 // Lookups are serialised through a delayed queue: one member page at a time, so
-// a busy room can't turn into a request flood.
+// a busy room can't turn into a request flood. The online column adds a second
+// pressure valve — a room with 300 people in it would otherwise queue 300 member
+// pages the moment it loads, which is exactly the traffic shape the anti-bot gate
+// watches for. So column entries only cost a lookup once they scroll into view,
+// and they queue behind message lookups, which are what the user is reading.
 (function() {
     'use strict';
 
@@ -44,6 +49,12 @@
             letter-spacing: 0.3px;
             cursor: help;
         }
+        .activity > .${BADGE_CLASS} {
+            margin: 0 0 0 4px;
+            padding: 0 3px;
+            font-size: 9px;
+            line-height: 13px;
+        }
     `;
 
     let enabled = true;
@@ -55,6 +66,9 @@
     const queue = [];
     const queued = new Set();
     const docs = new Set();
+    // doc -> IntersectionObserver that holds unresolved online-column entries
+    // until they scroll into view
+    const visibility = new WeakMap();
     let draining = false;
 
     // ---------- storage ----------
@@ -129,6 +143,33 @@
         return { userId, href, username: SNEED.util.getMessageAuthor(msgEl) };
     }
 
+    // Online-column entries are much simpler than messages: the row id carries
+    // the numeric user id (<div class="activity" id="chat-activity-162123">),
+    // with the avatar filename as a fallback. The name link usually has no href,
+    // so lookups fall back to /members/<id>/.
+    function identifyActivity(el) {
+        if (!el.querySelector) return null;
+
+        const m = /^chat-activity-(\d+)$/.exec(el.id || '');
+        let userId = m ? m[1] : null;
+
+        if (!userId) {
+            const img = el.querySelector('img[src*="/data/avatars/"]');
+            const src = img && img.getAttribute('src');
+            const byAvatar = src && src.match(/\/(\d+)\.[a-z]+(?:\?|$)/i);
+            if (byAvatar) userId = byAvatar[1];
+        }
+
+        if (!userId || userId === '0') return null;
+
+        const link = el.querySelector('a.user[href], a[href*="/members/"]');
+        return {
+            userId,
+            href: link ? link.getAttribute('href') : null,
+            username: (el.dataset && el.dataset.username) || ''
+        };
+    }
+
     // ---------- member page scraping ----------
 
     function isChallenge(doc) {
@@ -189,11 +230,29 @@
         return new Promise(r => setTimeout(r, ms));
     }
 
-    function enqueue(userId, href, username) {
+    // Priority jobs stay a prefix of the queue; column jobs sit behind them.
+    function insertJob(job) {
+        const at = job.priority ? queue.findIndex(j => !j.priority) : -1;
+        if (at === -1) queue.push(job); else queue.splice(at, 0, job);
+    }
+
+    // priority: a poster the user is reading right now. Those jump ahead of the
+    // online-column backlog, which is bulk work nobody is waiting on.
+    function enqueue(userId, href, username, priority) {
         if (queued.has(userId) || known.has(userId)) return;
-        if (queue.length >= MAX_QUEUE) return;
+
+        if (queue.length >= MAX_QUEUE) {
+            // A full queue is column backlog most of the time, and that backlog
+            // all sits at the tail. Rather than drop a poster the user is
+            // reading, bump the last column job for them.
+            const last = queue.length - 1;
+            if (!priority || last < 0 || queue[last].priority) return;
+            queued.delete(queue[last].userId);
+            queue.pop();
+        }
+
         queued.add(userId);
-        queue.push({ userId, href, username });
+        insertJob({ userId, href, username, priority: !!priority });
         drain();
     }
 
@@ -222,7 +281,7 @@
                 job.blocked = (job.blocked || 0) + 1;
                 if (job.blocked < BLOCKED_ATTEMPTS && !queued.has(job.userId) && queue.length < MAX_QUEUE) {
                     queued.add(job.userId);
-                    queue.push(job);
+                    insertJob(job);
                     await delay(BLOCKED_BACKOFF);
                     continue;
                 }
@@ -270,34 +329,41 @@
         return badge;
     }
 
-    function paint(msgEl, record) {
-        const existing = msgEl.querySelector('.' + BADGE_CLASS);
+    function paint(el, record) {
+        const existing = el.querySelector('.' + BADGE_CLASS);
         if (existing) existing.remove();
 
-        const badge = enabled ? buildBadge(msgEl.ownerDocument, record) : null;
+        const badge = enabled ? buildBadge(el.ownerDocument, record) : null;
         if (!badge) return;
 
-        const author = msgEl.querySelector('.author');
-        if (author) {
-            author.insertAdjacentElement('afterend', badge);
+        const isActivity = el.classList.contains('activity');
+        const anchor = isActivity ? el.querySelector('a.user') : el.querySelector('.author');
+
+        if (anchor) {
+            anchor.insertAdjacentElement('afterend', badge);
+        } else if (isActivity) {
+            el.appendChild(badge);
         } else {
-            msgEl.insertBefore(badge, msgEl.firstChild);
+            el.insertBefore(badge, el.firstChild);
         }
     }
 
-    // Paint every message that was waiting on this user's lookup. Chat documents
-    // die when the iframe reloads, so drop detached ones as we go.
+    // Paint every message and column entry that was waiting on this user's
+    // lookup. Chat documents die when the iframe reloads, so drop detached ones
+    // as we go.
     function resolvePending(userId) {
         const record = known.get(userId);
+        const selector = '.chat-message[' + MARK_ATTR + '="p' + userId + '"], ' +
+                         '.activity[' + MARK_ATTR + '="p' + userId + '"]';
+
         for (const doc of docs) {
             if (!doc.defaultView) {
                 docs.delete(doc);
                 continue;
             }
-            const pending = doc.querySelectorAll('.chat-message[' + MARK_ATTR + '="p' + userId + '"]');
-            for (const msgEl of pending) {
-                msgEl.setAttribute(MARK_ATTR, userId);
-                paint(msgEl, record);
+            for (const el of doc.querySelectorAll(selector)) {
+                el.setAttribute(MARK_ATTR, userId);
+                paint(el, record);
             }
         }
     }
@@ -319,23 +385,61 @@
         }
 
         msgEl.setAttribute(MARK_ATTR, 'p' + who.userId);
-        enqueue(who.userId, who.href, who.username);
+        enqueue(who.userId, who.href, who.username, true);
+    }
+
+    // Column entries whose join date is already known are badged immediately.
+    // The rest are handed to the visibility observer and only cost a member-page
+    // fetch once they're actually on screen; see the note at the top of the file.
+    function decorateActivity(el) {
+        if (!enabled) return;
+        if (!el.classList || !el.classList.contains('activity')) return;
+        if (el.hasAttribute(MARK_ATTR)) return;
+
+        const who = identifyActivity(el);
+        if (!who) return;
+
+        const record = known.get(who.userId);
+        if (record) {
+            el.setAttribute(MARK_ATTR, who.userId);
+            paint(el, record);
+            return;
+        }
+
+        const seer = seerFor(el.ownerDocument);
+        if (seer) {
+            seer.observe(el);
+            return;
+        }
+
+        el.setAttribute(MARK_ATTR, 'p' + who.userId);
+        enqueue(who.userId, who.href, who.username, false);
+    }
+
+    function activityContainer(doc) {
+        return doc.getElementById('chat-activity') || doc.getElementById('chat-activity-scroller');
     }
 
     function rescan(doc) {
         const container = doc.getElementById('chat-messages') || SNEED.util.findMessageContainer(doc);
-        if (!container) return;
-        for (const msgEl of container.querySelectorAll('.chat-message')) {
-            decorate(msgEl);
+        if (container) {
+            for (const msgEl of container.querySelectorAll('.chat-message')) decorate(msgEl);
         }
+        rescanActivity(doc);
+    }
+
+    function rescanActivity(doc) {
+        const container = activityContainer(doc);
+        if (!container) return;
+        for (const el of container.querySelectorAll('.activity')) decorateActivity(el);
     }
 
     // Settings changed: drop every badge and mark, then re-decorate from cache.
     function repaintAll() {
         for (const doc of docs) {
             for (const badge of doc.querySelectorAll('.' + BADGE_CLASS)) badge.remove();
-            for (const msgEl of doc.querySelectorAll('.chat-message[' + MARK_ATTR + ']')) {
-                if (!msgEl.getAttribute(MARK_ATTR).startsWith('p')) msgEl.removeAttribute(MARK_ATTR);
+            for (const el of doc.querySelectorAll('[' + MARK_ATTR + ']')) {
+                if (!el.getAttribute(MARK_ATTR).startsWith('p')) el.removeAttribute(MARK_ATTR);
             }
             rescan(doc);
         }
@@ -379,6 +483,76 @@
         });
     }
 
+    // A column entry that scrolled into view finally earns its lookup.
+    function makeVisibilityObserver(doc) {
+        const view = doc.defaultView;
+        if (!view || typeof view.IntersectionObserver !== 'function') return null;
+
+        const io = new view.IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+
+                const el = entry.target;
+                io.unobserve(el);
+                if (!el.isConnected || el.hasAttribute(MARK_ATTR)) continue;
+
+                const who = identifyActivity(el);
+                if (!who) continue;
+
+                const record = known.get(who.userId);
+                if (record) {
+                    el.setAttribute(MARK_ATTR, who.userId);
+                    paint(el, record);
+                    continue;
+                }
+
+                el.setAttribute(MARK_ATTR, 'p' + who.userId);
+                enqueue(who.userId, who.href, who.username, false);
+            }
+        }, { rootMargin: '64px' });
+
+        return io;
+    }
+
+    // Cached per document, null included, so an environment without
+    // IntersectionObserver isn't probed on every entry.
+    function seerFor(doc) {
+        if (!visibility.has(doc)) visibility.set(doc, makeVisibilityObserver(doc));
+        return visibility.get(doc);
+    }
+
+    // The column can render after the message list, so keep looking for it for a
+    // while. Sneedchat appends arrivals to #chat-activity and re-appends every
+    // entry whenever it re-sorts the roster, so a childList watch covers both —
+    // and because re-sorting moves the same nodes rather than rebuilding them,
+    // badges and marks survive it.
+    function watchActivity(doc, attempt) {
+        const container = activityContainer(doc);
+        if (!container) {
+            if ((attempt || 0) < 15) setTimeout(() => watchActivity(doc, (attempt || 0) + 1), 1000);
+            return;
+        }
+        if (container.__kees_newUserActivity) return;
+        container.__kees_newUserActivity = true;
+
+        rescanActivity(doc);
+
+        let timer = null;
+        const observer = new MutationObserver(() => {
+            if (timer) return;
+            timer = setTimeout(() => {
+                timer = null;
+                rescanActivity(doc);
+            }, 200);
+        });
+
+        // childList only, and on #chat-activity itself where possible: painting a
+        // badge mutates an entry's subtree, and a subtree observer would keep
+        // re-arming itself off its own output.
+        observer.observe(container, { childList: true, subtree: container.id !== 'chat-activity' });
+        SNEED.core.events.addManagedObserver(container, observer);
+    }
+
     async function start(doc) {
         if (doc.__kees_newUserBadge) return;
         doc.__kees_newUserBadge = true;
@@ -389,6 +563,7 @@
         hookStorage();
 
         rescan(doc);
+        watchActivity(doc, 0);
 
         SNEED.core.events.addMessageHandler(doc, (addedElements) => {
             for (const node of addedElements) decorate(node);
