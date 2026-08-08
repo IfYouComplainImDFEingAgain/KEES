@@ -52,17 +52,31 @@ A browser extension that adds enhanced features Xenforo chat and forum pages.
 
 ## Installation
 
+There is no build step — the extension loads its source files directly.
+
 **Chrome/Chromium:**
 1. Clone the repo
-2. Run `cd extension && npm install && npm run build`
-3. Open `chrome://extensions/`, enable Developer mode
-4. Click "Load unpacked" and select the `extension` folder
+2. Open `chrome://extensions/`, enable Developer mode
+3. Click "Load unpacked" and select the `extension` folder
 
 **Firefox:**
 1. Clone the repo
-2. Run `cd extension && npm install && npm run build`
-3. Open `about:debugging#/runtime/this-firefox`
-4. Click "Load Temporary Add-on" and select `extension/manifest.json`
+2. Open `about:debugging#/runtime/this-firefox`
+3. Click "Load Temporary Add-on" and select `extension/manifest.json`
+
+**Firefox for Android:** see [`mobile/`](mobile/README.md).
+
+
+## Mobile (Firefox for Android)
+
+[`mobile/`](mobile/README.md) is a separate, much smaller Android build — about 3% of the desktop extension — shipping only the two features that make sense on a phone:
+
+- **User Muting** — hide posts from specific users on thread pages
+- **Native Video Player** — use the browser's own player for video/audio attachments
+
+It asks for one permission (`storage`), has no background script, and shares its two feature scripts with the desktop extension rather than forking them (`mobile/build.sh` copies them from `extension/src/features/`).
+
+Firefox for Android enforces Mozilla signatures on every channel, so an AMO-signed `.xpi` is required — a plain zip will not install. Build, signing and install-from-file steps are in [`mobile/README.md`](mobile/README.md).
 
 
 ## Screenshots

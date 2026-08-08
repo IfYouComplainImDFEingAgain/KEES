@@ -1,0 +1,102 @@
+/* mobile/src/features/user-muting.css - Touch-sized counterpart to
+   extension/src/features/user-muting.css.
+
+   user-muting.js is shared verbatim between the desktop and mobile builds (see
+   mobile/build.sh); this file is the only place the two are allowed to differ.
+   Class names must stay in sync with the desktop stylesheet.
+
+   Differences from desktop: 44px minimum touch targets, larger type, the
+   placeholder wraps instead of pushing "Click to reveal" to the far edge, the
+   toast clears Firefox for Android's bottom toolbar, and no :hover rules. */
+
+a.sneed-mute-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+    margin-right: 8px !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+    border-radius: 6px !important;
+    text-decoration: none !important;
+    background: #2a2a2a !important;
+    color: #999 !important;
+    /* Stops Android's double-tap-to-zoom delay on the button. */
+    touch-action: manipulation;
+}
+
+a.sneed-mute-btn.sneed-mute-btn--muted {
+    background: #4a4a4a !important;
+    color: #fff !important;
+}
+
+.sneed-mute-btn__icon {
+    margin-right: 6px;
+}
+
+.sneed-mute-btn-item {
+    list-style: none;
+}
+
+.sneed-muted-placeholder {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 16px;
+    margin-bottom: 10px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #777;
+    font-size: 15px;
+    line-height: 1.4;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.sneed-muted-placeholder__name {
+    color: #999;
+}
+
+/* No margin-left:auto here - on a phone that strands the hint off the right
+   edge of a wrapped row. Let it flow onto the next line instead. */
+.sneed-muted-placeholder__reveal {
+    flex-basis: 100%;
+    color: #666;
+    font-size: 13px;
+}
+
+#sneed-mute-toast {
+    position: fixed;
+    /* Clears the Fenix bottom toolbar. */
+    bottom: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    padding: 14px 22px;
+    background: #333;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 15px;
+    text-align: center;
+    z-index: 10001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    animation: sneed-toast-in 0.3s ease;
+}
+
+#sneed-mute-toast.sneed-mute-toast--out {
+    animation: sneed-toast-out 0.3s ease forwards;
+}
+
+@keyframes sneed-toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes sneed-toast-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(20px); }
+}

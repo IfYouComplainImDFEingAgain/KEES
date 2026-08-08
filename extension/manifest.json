@@ -41,6 +41,7 @@
       "matches": [
         "https://kiwifarms.st/threads/*"
       ],
+      "css": ["src/features/user-muting.css"],
       "js": [
         "src/features/featured-posts.js",
         "src/features/user-muting.js",

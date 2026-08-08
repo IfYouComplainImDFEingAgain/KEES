@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>KEES Mobile Settings</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1c1c1c;
+            --border: #333;
+            --text: #e0e0e0;
+            --muted: #8a8a8a;
+            --accent: #5a9e5a;
+            --danger: #a04040;
+            /* Every interactive element clears this. */
+            --tap: 44px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            /* viewport-fit=cover means the page runs under the gesture bar. */
+            padding-bottom: calc(24px + env(safe-area-inset-bottom));
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 15px;
+            line-height: 1.45;
+            /* A popup on Fenix opens at an arbitrary width; give it a floor so the
+               layout never collapses, and a ceiling for the tab/desktop case. */
+            min-width: 320px;
+            max-width: 640px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 20px;
+        }
+
+        .subtitle {
+            margin: 0 0 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .card {
+            padding: 16px;
+            margin-bottom: 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .card h2 {
+            margin: 0 0 4px;
+            font-size: 16px;
+        }
+
+        .card p {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        /* The whole row is the tap target, not just the checkbox. */
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: var(--tap);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .toggle input[type="checkbox"] {
+            flex: none;
+            width: 24px;
+            height: 24px;
+            margin: 0;
+            accent-color: var(--accent);
+        }
+
+        .muted-users-list {
+            max-height: 45vh;
+            margin-bottom: 12px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .muted-users-list:empty::after {
+            content: "No muted users";
+            display: block;
+            padding: 12px 0;
+            color: var(--muted);
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        .muted-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: var(--tap);
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .muted-user-name {
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .add-muted-user {
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 0;
+            min-height: var(--tap);
+            padding: 10px 12px;
+            background: #101010;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            /* Below 16px, Gecko on Android zooms the viewport on focus. */
+            font-size: 16px;
+        }
+
+        button {
+            flex: none;
+            min-height: var(--tap);
+            padding: 10px 18px;
+            background: #2f2f2f;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        button.remove {
+            min-height: 36px;
+            padding: 8px 14px;
+            background: transparent;
+            color: var(--danger);
+            border-color: var(--danger);
+            font-size: 14px;
+        }
+
+        #status {
+            position: fixed;
+            left: 16px;
+            right: 16px;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            padding: 12px 16px;
+            background: #2f2f2f;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        #status.visible { opacity: 1; }
+
+        footer {
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>KEES Mobile</h1>
+    <p class="subtitle">kiwifarms.st &mdash; muted users and native video</p>
+
+    <section class="card">
+        <h2>Native video player</h2>
+        <p>Use the browser's built-in player for video and audio attachments instead of the site's player.</p>
+        <label class="toggle">
+            <input type="checkbox" id="native-video-player">
+            <span>Enable native video player</span>
+        </label>
+    </section>
+
+    <section class="card">
+        <h2>Muted users</h2>
+        <p>Posts by these users are collapsed on thread pages. Tap a collapsed post to reveal it. You can also mute from the button on any post.</p>
+        <div class="muted-users-list" id="muted-users-list"></div>
+        <div class="add-muted-user">
+            <input type="text" id="muted-user-input" placeholder="Username"
+                   autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                   enterkeyhint="done">
+            <button type="button" class="primary" id="add-muted-user-btn">Add</button>
+        </div>
+    </section>
+
+    <footer>KEES Mobile <span id="version"></span></footer>
+
+    <div id="status" role="status" aria-live="polite"></div>
+
+    <script src="settings.js"></script>
+</body>
+</html>

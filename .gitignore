@@ -1,2 +1,10 @@
 # Ignore the ignore directory
 ignore/
+
+# Feature scripts the mobile build copies from extension/src/features/ at build
+# time (see mobile/build.sh). Tracked in one place only, so they cannot drift.
+mobile/src/features/user-muting.js
+mobile/src/features/native-video-player.js
+
+# Build output
+kees-mobile-*.zip

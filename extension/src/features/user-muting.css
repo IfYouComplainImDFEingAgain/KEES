@@ -1,0 +1,89 @@
+/* features/user-muting.css - Styling for the per-post mute button, the
+   muted-post placeholder and the mute/unmute toast.
+
+   The mobile build (mobile/src/features/user-muting.css) ships its own copy of
+   this file with touch-sized metrics, while sharing user-muting.js verbatim.
+   The class names below are the contract between the two - renaming one here
+   means renaming it there. */
+
+/* The button is injected into XenForo's attribution row, which the theme styles
+   aggressively. These declarations used to be inline, so they need to keep
+   winning against the site's own rules. */
+a.sneed-mute-btn {
+    margin-right: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    border-radius: 3px !important;
+    text-decoration: none !important;
+    background: #2a2a2a !important;
+    color: #888 !important;
+    transition: all 0.15s ease;
+}
+
+a.sneed-mute-btn.sneed-mute-btn--muted {
+    background: #4a4a4a !important;
+    color: #fff !important;
+}
+
+.sneed-mute-btn__icon {
+    margin-right: 3px;
+}
+
+/* When the postmark gadget is missing we append into XenForo's attribution
+   <ul>, so the button arrives wrapped in an <li>. */
+.sneed-mute-btn-item {
+    list-style: none;
+}
+
+.sneed-muted-placeholder {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #666;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.sneed-muted-placeholder__name {
+    color: #888;
+}
+
+.sneed-muted-placeholder__reveal {
+    margin-left: auto;
+    color: #555;
+    font-size: 11px;
+}
+
+#sneed-mute-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    background: #333;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 10001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: sneed-toast-in 0.3s ease;
+}
+
+#sneed-mute-toast.sneed-mute-toast--out {
+    animation: sneed-toast-out 0.3s ease forwards;
+}
+
+@keyframes sneed-toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes sneed-toast-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(20px); }
+}

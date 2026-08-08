@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "KEES Mobile",
+  "version": "1.0.0",
+  "description": "Hide posts from muted users and play video attachments in the browser's own player, on Firefox for Android",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://kiwifarms.st/*"
+  ],
+  "action": {
+    "default_icon": {
+      "48": "icons/kiwi-logo-extension-48.png",
+      "128": "icons/kiwi-logo-extension-128.png"
+    },
+    "default_title": "KEES Mobile Settings",
+    "default_popup": "settings/settings.html"
+  },
+  "options_ui": {
+    "page": "settings/settings.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://kiwifarms.st/threads/*"
+      ],
+      "css": ["src/features/user-muting.css"],
+      "js": ["src/features/user-muting.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://kiwifarms.st/*"
+      ],
+      "exclude_matches": [
+        "https://kiwifarms.st/chat/*",
+        "https://kiwifarms.st/test-chat*"
+      ],
+      "js": ["src/features/native-video-player.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icons/kiwi-logo-extension-48.png",
+    "128": "icons/kiwi-logo-extension-128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "kees-mobile@kiwifarms.extension",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}

@@ -74,6 +74,12 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 3. Click "Load Temporary Add-on"
 4. Select `manifest.json` from the `extension` folder
 
+### Firefox for Android
+
+This extension is desktop-only. A separate, much smaller Android build lives in [`../mobile`](../mobile/README.md) and ships just User Muting and the Native Video Player. See its README for building, signing, and the install-from-file steps.
+
+Note that `src/features/user-muting.js` and `src/features/native-video-player.js` are **shared** with that build — it copies them rather than forking them, so changes here land there too. Mobile-only styling belongs in `mobile/src/features/user-muting.css`, which mirrors the class names in `src/features/user-muting.css`.
+
 ## Usage
 
 ### Settings Page

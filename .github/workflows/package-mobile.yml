@@ -1,0 +1,130 @@
+name: Package Mobile Extension
+
+# The Android build (mobile/) versions and releases independently of the desktop
+# extension. Tag it kees-mobile-vX.Y.Z; the desktop workflow uses kees-vX.Y.Z.
+
+on:
+  push:
+    tags:
+      - 'kees-mobile-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/kees-mobile-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/kees-mobile-v}"
+          else
+            VERSION=$(jq -r '.version' mobile/manifest.json)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set manifest version
+        run: |
+          jq '.version = "${{ steps.version.outputs.version }}"' mobile/manifest.json > tmp.json && mv tmp.json mobile/manifest.json
+
+      # user-muting.js and native-video-player.js are not committed under mobile/ -
+      # they are copied from extension/src/features/ so the two builds cannot drift.
+      - name: Sync shared feature scripts
+        run: ./mobile/build.sh
+
+      - name: Verify packaged paths exist
+        run: |
+          cd mobile
+          status=0
+          for path in manifest.json src settings icons; do
+            if [ ! -e "$path" ]; then
+              echo "::error::missing packaged path: mobile/$path"
+              status=1
+            fi
+          done
+          # Every local file the manifest points at must be present, or the build
+          # silently ships an extension with dead pages/resources. This is also
+          # what catches a broken sync step above.
+          while read -r ref; do
+            if [ ! -e "$ref" ]; then
+              echo "::error::manifest references missing file: mobile/$ref"
+              status=1
+            fi
+          done < <(jq -r '
+            [ .options_ui.page?,
+              .action.default_popup?,
+              (.content_scripts // [] | .[] | (.js // [] | .[])),
+              (.content_scripts // [] | .[] | (.css // [] | .[])),
+              (.icons // {} | .[]),
+              (.action.default_icon // {} | .[])
+            ] | map(select(type == "string")) | unique | .[]' manifest.json)
+          exit $status
+
+      # Catches manifest problems AMO would otherwise reject on upload, such as a
+      # strict_min_version older than the keys the manifest uses.
+      - name: Lint
+        run: npx --yes web-ext lint --source-dir mobile --ignore-files build.sh
+
+      - name: Package extension
+        run: |
+          cd mobile
+          zip -r ../kees-mobile-${{ steps.version.outputs.version }}.zip \
+            manifest.json \
+            src/ \
+            settings/ \
+            icons/ \
+            -x '*/.*' '.*'
+
+      # Firefox for Android enforces Mozilla signatures on every channel, so the
+      # zip above will not install on a phone - only the signed .xpi will. Signing
+      # is skipped when AMO credentials are not configured, so the build still
+      # produces a loadable-unpacked artifact without them.
+      - name: Check for AMO credentials
+        id: amo
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+        run: |
+          if [ -n "$AMO_JWT_ISSUER" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::AMO_JWT_ISSUER not set - skipping signing, release will contain the unsigned zip only"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sign (unlisted)
+        if: steps.amo.outputs.available == 'true'
+        timeout-minutes: 15
+        run: |
+          npx --yes web-ext sign \
+            --source-dir mobile \
+            --ignore-files build.sh \
+            --channel unlisted \
+            --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
+            --artifacts-dir dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kees-mobile-${{ steps.version.outputs.version }}
+          path: |
+            kees-mobile-${{ steps.version.outputs.version }}.zip
+            dist/*.xpi
+          if-no-files-found: warn
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/kees-mobile-v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            kees-mobile-${{ steps.version.outputs.version }}.zip
+            dist/*.xpi
+          fail_on_unmatched_files: false
+          generate_release_notes: true

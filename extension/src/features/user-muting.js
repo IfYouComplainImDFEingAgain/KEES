@@ -8,6 +8,14 @@
     const STORAGE_KEY = 'sneedchat-muted-users';
     const POST_SELECTOR = 'article.message[data-author]';
     const POSTMARK_BUTTON_SELECTOR = '.message-attribution-gadget.hbReact-message-postmark';
+    // The postmark gadget is a Kiwi Farms addon element, not stock XenForo, and is
+    // not guaranteed to be present - it is absent from some post types and hidden
+    // at narrow viewports. Fall back to XenForo's own attribution rows so the
+    // button never silently goes missing and leaves no way to mute from a thread.
+    const ATTRIBUTION_FALLBACK_SELECTORS = [
+        '.message-attribution-opposite',
+        '.message-attribution-main'
+    ];
 
     let mutedUsersCache = new Set();
 
@@ -54,14 +62,6 @@
         btn.className = 'message-attribution-gadget sneed-mute-btn';
         btn.href = '#';
         btn.dataset.username = username;
-        btn.style.cssText = `
-            margin-right: 4px;
-            padding: 2px 6px;
-            font-size: 11px;
-            border-radius: 3px;
-            text-decoration: none;
-            transition: all 0.15s ease;
-        `;
 
         updateMuteButtonState(btn, isMuted);
 
@@ -86,17 +86,43 @@
     }
 
     function updateMuteButtonState(btn, isMuted) {
-        if (isMuted) {
-            btn.innerHTML = '<i class="fa--xf fal fa-volume-up" style="margin-right: 3px;"></i>Unmute';
-            btn.style.background = '#4a4a4a';
-            btn.style.color = '#fff';
-            btn.title = 'Unmute this user';
-        } else {
-            btn.innerHTML = '<i class="fa--xf fal fa-volume-mute" style="margin-right: 3px;"></i>Mute';
-            btn.style.background = '#2a2a2a';
-            btn.style.color = '#888';
-            btn.title = 'Mute this user';
+        btn.classList.toggle('sneed-mute-btn--muted', isMuted);
+        btn.title = isMuted ? 'Unmute this user' : 'Mute this user';
+
+        const icon = document.createElement('i');
+        icon.className = `fa--xf fal ${isMuted ? 'fa-volume-up' : 'fa-volume-mute'} sneed-mute-btn__icon`;
+
+        btn.textContent = '';
+        btn.appendChild(icon);
+        btn.appendChild(document.createTextNode(isMuted ? 'Unmute' : 'Mute'));
+    }
+
+    // Returns true if the button found a home in this post.
+    function insertMuteButton(post, btn) {
+        const postmarkBtn = post.querySelector(POSTMARK_BUTTON_SELECTOR);
+        if (postmarkBtn && postmarkBtn.parentNode) {
+            postmarkBtn.parentNode.insertBefore(btn, postmarkBtn);
+            return true;
         }
+
+        for (const selector of ATTRIBUTION_FALLBACK_SELECTORS) {
+            const row = post.querySelector(selector);
+            if (!row) continue;
+
+            // XenForo's attribution rows are <ul>s, so a bare <a> would be
+            // invalid markup there.
+            if (row.tagName === 'UL') {
+                const item = document.createElement('li');
+                item.className = 'sneed-mute-btn-item';
+                item.appendChild(btn);
+                row.appendChild(item);
+            } else {
+                row.appendChild(btn);
+            }
+            return true;
+        }
+
+        return false;
     }
 
     function showToast(message) {
@@ -106,41 +132,11 @@
         const toast = document.createElement('div');
         toast.id = 'sneed-mute-toast';
         toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #333;
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 14px;
-            z-index: 10001;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            animation: sneed-toast-in 0.3s ease;
-        `;
-
-        if (!document.getElementById('sneed-mute-toast-styles')) {
-            const style = document.createElement('style');
-            style.id = 'sneed-mute-toast-styles';
-            style.textContent = `
-                @keyframes sneed-toast-in {
-                    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-                    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-                }
-                @keyframes sneed-toast-out {
-                    from { opacity: 1; transform: translateX(-50%) translateY(0); }
-                    to { opacity: 0; transform: translateX(-50%) translateY(20px); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
 
         document.body.appendChild(toast);
 
         setTimeout(() => {
-            toast.style.animation = 'sneed-toast-out 0.3s ease forwards';
+            toast.classList.add('sneed-mute-toast--out');
             setTimeout(() => toast.remove(), 300);
         }, 2000);
     }
@@ -153,10 +149,9 @@
 
         let muteBtn = post.querySelector('.sneed-mute-btn');
         if (!muteBtn) {
-            const postmarkBtn = post.querySelector(POSTMARK_BUTTON_SELECTOR);
-            if (postmarkBtn) {
-                muteBtn = createMuteButton(username, isMuted);
-                postmarkBtn.parentNode.insertBefore(muteBtn, postmarkBtn);
+            muteBtn = createMuteButton(username, isMuted);
+            if (!insertMuteButton(post, muteBtn)) {
+                muteBtn = null;
             }
         } else {
             updateMuteButtonState(muteBtn, isMuted);
@@ -169,24 +164,27 @@
 
                 const placeholder = document.createElement('div');
                 placeholder.className = 'sneed-muted-placeholder';
-                placeholder.style.cssText = `
-                    padding: 12px 16px;
-                    background: #1a1a1a;
-                    border: 1px solid #333;
-                    border-radius: 4px;
-                    margin-bottom: 8px;
-                    color: #666;
-                    font-size: 13px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                `;
-                placeholder.innerHTML = `
-                    <i class="fa--xf fal fa-volume-mute"></i>
-                    <span>Post by <strong style="color: #888;">${username}</strong> (muted)</span>
-                    <span style="margin-left: auto; color: #555; font-size: 11px;">Click to reveal</span>
-                `;
+
+                const icon = document.createElement('i');
+                icon.className = 'fa--xf fal fa-volume-mute';
+
+                // Built node-by-node rather than with innerHTML: `username` comes
+                // straight off the post's data-author attribute.
+                const label = document.createElement('span');
+                const name = document.createElement('strong');
+                name.className = 'sneed-muted-placeholder__name';
+                name.textContent = username;
+                label.appendChild(document.createTextNode('Post by '));
+                label.appendChild(name);
+                label.appendChild(document.createTextNode(' (muted)'));
+
+                const reveal = document.createElement('span');
+                reveal.className = 'sneed-muted-placeholder__reveal';
+                reveal.textContent = 'Click to reveal';
+
+                placeholder.appendChild(icon);
+                placeholder.appendChild(label);
+                placeholder.appendChild(reveal);
 
                 placeholder.addEventListener('click', () => {
                     post.style.display = post.dataset.sneedOriginalDisplay;
