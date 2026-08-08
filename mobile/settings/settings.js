@@ -8,12 +8,32 @@
     'use strict';
 
     const STORAGE_KEY_MUTED_USERS = 'sneedchat-muted-users';
-    const STORAGE_KEY_NATIVE_VIDEO = 'kees-native-video-player';
+
+    // Every plain on/off setting. Keys match the desktop build's.
+    const TOGGLES = [
+        {
+            id: 'disable-homepage-chat',
+            key: 'sneedchat-disable-homepage-chat',
+            on: 'Homepage chat hidden',
+            off: 'Homepage chat shown'
+        },
+        {
+            id: 'disable-sponsored',
+            key: 'kees-disable-sponsored',
+            on: 'Sponsored content hidden',
+            off: 'Sponsored content shown'
+        },
+        {
+            id: 'native-video-player',
+            key: 'kees-native-video-player',
+            on: 'Native video player on',
+            off: 'Native video player off'
+        }
+    ];
 
     const mutedUsersList = document.getElementById('muted-users-list');
     const mutedUserInput = document.getElementById('muted-user-input');
     const addMutedUserBtn = document.getElementById('add-muted-user-btn');
-    const nativeVideoToggle = document.getElementById('native-video-player');
     const statusEl = document.getElementById('status');
     const versionEl = document.getElementById('version');
 
@@ -103,36 +123,39 @@
     });
 
     // ============================================
-    // NATIVE VIDEO PLAYER
+    // TOGGLES
     // ============================================
 
-    function loadNativeVideoSetting() {
-        chrome.storage.local.get([STORAGE_KEY_NATIVE_VIDEO], (result) => {
-            nativeVideoToggle.checked = result[STORAGE_KEY_NATIVE_VIDEO] === true;
-        });
-    }
-
-    nativeVideoToggle.addEventListener('change', () => {
-        const enabled = nativeVideoToggle.checked;
-        chrome.storage.local.set({ [STORAGE_KEY_NATIVE_VIDEO]: enabled }, () => {
-            showStatus(enabled ? 'Native video player on' : 'Native video player off');
+    TOGGLES.forEach(t => {
+        t.el = document.getElementById(t.id);
+        t.el.addEventListener('change', () => {
+            const enabled = t.el.checked;
+            chrome.storage.local.set({ [t.key]: enabled }, () => {
+                showStatus(enabled ? t.on : t.off);
+            });
         });
     });
 
-    // Keep the page honest if the muted list changes from a thread page while
-    // this is open in a background tab.
+    function loadToggles() {
+        chrome.storage.local.get(TOGGLES.map(t => t.key), (result) => {
+            TOGGLES.forEach(t => { t.el.checked = result[t.key] === true; });
+        });
+    }
+
+    // Keep the page honest if something changes from a content script while this
+    // is open in a background tab.
     chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName !== 'local') return;
         if (changes[STORAGE_KEY_MUTED_USERS]) {
             renderMutedUsers(changes[STORAGE_KEY_MUTED_USERS].newValue || []);
         }
-        if (changes[STORAGE_KEY_NATIVE_VIDEO]) {
-            nativeVideoToggle.checked = changes[STORAGE_KEY_NATIVE_VIDEO].newValue === true;
-        }
+        TOGGLES.forEach(t => {
+            if (changes[t.key]) t.el.checked = changes[t.key].newValue === true;
+        });
     });
 
     versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
 
     loadMutedUsers();
-    loadNativeVideoSetting();
+    loadToggles();
 })();

@@ -22,6 +22,14 @@
   "content_scripts": [
     {
       "matches": [
+        "https://kiwifarms.st/"
+      ],
+      "css": ["src/homepage-hide.css"],
+      "js": ["src/homepage-content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://kiwifarms.st/threads/*"
       ],
       "css": ["src/features/user-muting.css"],

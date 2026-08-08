@@ -1,23 +1,34 @@
 # KEES Mobile
 
-A deliberately small Firefox for Android build of KEES. It ships two features and nothing else:
+A deliberately small Firefox for Android build of KEES. It ships these features and nothing else:
 
 - **User Muting** — hide posts from specific users on thread pages, with a Mute/Unmute button on every post and a collapsed "click to reveal" placeholder in place of the hidden post.
 - **Native Video Player** — replace the site's Ephyra player with the browser's own `<video>` / `<audio>` element, so Android's native controls and background/PiP behaviour apply.
+- **Disable Homepage Chat** — hide the chat widget on the forum homepage.
+- **Remove Sponsored Content** — hide sponsored banners on the homepage.
 
-The desktop extension is ~17,000 lines across 60 files, with 33 content scripts on the chat page alone. Almost none of it is useful on a phone and all of it costs battery. This build is ~540 lines, asks for one permission (`storage`), and has no background script.
+The two homepage options are applied at `document_start` via a stylesheet that hides both by default and un-hides whatever you have not disabled, so nothing flashes on screen before it disappears.
+
+The desktop extension is ~17,000 lines across 60 files, with 33 content scripts on the chat page alone. Almost none of it is useful on a phone and all of it costs battery. This build is ~590 lines, asks for one permission (`storage`), and has no background script.
 
 ## What is deliberately not here
 
-Chat (the whole Sneedchat feature set), user tagging and the crawler, whisper, YouTube titles, keyword/gambling/reaction/disruptive-guest filters, EXIF stripping, Zipline upload, homepage cleanup. Use the desktop extension for those.
+Chat (the whole Sneedchat feature set), user tagging and the crawler, whisper, YouTube titles, keyword/gambling/reaction/disruptive-guest filters, EXIF stripping, Zipline upload, featured posts, forum activity analysis. Use the desktop extension for those.
 
 ## Relationship to the desktop extension
 
-`src/features/user-muting.js` and `src/features/native-video-player.js` are **not** committed here. They are copied from `../extension/src/features/` by `build.sh`, so a fix on the desktop side lands on mobile too, and they are listed in the repo `.gitignore`.
+These files are **not** committed here. `build.sh` copies them from `../extension/` to the same relative path, so a fix on the desktop side lands on mobile too, and they are listed in the repo `.gitignore`:
 
-The one place the builds are allowed to differ is presentation: `src/features/user-muting.css` is a mobile-specific stylesheet (44px touch targets, larger type, a toast that clears the Fenix bottom toolbar) sharing class names with `extension/src/features/user-muting.css`. **Mobile-only changes go in that stylesheet, never in a divergent copy of the JS.**
+```
+src/features/user-muting.js
+src/features/native-video-player.js
+src/homepage-content.js
+src/homepage-hide.css
+```
 
-Storage keys (`sneedchat-muted-users`, `kees-native-video-player`) match the desktop build. The two are separate add-ons with separate storage, so nothing syncs automatically — matching keys just means a list moved between them lands in the right place.
+`homepage-hide.css` is shared because it is functional — it hides elements before first paint, and the JS toggles its restore classes. `src/features/user-muting.css` is the opposite case: pure presentation, so mobile keeps its own touch-sized copy (44px targets, larger type, a toast that clears the Fenix bottom toolbar) sharing class names with `extension/src/features/user-muting.css`. **Mobile-only changes go in that stylesheet, never in a divergent copy of the JS.**
+
+Storage keys match the desktop build: `sneedchat-muted-users`, `kees-native-video-player`, `sneedchat-disable-homepage-chat`, `kees-disable-sponsored`. The two are separate add-ons with separate storage, so nothing syncs automatically — matching keys just means a value moved between them lands in the right place.
 
 ## Building
 
@@ -83,6 +94,7 @@ The `.xpi` installed this way persists across browser restarts, unlike the `web-
 - **Mute a user** — tap **Mute** on any of their posts. The post collapses to a placeholder; tap the placeholder to reveal it anyway.
 - **Manage the list** — the add-on's Settings page (Firefox menu → Add-ons → KEES Mobile → Settings, or the KEES Mobile entry in the main menu). Add users by name, or Remove to unmute.
 - **Native video** — off by default. Turn it on in Settings, then reload a thread with a video attachment.
+- **Homepage cleanup** — both off by default. Turn them on in Settings, then reload the homepage.
 
 ## Privacy
 

@@ -2,14 +2,19 @@
 # Sync the feature scripts that the mobile build shares with the desktop
 # extension, then optionally zip the package.
 #
-# The mobile build does NOT fork user-muting.js or native-video-player.js - it
-# copies them, so a fix on the desktop side lands on mobile too. The copies are
-# gitignored; run this before loading mobile/ in about:debugging or web-ext, and
-# re-run it after touching either shared file. CI runs this same script, so the
-# copy is defined in exactly one place.
+# The mobile build does NOT fork the feature files listed below - it copies them,
+# so a fix on the desktop side lands on mobile too. The copies are gitignored;
+# run this before loading mobile/ in about:debugging or web-ext, and re-run it
+# after touching any shared file. CI runs this same script, so the copy is
+# defined in exactly one place.
 #
-# Mobile-only differences belong in mobile/src/features/user-muting.css, never
-# in a divergent copy of the JS.
+# Paths are relative to extension/ and land at the same relative path under
+# mobile/, so the two trees stay structurally identical.
+#
+# homepage-hide.css is shared because it is functional (it hides elements before
+# first paint), not cosmetic. user-muting.css is the opposite case: it is pure
+# presentation, so mobile keeps its own touch-sized copy and it is NOT synced.
+# Mobile-only differences belong there, never in a divergent copy of the JS.
 #
 # Usage:
 #   ./mobile/build.sh          sync the shared files
@@ -18,20 +23,22 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/.." && pwd)"
-src="$root/extension/src/features"
-dest="$here/src/features"
+src="$root/extension"
+dest="$here"
 
 SHARED_FILES=(
-    user-muting.js
-    native-video-player.js
+    src/features/user-muting.js
+    src/features/native-video-player.js
+    src/homepage-content.js
+    src/homepage-hide.css
 )
 
-mkdir -p "$dest"
 for f in "${SHARED_FILES[@]}"; do
     if [ ! -f "$src/$f" ]; then
-        echo "error: missing shared source extension/src/features/$f" >&2
+        echo "error: missing shared source extension/$f" >&2
         exit 1
     fi
+    mkdir -p "$dest/$(dirname "$f")"
     cp "$src/$f" "$dest/$f"
     echo "synced $f"
 done

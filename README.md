@@ -69,12 +69,14 @@ There is no build step — the extension loads its source files directly.
 
 ## Mobile (Firefox for Android)
 
-[`mobile/`](mobile/README.md) is a separate, much smaller Android build — about 3% of the desktop extension — shipping only the two features that make sense on a phone:
+[`mobile/`](mobile/README.md) is a separate, much smaller Android build — about 3% of the desktop extension — shipping only the features that make sense on a phone:
 
 - **User Muting** — hide posts from specific users on thread pages
 - **Native Video Player** — use the browser's own player for video/audio attachments
+- **Disable Homepage Chat** — hide the chat widget on the forum homepage
+- **Remove Sponsored Content** — hide sponsored banners on the homepage
 
-It asks for one permission (`storage`), has no background script, and shares its two feature scripts with the desktop extension rather than forking them (`mobile/build.sh` copies them from `extension/src/features/`).
+It asks for one permission (`storage`), has no background script, and shares its feature files with the desktop extension rather than forking them (`mobile/build.sh` copies them out of `extension/`).
 
 Firefox for Android enforces Mozilla signatures on every channel, so an AMO-signed `.xpi` is required — a plain zip will not install. Build, signing and install-from-file steps are in [`mobile/README.md`](mobile/README.md).
 

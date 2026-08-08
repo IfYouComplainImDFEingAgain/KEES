@@ -2,7 +2,7 @@
 
 _Last updated: 2026-08-08_
 
-KEES Mobile is a Firefox for Android extension that hides posts from muted users and swaps the site's video player for the browser's own, on Kiwi Farms thread pages. This document describes what data the extension handles and how.
+KEES Mobile is a Firefox for Android extension that hides posts from muted users, swaps the site's video player for the browser's own, and can hide the chat widget and sponsored banners on the Kiwi Farms homepage. This document describes what data the extension handles and how.
 
 ## Summary
 
@@ -10,12 +10,14 @@ KEES Mobile does not collect, transmit, sell, or share any personal data. It has
 
 ## What is stored locally
 
-KEES Mobile uses `chrome.storage.local` to persist two things, **only on your own device**:
+KEES Mobile uses `chrome.storage.local` to persist your settings, **only on your own device**:
 
 | Key | Contents |
 |---|---|
 | `sneedchat-muted-users` | The list of usernames you have chosen to mute |
 | `kees-native-video-player` | Whether the native video player is enabled (a single true/false) |
+| `sneedchat-disable-homepage-chat` | Whether the homepage chat widget is hidden (a single true/false) |
+| `kees-disable-sponsored` | Whether homepage sponsored banners are hidden (a single true/false) |
 
 That is the complete list. You can clear it by removing the extension.
 

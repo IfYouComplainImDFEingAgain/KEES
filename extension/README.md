@@ -76,9 +76,18 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 
 ### Firefox for Android
 
-This extension is desktop-only. A separate, much smaller Android build lives in [`../mobile`](../mobile/README.md) and ships just User Muting and the Native Video Player. See its README for building, signing, and the install-from-file steps.
+This extension is desktop-only. A separate, much smaller Android build lives in [`../mobile`](../mobile/README.md) and ships just User Muting, the Native Video Player, and the two homepage cleanup options. See its README for building, signing, and the install-from-file steps.
 
-Note that `src/features/user-muting.js` and `src/features/native-video-player.js` are **shared** with that build — it copies them rather than forking them, so changes here land there too. Mobile-only styling belongs in `mobile/src/features/user-muting.css`, which mirrors the class names in `src/features/user-muting.css`.
+Note that these files are **shared** with that build — it copies them rather than forking them, so changes here land there too:
+
+```
+src/features/user-muting.js
+src/features/native-video-player.js
+src/homepage-content.js
+src/homepage-hide.css
+```
+
+Mobile-only styling belongs in `mobile/src/features/user-muting.css`, which mirrors the class names in `src/features/user-muting.css`. `homepage-hide.css` is shared rather than duplicated because it is functional, not cosmetic.
 
 ## Usage
 

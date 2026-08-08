@@ -75,6 +75,11 @@
             touch-action: manipulation;
         }
 
+        /* Stacked toggles need a visible boundary at 44px apiece. */
+        .toggle + .toggle {
+            border-top: 1px solid var(--border);
+        }
+
         .toggle input[type="checkbox"] {
             flex: none;
             width: 24px;
@@ -188,6 +193,19 @@
 <body>
     <h1>KEES Mobile</h1>
     <p class="subtitle">kiwifarms.st &mdash; muted users and native video</p>
+
+    <section class="card">
+        <h2>Homepage</h2>
+        <p>Clean up the forum homepage. Both are hidden before the page paints, so nothing flashes on screen first.</p>
+        <label class="toggle">
+            <input type="checkbox" id="disable-homepage-chat">
+            <span>Disable homepage chat</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" id="disable-sponsored">
+            <span>Remove sponsored content</span>
+        </label>
+    </section>
 
     <section class="card">
         <h2>Native video player</h2>
