@@ -76,7 +76,7 @@ There is no build step — the extension loads its source files directly.
 - **Disable Homepage Chat** — hide the chat widget on the forum homepage
 - **Remove Sponsored Content** — hide sponsored banners on the homepage
 
-It asks for one permission (`storage`), has no background script, and shares its feature files with the desktop extension rather than forking them (`mobile/build.sh` copies them out of `extension/`).
+It asks for one permission (`storage`), has no background script, and shares its feature files with the desktop extension rather than forking them — `mobile/build.sh` assembles the loadable add-on into `mobile/build/` from `mobile/` plus the shared files in `extension/`.
 
 Firefox for Android enforces Mozilla signatures on every channel, so an AMO-signed `.xpi` is required — a plain zip will not install. Build, signing and install-from-file steps are in [`mobile/README.md`](mobile/README.md).
 

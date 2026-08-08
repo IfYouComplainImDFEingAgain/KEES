@@ -1,12 +1,9 @@
 # Ignore the ignore directory
 ignore/
 
-# Feature files the mobile build copies from extension/ at build time (see
-# mobile/build.sh). Tracked in one place only, so they cannot drift.
-mobile/src/features/user-muting.js
-mobile/src/features/native-video-player.js
-mobile/src/homepage-content.js
-mobile/src/homepage-hide.css
+# Assembled mobile extension. mobile/build.sh writes it from mobile/ plus the
+# feature scripts it shares with extension/, so nothing here is a source file.
+mobile/build/
 
 # Build output
 kees-mobile-*.zip

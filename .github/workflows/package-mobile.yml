@@ -34,53 +34,18 @@ jobs:
         run: |
           jq '.version = "${{ steps.version.outputs.version }}"' mobile/manifest.json > tmp.json && mv tmp.json mobile/manifest.json
 
-      # user-muting.js and native-video-player.js are not committed under mobile/ -
-      # they are copied from extension/src/features/ so the two builds cannot drift.
-      - name: Sync shared feature scripts
-        run: ./mobile/build.sh
-
-      - name: Verify packaged paths exist
-        run: |
-          cd mobile
-          status=0
-          for path in manifest.json src settings icons; do
-            if [ ! -e "$path" ]; then
-              echo "::error::missing packaged path: mobile/$path"
-              status=1
-            fi
-          done
-          # Every local file the manifest points at must be present, or the build
-          # silently ships an extension with dead pages/resources. This is also
-          # what catches a broken sync step above.
-          while read -r ref; do
-            if [ ! -e "$ref" ]; then
-              echo "::error::manifest references missing file: mobile/$ref"
-              status=1
-            fi
-          done < <(jq -r '
-            [ .options_ui.page?,
-              .action.default_popup?,
-              (.content_scripts // [] | .[] | (.js // [] | .[])),
-              (.content_scripts // [] | .[] | (.css // [] | .[])),
-              (.icons // {} | .[]),
-              (.action.default_icon // {} | .[])
-            ] | map(select(type == "string")) | unique | .[]' manifest.json)
-          exit $status
+      # mobile/ is not loadable on its own: the feature scripts live in
+      # extension/src/ and are copied in here, so the two builds cannot drift.
+      # This also fails the build if the manifest references a file that did not
+      # make it into the output.
+      - name: Assemble mobile/build
+        run: ./mobile/build.sh --zip
 
       # Catches manifest problems AMO would otherwise reject on upload, such as a
-      # strict_min_version older than the keys the manifest uses.
+      # strict_min_version older than the keys the manifest uses. Linting the
+      # assembled output means what is linted is exactly what ships.
       - name: Lint
-        run: npx --yes web-ext lint --source-dir mobile --ignore-files build.sh
-
-      - name: Package extension
-        run: |
-          cd mobile
-          zip -r ../kees-mobile-${{ steps.version.outputs.version }}.zip \
-            manifest.json \
-            src/ \
-            settings/ \
-            icons/ \
-            -x '*/.*' '.*'
+        run: npx --yes web-ext lint --source-dir mobile/build
 
       # Firefox for Android enforces Mozilla signatures on every channel, so the
       # zip above will not install on a phone - only the signed .xpi will. Signing
@@ -103,8 +68,7 @@ jobs:
         timeout-minutes: 15
         run: |
           npx --yes web-ext sign \
-            --source-dir mobile \
-            --ignore-files build.sh \
+            --source-dir mobile/build \
             --channel unlisted \
             --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret "${{ secrets.AMO_JWT_SECRET }}" \

@@ -17,7 +17,7 @@ Chat (the whole Sneedchat feature set), user tagging and the crawler, whisper, Y
 
 ## Relationship to the desktop extension
 
-These files are **not** committed here. `build.sh` copies them from `../extension/` to the same relative path, so a fix on the desktop side lands on mobile too, and they are listed in the repo `.gitignore`:
+**`mobile/` is not a loadable extension on its own.** It holds only the files unique to the Android build; `build.sh` assembles the real thing into `mobile/build/` by combining them with these files copied from `../extension/`, so a fix on the desktop side lands on mobile too:
 
 ```
 src/features/user-muting.js
@@ -26,6 +26,8 @@ src/homepage-content.js
 src/homepage-hide.css
 ```
 
+`mobile/build/` is gitignored and rebuilt from scratch every run. Point `web-ext` and `about:debugging` at `mobile/build`, never at `mobile/`.
+
 `homepage-hide.css` is shared because it is functional — it hides elements before first paint, and the JS toggles its restore classes. `src/features/user-muting.css` is the opposite case: pure presentation, so mobile keeps its own touch-sized copy (44px targets, larger type, a toast that clears the Fenix bottom toolbar) sharing class names with `extension/src/features/user-muting.css`. **Mobile-only changes go in that stylesheet, never in a divergent copy of the JS.**
 
 Storage keys match the desktop build: `sneedchat-muted-users`, `kees-native-video-player`, `sneedchat-disable-homepage-chat`, `kees-disable-sponsored`. The two are separate add-ons with separate storage, so nothing syncs automatically — matching keys just means a value moved between them lands in the right place.
@@ -33,41 +35,44 @@ Storage keys match the desktop build: `sneedchat-muted-users`, `kees-native-vide
 ## Building
 
 ```bash
-./mobile/build.sh          # sync the two shared feature scripts
-./mobile/build.sh --zip    # sync, then write kees-mobile-<version>.zip to the repo root
+./mobile/build.sh          # assemble mobile/build/
+./mobile/build.sh --zip    # assemble, then write kees-mobile-<version>.zip to the repo root
 ```
 
-Run the sync before loading the extension for the first time and after touching either shared file. No bundler, no transpilation — the zip is the source.
+Rebuild after touching anything under `mobile/` or any shared file in `extension/`. The build fails if the manifest references a file that did not make it into the output, which is what catches a content script that would otherwise silently never run. No bundler, no transpilation — the output is the source.
 
 ## Development
 
 **On desktop first** (same Gecko engine, much faster iteration):
 
 1. `./mobile/build.sh`
-2. `about:debugging` → This Firefox → Load Temporary Add-on → pick `mobile/manifest.json`
+2. `about:debugging` → This Firefox → Load Temporary Add-on → pick `mobile/build/manifest.json`
 3. Use Responsive Design Mode at 412×915 with touch simulation to check layout and tap targets
 
 **On the phone**, over USB:
 
 1. Firefox for Android → Settings → enable **Remote debugging via USB**
 2. ```bash
+   ./mobile/build.sh
    npx web-ext run -t firefox-android \
      --android-device <adb-device-id> \
-     --firefox-apk org.mozilla.fenix \
-     --source-dir mobile
+     --firefox-apk org.mozilla.firefox \
+     --source-dir mobile/build
    ```
 
-This installs a temporary, unsigned build and needs no AMO account. It disappears when Firefox restarts.
+This installs a temporary, unsigned build and needs no AMO account. It disappears when Firefox restarts. The add-on still appears under **⋮ → Extensions → KEES Mobile Settings** while it is installed, which is where you turn the features on — see Usage below, because everything except the Mute button ships disabled.
+
+Use `org.mozilla.fenix` instead if you are targeting a Nightly/Beta build rather than release Firefox.
 
 **Linting** — run what CI runs:
 
 ```bash
-npx web-ext lint --source-dir mobile --ignore-files build.sh
+npx web-ext lint --source-dir mobile/build
 ```
 
 ## Releasing
 
-Bump `version` in `manifest.json`, then push a `kees-mobile-vX.Y.Z` tag. `.github/workflows/package-mobile.yml` syncs the shared scripts, verifies every path the manifest references, lints, zips, and attaches the result to a GitHub Release. Mobile versions independently of the desktop extension, which uses `kees-vX.Y.Z`.
+Bump `version` in `manifest.json`, then push a `kees-mobile-vX.Y.Z` tag. `.github/workflows/package-mobile.yml` runs the same `build.sh` you run locally — assembling `mobile/build/`, verifying every path the manifest references, then linting and signing that exact directory — and attaches the result to a GitHub Release. Mobile versions independently of the desktop extension, which uses `kees-vX.Y.Z`.
 
 If `AMO_JWT_ISSUER` / `AMO_JWT_SECRET` repository secrets are set, the workflow also runs `web-ext sign --channel unlisted` and attaches the signed `.xpi`. Without them it still produces the unsigned zip.
 
@@ -91,10 +96,16 @@ The `.xpi` installed this way persists across browser restarts, unlike the `web-
 
 ## Usage
 
-- **Mute a user** — tap **Mute** on any of their posts. The post collapses to a placeholder; tap the placeholder to reveal it anyway.
-- **Manage the list** — the add-on's Settings page (Firefox menu → Add-ons → KEES Mobile → Settings, or the KEES Mobile entry in the main menu). Add users by name, or Remove to unmute.
-- **Native video** — off by default. Turn it on in Settings, then reload a thread with a video attachment.
-- **Homepage cleanup** — both off by default. Turn them on in Settings, then reload the homepage.
+**Three of the four features ship disabled.** Muting is the only one that does anything on a fresh install, because it is driven by an in-page button rather than a stored setting. If native video and the homepage options appear to "not work", check Settings first — this build has its own storage and does not inherit what you enabled in the desktop extension.
+
+Open Settings with **⋮ → Extensions → KEES Mobile Settings**, or from the add-on's entry in the Add-ons manager.
+
+- **Mute a user** — tap **Mute** on any of their posts. The post collapses to a placeholder; tap the placeholder to reveal it anyway. Works immediately, no setting required.
+- **Manage the list** — in Settings. Add users by name, or Remove to unmute.
+- **Native video** — off by default. Turn it on, then reload a thread with a video attachment.
+- **Homepage cleanup** — both off by default. Turn them on, then reload the homepage.
+
+To confirm the homepage scripts are live even with both options off, check that `<html>` carries the `kees-show-chat` and `kees-show-sponsored` classes: the stylesheet hides both elements unconditionally and the content script adds those classes back for whatever you have *not* disabled. Their presence means the CSS and JS both loaded and the settings are simply off.
 
 ## Privacy
 
