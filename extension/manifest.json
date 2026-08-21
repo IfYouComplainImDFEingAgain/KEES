@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kiwi Extra Enhancement Suite (KEES)",
-  "version": "4.9.0",
+  "version": "4.10.0",
   "description": "Enhanced features for specific Xenforo chat and forums",
   "permissions": ["storage", "unlimitedStorage", "notifications"],
   "host_permissions": [
@@ -84,6 +84,7 @@
         "src/util/dom.js",
         "src/core/state.js",
         "src/core/storage.js",
+        "src/features/tagging/tag-store.js",
         "src/core/events.js",
         "src/core/chat-page.js",
         "src/core/bbcode-converter.js",
@@ -107,6 +108,7 @@
         "src/features/bot-column.js",
         "src/features/chat-muting.js",
         "src/features/new-user-badge.js",
+        "src/features/chat-tag-chips.js",
         "src/features/message-actions.js",
         "src/features/undelete.js",
         "src/features/scrollback.js",

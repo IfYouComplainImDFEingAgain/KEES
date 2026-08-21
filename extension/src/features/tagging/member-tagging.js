@@ -16,17 +16,10 @@
 
     const MAX_PAGES = 20;
     const FETCH_DELAY = 300;
-    const MANUAL_COLORS = ['#3a6ea5', '#6a4c93', '#1b7a4d', '#9c6b1e', '#9e3b4e', '#2f6f7a', '#7a5230'];
 
     function getUserInfo() {
         const m = window.location.pathname.match(/\/members\/([^.\/]+)\.(\d+)/);
         return m ? { username: decodeURIComponent(m[1]), userId: m[2] } : null;
-    }
-
-    function colorForLabel(label) {
-        let h = 0;
-        for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
-        return MANUAL_COLORS[h % MANUAL_COLORS.length];
     }
 
     function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -93,25 +86,34 @@
 
     async function renderTags(userInfo, manualWrap, autoWrap) {
         const entry = await tagging.getTags(userInfo.userId);
+        const settings = await tagging.getSettings();
         manualWrap.innerHTML = '';
         autoWrap.innerHTML = '';
 
         const manual = (entry && entry.manual) || [];
-        const auto = (entry && entry.auto) || [];
+        // Auto tags survive the toggle on disk, so this card applies the same
+        // display gate the on-page chips do rather than showing tags the rest
+        // of the site is hiding.
+        if (!settings.autoEnabled) {
+            autoWrap.innerHTML = '<span style="color:#777;font-size:12px;">Auto-tagging is off</span>';
+        }
+        const auto = settings.autoEnabled ? ((entry && entry.auto) || []) : [];
 
         if (!manual.length) {
             manualWrap.innerHTML = '<span style="color:#777;font-size:12px;">No manual tags</span>';
         } else {
-            manual.forEach(t => manualWrap.appendChild(chip(t.label, t.color, async () => {
+            manual.forEach(t => manualWrap.appendChild(chip(t.label, tagging.resolveTagColor(t.label, t.color), async () => {
                 await tagging.removeManualTag(userInfo.userId, t.label);
                 renderTags(userInfo, manualWrap, autoWrap);
             })));
         }
 
-        if (!auto.length) {
+        if (!settings.autoEnabled) {
+            // message already set above
+        } else if (!auto.length) {
             autoWrap.innerHTML = '<span style="color:#777;font-size:12px;">No auto tags yet — generate activity below</span>';
         } else {
-            auto.forEach(t => autoWrap.appendChild(chip(t.label, t.color, null)));
+            auto.forEach(t => autoWrap.appendChild(chip(t.label, t.color, null)));  // auto keeps its stable per-forum colour
         }
     }
 
@@ -130,7 +132,8 @@
             '    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Manual</div>' +
             '    <div id="kees-tags-manual" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>' +
             '    <div style="display:flex;gap:8px;margin-bottom:16px;">' +
-            '      <input id="kees-tag-input" type="text" placeholder="Add a tag…" style="flex:1;padding:6px 10px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#fff;">' +
+            '      <input id="kees-tag-input" type="text" list="kees-tag-library-list" placeholder="Add a tag…" style="flex:1;padding:6px 10px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#fff;">' +
+            '      <datalist id="kees-tag-library-list"></datalist>' +
             '      <button id="kees-tag-add" class="button button--primary"><span class="button-text">Add</span></button>' +
             '    </div>' +
             '    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Auto (forum activity)</div>' +
@@ -152,6 +155,28 @@
 
         renderTags(userInfo, manualWrap, autoWrap);
 
+        // Offer the user's saved tags as suggestions. Typing anything else still
+        // works — the library is a convenience, never a gate.
+        const datalist = box.querySelector('#kees-tag-library-list');
+        async function renderLibraryOptions() {
+            const library = await tagging.getLibrary();
+            datalist.innerHTML = '';
+            library.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.label;
+                datalist.appendChild(opt);
+            });
+        }
+        renderLibraryOptions();
+
+        // A restricted profile exposes no post history, so the crawl would come
+        // back empty and read as a failure. Hide it rather than offer a button
+        // that cannot work.
+        if (isLimitedProfile()) {
+            genBtn.style.display = 'none';
+            genStatus.textContent = 'This member limits who may view their profile — activity cannot be analysed.';
+        }
+
         const openMgr = box.querySelector('#kees-open-tag-manager');
         if (openMgr) openMgr.addEventListener('click', (e) => {
             e.preventDefault();
@@ -161,7 +186,7 @@
         async function addTag() {
             const label = input.value.trim();
             if (!label) return;
-            const ok = await tagging.addManualTag(userInfo.userId, userInfo.username, label, colorForLabel(label));
+            const ok = await tagging.addManualTag(userInfo.userId, userInfo.username, label, tagging.resolveTagColor(label, tagging.suggestColor(label)));
             input.value = '';
             if (ok) renderTags(userInfo, manualWrap, autoWrap);
             else genStatus.textContent = 'Tag already exists';
@@ -193,30 +218,67 @@
             }
         });
 
-        // Keep auto tags in sync if regenerated elsewhere.
+        // Keep tags in sync if regenerated or recoloured elsewhere.
         chrome.storage.onChanged.addListener((changes, area) => {
-            if (area === 'local' && changes[tagging.TAGS_KEY]) {
+            if (area !== 'local') return;
+            if (changes[tagging.TAGS_KEY] || changes[tagging.LIBRARY_KEY] || changes[tagging.SETTINGS_KEY]) {
                 renderTags(userInfo, manualWrap, autoWrap);
             }
+            if (changes[tagging.LIBRARY_KEY]) renderLibraryOptions();
         });
+    }
+
+    // A profile whose owner restricts who may view it renders nothing but a
+    // .blockMessage - no member tabs, no activity box. Tagging must still work
+    // there, so fall through a chain of anchors instead of depending on the tabs.
+    // Direct-child match, not a descendant one: a normal profile can contain a
+    // .blockMessage somewhere inside a tab, and matching that would drop the box
+    // in the wrong place. On a restricted profile the notice *is* the page body.
+    function isLimitedProfile() {
+        return !document.querySelector('.block-tabHeader--memberTabs')
+            && !!document.querySelector('.p-body-pageContent > .blockMessage, .p-body-content > .blockMessage');
+    }
+
+    function place(box) {
+        // Preferred: straight after the forum-activity box, as before.
+        const activity = document.getElementById('kees-forum-activity');
+        if (activity) { activity.insertAdjacentElement('afterend', box); return true; }
+
+        const tabs = document.querySelector('.block-tabHeader--memberTabs');
+        if (tabs && tabs.parentNode) { tabs.parentNode.insertBefore(box, tabs); return true; }
+
+        // Only reach for the fallbacks once we know the tabs are never coming.
+        // On a normal profile the observer should keep waiting instead, or the
+        // box lands above the activity panel it is supposed to follow.
+        if (!isLimitedProfile()) return false;
+
+        // This wraps the "member limits who may view" notice.
+        const pageContent = document.querySelector('.p-body-pageContent');
+        if (pageContent) { pageContent.insertBefore(box, pageContent.firstChild); return true; }
+
+        // The profile header survives the privacy setting even when the body
+        // does not.
+        const header = document.querySelector('.memberHeader');
+        if (header) { header.insertAdjacentElement('afterend', box); return true; }
+
+        const main = document.querySelector('.p-body-main');
+        if (main) { main.appendChild(box); return true; }
+
+        return false;
     }
 
     function insert(userInfo) {
         if (document.getElementById('kees-user-tags')) return true;
-        const anchor = document.querySelector('.block-tabHeader--memberTabs');
-        if (!anchor) return false;
         const box = buildBox(userInfo);
-        // Place just after the forum-activity box if present, else before the tabs.
-        const activity = document.getElementById('kees-forum-activity');
-        if (activity) activity.insertAdjacentElement('afterend', box);
-        else anchor.parentNode.insertBefore(box, anchor);
+        if (!place(box)) return false;
         wire(box, userInfo);
         return true;
     }
 
-    function init() {
+    async function init() {
         const userInfo = getUserInfo();
         if (!userInfo) return;
+        await tagging.loadLibraryCache();
         if (insert(userInfo)) return;
         const observer = new MutationObserver(() => { if (insert(userInfo)) observer.disconnect(); });
         observer.observe(document.body, { childList: true, subtree: true });

@@ -48,7 +48,9 @@
         // When href is given the chip is an anchor linking to its source forum.
         const c = document.createElement(href ? 'a' : 'span');
         c.className = 'chip' + (isAuto ? ' auto' : '') + (href ? ' chip-link' : '');
-        c.style.background = t.color || '#555';
+        // Auto tags keep their stable per-forum colour; manual tags resolve
+        // through the library so a recolour there shows up here too.
+        c.style.background = isAuto ? (t.color || '#555') : tagging.resolveTagColor(t.label, t.color);
         if (href) {
             c.href = href;
             c.target = '_blank';
@@ -67,6 +69,87 @@
             c.appendChild(x);
         }
         return c;
+    }
+
+    // Inline replacement for the old window.prompt. It exists mainly so a tag
+    // added here carries a real colour — the prompt passed none, which is why
+    // every tag added from this page used to come out the default grey.
+    function openAddTag(u, addBtn, manualWrap) {
+        if (manualWrap.querySelector('.addtag-edit')) return;
+        addBtn.style.display = 'none';
+
+        const box = document.createElement('span');
+        box.className = 'addtag-edit';
+
+        const text = document.createElement('input');
+        text.type = 'text';
+        text.setAttribute('list', 'tag-lib-options');
+        text.placeholder = 'Tag for ' + u.username;
+
+        const color = document.createElement('input');
+        color.type = 'color';
+        color.value = tagging.suggestColor('');
+        color.title = 'Tag colour';
+
+        // Follow the label until the user picks a colour by hand, so a library
+        // tag shows its real colour before it is even added.
+        let colorTouched = false;
+        color.addEventListener('input', () => { colorTouched = true; });
+        text.addEventListener('input', () => {
+            if (colorTouched) return;
+            const label = text.value.trim();
+            color.value = label ? tagging.resolveTagColor(label, tagging.suggestColor(label)) : tagging.suggestColor('');
+        });
+
+        function close() {
+            box.remove();
+            addBtn.style.display = '';
+        }
+
+        async function commit() {
+            const label = text.value.trim();
+            if (!label) return close();
+            const ok = await tagging.addManualTag(u.userId, u.username, label, color.value);
+            close();
+            if (ok) refreshSoon(true);
+            else toast('That user already has that tag');
+        }
+
+        text.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            else if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+
+        const ok = document.createElement('button');
+        ok.className = 'addtag';
+        ok.textContent = 'Add';
+        ok.addEventListener('click', commit);
+
+        const cancel = document.createElement('button');
+        cancel.className = 'addtag';
+        cancel.textContent = '×';
+        cancel.title = 'Cancel';
+        cancel.addEventListener('click', close);
+
+        box.appendChild(text);
+        box.appendChild(color);
+        box.appendChild(ok);
+        box.appendChild(cancel);
+        manualWrap.appendChild(box);
+        text.focus();
+    }
+
+    // Populate the shared datalist of saved tag labels.
+    async function loadLibraryOptions() {
+        const list = document.getElementById('tag-lib-options');
+        if (!list) return;
+        const library = await tagging.getLibrary();
+        list.innerHTML = '';
+        library.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.label;
+            list.appendChild(opt);
+        });
     }
 
     // Resolve a bucket id to its link: numeric = forum, "t<id>" = thread (megathread).
@@ -143,13 +226,7 @@
             const add = document.createElement('button');
             add.className = 'addtag';
             add.textContent = '+ tag';
-            add.addEventListener('click', async () => {
-                const label = window.prompt('Add tag for ' + u.username + ':');
-                if (label && label.trim()) {
-                    await tagging.addManualTag(u.userId, u.username, label.trim());
-                    refreshSoon(true);
-                }
-            });
+            add.addEventListener('click', () => openAddTag(u, add, manualWrap));
             manualWrap.appendChild(add);
             tdManual.appendChild(manualWrap);
             tr.appendChild(tdManual);
@@ -464,10 +541,15 @@
             }
             if (changes[tagging.CRAWL_HISTORY_KEY]) loadCrawlHistory();
             if (changes[tagging.ALIASES_KEY]) loadAliases();
+            if (changes[tagging.LIBRARY_KEY]) {
+                loadLibraryOptions();
+                refreshSoon(false); // manual chip colours resolve through the library
+            }
             if (changes[tagging.SETTINGS_KEY]) {
                 const nv = changes[tagging.SETTINGS_KEY].newValue || {};
                 $('show-chips').checked = !nv.displayHidden;
-                refreshSoon(false); // per-user hidden flags may have changed
+                $('auto-enabled').checked = nv.autoEnabled !== false;
+                refreshSoon(false); // per-user hidden flags / the auto gate may have changed
             }
             const activityChanged = Object.keys(changes).some(k => k.startsWith(tagging.ACTIVITY_PREFIX));
             if (changes[tagging.TAGS_KEY] || activityChanged) refreshSoon(false);
@@ -484,6 +566,9 @@
     loadAliases();
     loadCrawlLive();
     loadCrawlHistory();
-    loadAll();
+    loadLibraryOptions();
+    // Prime the sync colour cache before the first paint so manual chips render
+    // with their library colour rather than flashing the stored fallback.
+    tagging.loadLibraryCache().then(loadAll);
 
 })();

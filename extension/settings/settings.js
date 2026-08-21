@@ -932,25 +932,44 @@
     // ============================================
     // USER TAGS
     // ============================================
-    // Full tag management lives in the dedicated Tag Manager page (tags/tags.html);
-    // here we keep just the auto-tag toggle and a launcher. Uses the SNEED.tagging
-    // API from tag-store.js (included before this script).
+    // Per-user tag assignment lives in the dedicated Tag Manager page
+    // (tags/tags.html); here we keep the toggles, a launcher, and the tag
+    // library - the reusable label -> colour list the user owns. Uses the
+    // SNEED.tagging API from tag-store.js (included before this script).
+
+    const STORAGE_KEY_CHAT_TAG_CHIPS = 'kees-chat-tag-chips';
 
     const tagging = (window.SNEED && window.SNEED.tagging) || null;
 
     if (tagging) {
         const tagAutoEnabled = document.getElementById('tag-auto-enabled');
         const tagDisplayShow = document.getElementById('tag-display-show');
+        const tagChatChips = document.getElementById('tag-chat-chips');
         const openTagManagerBtn = document.getElementById('open-tag-manager-btn');
 
-        tagging.getSettings().then((s) => {
-            tagAutoEnabled.checked = s.autoEnabled;
-            tagDisplayShow.checked = !s.displayHidden;
+        const tagLibraryList = document.getElementById('tag-library-list');
+        const tagLibraryInput = document.getElementById('tag-library-input');
+        const tagLibraryColor = document.getElementById('tag-library-color');
+        const tagLibraryAdd = document.getElementById('tag-library-add');
+
+        function loadTagSettings() {
+            tagging.getSettings().then((s) => {
+                tagAutoEnabled.checked = s.autoEnabled;
+                tagDisplayShow.checked = !s.displayHidden;
+            });
+        }
+        loadTagSettings();
+
+        chrome.storage.local.get([STORAGE_KEY_CHAT_TAG_CHIPS], (result) => {
+            tagChatChips.checked = result[STORAGE_KEY_CHAT_TAG_CHIPS] !== false;
         });
 
         tagAutoEnabled.addEventListener('change', async () => {
             await tagging.saveSettings({ autoEnabled: tagAutoEnabled.checked });
-            await tagging.refreshAllAutoTags();
+            // Turning auto tagging on again only needs a recompute when there is
+            // nothing stored to show; turning it off is now purely a display
+            // change, so nothing has to be rewritten.
+            if (tagAutoEnabled.checked) await tagging.refreshAllAutoTags();
             showStatus(tagAutoEnabled.checked ? 'Auto-tagging enabled' : 'Auto-tagging disabled');
         });
 
@@ -959,8 +978,120 @@
             showStatus(tagDisplayShow.checked ? 'Tag chips shown' : 'Tag chips hidden');
         });
 
+        tagChatChips.addEventListener('change', () => {
+            chrome.storage.local.set({ [STORAGE_KEY_CHAT_TAG_CHIPS]: tagChatChips.checked }, () => {
+                showStatus(tagChatChips.checked ? 'Chat tags shown' : 'Chat tags hidden');
+            });
+        });
+
         openTagManagerBtn.addEventListener('click', () => {
             chrome.tabs.create({ url: chrome.runtime.getURL('tags/tags.html') });
+        });
+
+        // ----- tag library -----
+
+        function renderTagLibrary(library) {
+            tagLibraryList.innerHTML = '';
+            library.forEach((tag) => {
+                const row = document.createElement('div');
+                row.className = 'muted-user';
+
+                const entry = document.createElement('div');
+                entry.className = 'tag-library-entry';
+
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = tag.color || '#555555';
+                colorInput.title = 'Change colour';
+
+                colorInput.addEventListener('change', async () => {
+                    await tagging.updateLibraryTag(tag.label, tag.label, colorInput.value);
+                    showStatus('Tag colour updated');
+                    loadTagLibrary();
+                });
+
+                const label = document.createElement('input');
+                label.type = 'text';
+                label.className = 'tag-library-label';
+                label.value = tag.label;
+                label.title = 'Rename tag';
+
+                async function commitRename() {
+                    const next = label.value.trim();
+                    if (!next || next === tag.label) {
+                        label.value = tag.label;
+                        return;
+                    }
+                    const ok = await tagging.updateLibraryTag(tag.label, next, null);
+                    if (!ok) {
+                        label.value = tag.label;
+                        showStatus('A tag with that name already exists');
+                        return;
+                    }
+                    showStatus('Tag renamed everywhere');
+                    loadTagLibrary();
+                }
+                label.addEventListener('blur', commitRename);
+                label.addEventListener('keypress', (e) => { if (e.key === 'Enter') label.blur(); });
+
+                entry.appendChild(colorInput);
+                entry.appendChild(label);
+
+                const remove = document.createElement('button');
+                remove.className = 'muted-user-remove';
+                remove.textContent = 'Remove';
+                remove.title = 'Remove from your saved tags (users keep the tag)';
+                remove.addEventListener('click', async () => {
+                    await tagging.removeLibraryTag(tag.label);
+                    showStatus('Tag removed from library');
+                    loadTagLibrary();
+                });
+
+                row.appendChild(entry);
+                row.appendChild(remove);
+                tagLibraryList.appendChild(row);
+            });
+        }
+
+        function loadTagLibrary() {
+            tagging.getLibrary().then(renderTagLibrary);
+        }
+
+        async function addTagLibraryEntry() {
+            const label = tagLibraryInput.value.trim();
+            if (!label) return;
+            const ok = await tagging.addLibraryTag(label, tagLibraryColor.value);
+            if (!ok) {
+                showStatus('That tag is already saved');
+                return;
+            }
+            tagLibraryInput.value = '';
+            showStatus('Tag saved');
+            loadTagLibrary();
+        }
+
+        tagLibraryAdd.addEventListener('click', addTagLibraryEntry);
+        tagLibraryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTagLibraryEntry(); });
+
+        // Propose the same colour the profile card and Tag Manager would, so a
+        // label looks consistent wherever it is first created.
+        tagLibraryInput.addEventListener('input', () => {
+            const label = tagLibraryInput.value.trim();
+            tagLibraryColor.value = label ? tagging.suggestColor(label) : '#555555';
+        });
+        tagLibraryColor.value = '#555555';
+
+        loadTagLibrary();
+
+        // The Tag Manager writes the same settings object and the same library,
+        // so an open settings tab has to resync or it shows stale controls.
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area !== 'local') return;
+            if (changes[tagging.SETTINGS_KEY]) loadTagSettings();
+            if (changes[tagging.LIBRARY_KEY]) loadTagLibrary();
+            if (changes[STORAGE_KEY_CHAT_TAG_CHIPS]) {
+                tagChatChips.checked = changes[STORAGE_KEY_CHAT_TAG_CHIPS].newValue !== false;
+            }
         });
     }
 

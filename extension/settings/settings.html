@@ -230,6 +230,52 @@
         #bot-users-list:empty::after {
             content: "No bot users";
         }
+        #tag-library-list:empty::after {
+            content: "No saved tags";
+        }
+        /* The colour well sits between the name field and Add, so it must not
+           take a share of the row's free space the way the text input does. */
+        .add-muted-user input[type="color"] {
+            flex: 0 0 36px;
+            width: 36px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .tag-library-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .tag-library-entry input[type="color"] {
+            width: 24px;
+            height: 20px;
+            flex-shrink: 0;
+            padding: 1px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .tag-library-label {
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            color: #ddd;
+            font-size: 12px;
+            font-family: inherit;
+            padding: 2px 4px;
+            min-width: 0;
+            width: 140px;
+        }
+        .tag-library-label:hover {
+            border-color: #3a3a3a;
+        }
+        .tag-library-label:focus {
+            outline: none;
+            border-color: #666;
+            background: #2a2a2a;
+        }
         .muted-user {
             display: flex;
             align-items: center;
@@ -706,6 +752,30 @@
                 <span class="toggle-slider"></span>
             </label>
         </div>
+        <div class="setting">
+            <div class="setting-label">
+                <span class="setting-title">Show tags in chat</span>
+                <span class="setting-desc">Show your own tags next to names in SneedChat</span>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="tag-chat-chips">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="muted-users-section">
+            <div class="setting-label" style="margin-bottom: 10px;">
+                <span class="setting-title">Your tags</span>
+                <span class="setting-desc">Reusable labels and colours. Optional — you can still type any tag by hand. Recolouring one updates it everywhere.</span>
+            </div>
+            <div id="tag-library-list" class="muted-users-list"></div>
+            <div class="add-muted-user">
+                <input type="text" id="tag-library-input" placeholder="Tag name…">
+                <input type="color" id="tag-library-color" title="Tag colour">
+                <button id="tag-library-add">Add</button>
+            </div>
+        </div>
+
         <div class="setting" style="border-bottom: none; padding-bottom: 6px;">
             <div class="setting-label">
                 <span class="setting-desc">View tagged users, automated tags, forum activity, crawls, short names and backup in the dedicated Tag Manager.</span>

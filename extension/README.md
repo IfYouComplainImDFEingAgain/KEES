@@ -43,15 +43,17 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results
 
 ### User Tagging
-- **Manual Tags** - Tag any user from their profile. Tags render as colored chips below the author's name in posts and on the member profile header
-- **Auto Tags from Forum Activity** - Automatically tag users by the forums/sub-forums they post in most, using your short names (configurable threshold and max tags per user). Auto tags are stored separately from manual tags, so regenerating never overwrites tags you added by hand. The shipped dataset can also include per-megathread tags for specific threads (chips link to the thread); everything else stays lumped into its forum
+- **Your Tags** - Tag any user from their profile, from the Tag Manager, or from a restricted profile that shows nothing but "This member limits who may view their full profile." Your tags always render **first** in the chip row and are styled solid and bold, ahead of the dimmed, dashed auto tags
+- **Tag Library** - Optionally save labels you reuse, each with its own colour, in settings. Saved labels are offered as autocomplete wherever you add a tag, and recolouring one updates every chip carrying it instantly — no recompute, no page reload. Entirely optional: you can still type any tag by hand and never open the library
+- **Auto Tags from Forum Activity** - Automatically tag users by the forums/sub-forums they post in most, using your short names (configurable threshold and max tags per user). Auto tags are stored separately from your own tags, so regenerating never overwrites tags you added by hand. Turning auto-tagging off just hides them — the computed tags and the collected activity are kept, so switching it back on is instant and needs no recompute. The shipped dataset can also include per-megathread tags for specific threads (chips link to the thread); everything else stays lumped into its forum
 - **Forum Short Names** - Map long forum names to short labels used on tags. Forums populate this list automatically as you browse
 - **Passive Activity Collection** - As you read threads, each post is counted toward its author's per-forum activity table. No extra network requests — the table builds up as you browse normally. Each thread page is recorded once it's counted, so reloads, revisits, and re-crawls never double-count it
 - **Hide Tags** - Hide all tag chips globally (a toggle in settings and on the dashboard) or hide a specific user's chips from the Tag Manager. Chips update live everywhere
+- **Tags in Chat** - Your own tags also render next to names in SneedChat (auto tags are left out — they would be noise on every line). Toggleable in settings
 - **Accurate Per-User Counts** - On a profile, "Generate from forum activity" crawls that user's own posts for an exact per-forum breakdown (and refreshes their auto tags)
 - **Bounded Crawler** - Opt-in, throttled crawl to populate the activity table for many users at once. Crawl buttons appear directly on the pages: on a forum — "Crawl this forum", a "Crawl" button per sub-forum box, and "Crawl all sub-forums"; on a thread — "Crawl this thread" (reads every page, ideal for megathreads). A floating progress/Stop HUD shows status. Hard caps bound the work and it auto-stops the moment it sees a non-200 response or a proof-of-work challenge page
 - **Tag Manager** - A dedicated full-page dashboard (opened in its own tab) listing every tagged user with their manual and auto tags, forum activity, and top forums; plus auto-tag settings, forum short names, live crawl status, recent-crawl history, and JSON export/import
-- **Export / Import** - Back up or transfer all tags, forum short names, and activity as a JSON file
+- **Export / Import** - Back up or transfer all tags, your tag library, forum short names, and activity as a JSON file
 - **Preloaded Dataset** - The extension can ship with a prebuilt activity + tags dataset (`data/preload.json`), imported once per release in merge mode (never overwrites your own manual tags) so users get tags out of the box without crawling. It is generated offline by the author's crawler ([`kf-tag-crawler`](#preloaded-dataset-generation)); nothing is ever uploaded from the user's browser
 
 ### Homepage Features
@@ -103,12 +105,12 @@ Click the extension icon in your browser toolbar to open the full settings page 
 - **PII Guard** - Toggle outgoing message protection and manage protected strings (displayed masked in the UI for shoulder-surfing resistance)
 - **Filtered Keywords** - Manage words/phrases to hide from incoming chat messages
 - **Muted Users** - Manage your muted users list
-- **User Tags** - Toggle auto-tagging and open the **Tag Manager** — the dedicated page where all other tagging controls now live (tagged-user list, activity, crawls, short names, backup)
+- **User Tags** - Toggle auto-tagging, tag chips and chat tags, edit your **tag library** (reusable labels and their colours), and open the **Tag Manager** — the dedicated page where per-user tagging lives (tagged-user list, activity, crawls, short names, backup)
 
 ### Tag Manager
 Open it from the settings page ("Open Tag Manager →") or the "Manage all tags →" link on any member profile. It opens in its own tab and provides:
 - **Summary stats** - Tagged users, manual/auto tag counts, forums tracked, total posts recorded
-- **Tagged Users table** - Every user with tags or recorded activity; search by username or tag, sort by posts/name/manual count, add/remove manual tags inline, and expand a user's full per-forum breakdown. Auto-tag chips and the per-forum breakdown link to the source forum/sub-forum
+- **Tagged Users table** - Every user with tags or recorded activity; search by username or tag, sort by posts/name/manual count, add manual tags inline with a colour picker and saved-label autocomplete, remove them, and expand a user's full per-forum breakdown. Auto-tag chips and the per-forum breakdown link to the source forum/sub-forum
 - **Auto-tagging** - Enable/disable, threshold %, max tags per user, and a recompute button
 - **Forum Crawler** - Live crawl status (updates across tabs), a recent-crawl history log, crawl limits (delay, threads per forum, thread-page cap), and start-by-ID controls for forums or a single thread/megathread (needs an open kiwifarms.st tab)
 - **Forum Short Names** - Edit the short label used on tags for each forum; the forum name links to that forum/sub-forum
@@ -125,10 +127,10 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 
 ### User Profiles
 - **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally)
-- **User Tags** - In the "User Tags" box, add manual tags or click "Generate from forum activity" to produce accurate forum-based auto tags. Tags appear as chips next to the user's name across the site
+- **User Tags** - In the "User Tags" box, add your own tags or click "Generate from forum activity" to produce accurate forum-based auto tags. Tags appear as chips next to the user's name across the site. The box also appears on restricted profiles that show only the "limits who may view" notice, so those users can still be tagged (activity analysis is hidden there, since it has nothing to read)
 
 ### Forum Threads & Profiles
-- **Tag Chips** - Users you've tagged show colored chips below the author's name in posts and on their profile header. Browsing threads also passively builds the per-user forum activity table used for auto tags
+- **Tag Chips** - Users you've tagged show colored chips below the author's name in posts and on their profile header, your own tags first. Browsing threads also passively builds the per-user forum activity table used for auto tags
 - **Crawl Buttons** - On a forum page, use "⟳ Crawl this forum" next to the title, the "Crawl" button on any sub-forum box, or "⟳ Crawl all sub-forums". On a thread page, use "⟳ Crawl this thread" to read every page of that thread (built for megathreads). A floating HUD shows progress and a Stop button; the crawl runs while you stay on the page
 
 ## Development

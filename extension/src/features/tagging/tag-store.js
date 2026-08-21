@@ -9,6 +9,7 @@
 //   kees-tagact-<userId>  -> { username, forums: { [forumId]: { name, count } }, total, updated }
 //                            (one key per user so concurrent tabs don't clobber a single blob)
 //   kees-user-tags        -> { [userId]: { username, manual: [tag], auto: [tag] } }  tag = { label, color }
+//   kees-tag-library      -> [ { label, color } ]  the user's reusable tag list, in their order
 //   kees-tag-aliases      -> { [forumId]: { full, short } }
 //   kees-tag-settings     -> { autoEnabled, autoThresholdPct, autoMaxTags, crawl: {...} }
 (function() {
@@ -19,6 +20,7 @@
 
     const ACTIVITY_PREFIX = 'kees-tagact-';
     const TAGS_KEY = 'kees-user-tags';
+    const LIBRARY_KEY = 'kees-tag-library';
     const ALIASES_KEY = 'kees-tag-aliases';
     const SETTINGS_KEY = 'kees-tag-settings';
     const CRAWL_STATUS_KEY = 'kees-tag-crawl-status';
@@ -37,7 +39,20 @@
 
     // Palette for auto-generated tag chips (cycled by forum id for stability).
     const AUTO_COLORS = ['#2d7dd2', '#7d2d8b', '#1f8a4c', '#b8731b', '#a83246', '#2d6e8b'];
-    const DEFAULT_MANUAL_COLOR = '#555';
+    // Palette proposed for hand-added tags (picked by label hash, so the same
+    // label always suggests the same colour wherever it is typed).
+    const MANUAL_COLORS = ['#3a6ea5', '#6a4c93', '#1b7a4d', '#9c6b1e', '#9e3b4e', '#2f6f7a', '#7a5230'];
+    const DEFAULT_MANUAL_COLOR = '#555555';   // 6-digit: <input type="color"> rejects short hex
+
+    // Stable colour suggestion for a label. Shared by the profile card, the Tag
+    // Manager and the settings library editor so they never disagree.
+    function suggestColor(label) {
+        label = (label || '').trim().toLowerCase();
+        if (!label) return DEFAULT_MANUAL_COLOR;
+        let h = 0;
+        for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+        return MANUAL_COLORS[h % MANUAL_COLORS.length];
+    }
 
     // ----- low-level chrome.storage.local promise wrappers -----
 
@@ -90,6 +105,110 @@
         }
         await setValue(SETTINGS_KEY, merged);
         return merged;
+    }
+
+    // ============================================================
+    // TAG LIBRARY (the user's reusable label -> colour list)
+    // ============================================================
+    // Entirely optional: free-text tags keep working exactly as before. The
+    // library exists so a label the user cares about has one colour everywhere
+    // and can be recoloured in one place.
+    //
+    // Like the alias cache, a small in-memory copy is kept so chip renderers can
+    // resolve a colour synchronously while painting. It is refreshed on change.
+
+    let libraryCache = [];
+
+    async function loadLibraryCache() {
+        libraryCache = await getValue(LIBRARY_KEY) || [];
+        return libraryCache;
+    }
+
+    function getLibrarySync() {
+        return libraryCache;
+    }
+
+    async function getLibrary() {
+        return await getValue(LIBRARY_KEY) || [];
+    }
+
+    async function saveLibrary(list) {
+        const clean = (list || []).filter(t => t && t.label);
+        await setValue(LIBRARY_KEY, clean);
+        libraryCache = clean;
+        return clean;
+    }
+
+    function findLibraryEntry(list, label) {
+        const key = (label || '').trim().toLowerCase();
+        if (!key) return null;
+        return list.find(t => (t.label || '').toLowerCase() === key) || null;
+    }
+
+    // The single colour authority every chip renderer goes through. A label in
+    // the library takes its colour from there, so recolouring is instant and
+    // never has to walk kees-user-tags. Anything else keeps the colour stored on
+    // the tag itself, which is what a plain free-text tag has.
+    function resolveTagColor(label, fallback) {
+        const entry = findLibraryEntry(libraryCache, label);
+        if (entry && entry.color) return entry.color;
+        return fallback || DEFAULT_MANUAL_COLOR;
+    }
+
+    async function addLibraryTag(label, color) {
+        label = (label || '').trim();
+        if (!label) return false;
+        const list = await getLibrary();
+        if (findLibraryEntry(list, label)) return false;
+        list.push({ label, color: color || suggestColor(label) });
+        await saveLibrary(list);
+        return true;
+    }
+
+    async function removeLibraryTag(label) {
+        const list = await getLibrary();
+        const key = (label || '').trim().toLowerCase();
+        const next = list.filter(t => (t.label || '').toLowerCase() !== key);
+        if (next.length === list.length) return false;
+        await saveLibrary(next);
+        return true;
+    }
+
+    // Rename and/or recolour a library entry. Recolouring is library-only (chips
+    // resolve through resolveTagColor). A *rename* is the one operation that has
+    // to rewrite stored data, so it walks kees-user-tags once and renames the
+    // matching manual tags — only ever on an explicit user action.
+    async function updateLibraryTag(oldLabel, newLabel, color) {
+        const list = await getLibrary();
+        const entry = findLibraryEntry(list, oldLabel);
+        if (!entry) return false;
+
+        newLabel = (newLabel || '').trim() || entry.label;
+        const renamed = newLabel.toLowerCase() !== entry.label.toLowerCase();
+
+        // Refuse a rename that would collide with another library entry.
+        if (renamed && findLibraryEntry(list, newLabel)) return false;
+
+        entry.label = newLabel;
+        if (color) entry.color = color;
+        await saveLibrary(list);
+
+        if (renamed) {
+            const all = await getAllTags();
+            const oldKey = (oldLabel || '').trim().toLowerCase();
+            let touched = false;
+            for (const userId of Object.keys(all)) {
+                const manual = all[userId] && all[userId].manual;
+                if (!Array.isArray(manual)) continue;
+                for (const t of manual) {
+                    if ((t.label || '').toLowerCase() !== oldKey) continue;
+                    t.label = newLabel;
+                    touched = true;
+                }
+            }
+            if (touched) await setValue(TAGS_KEY, all);
+        }
+        return true;
     }
 
     // ============================================================
@@ -250,7 +369,7 @@
         const all = await getAllTags();
         const entry = tagsFor(all, userId, username);
         if (entry.manual.some(t => t.label.toLowerCase() === label.toLowerCase())) return false;
-        entry.manual.push({ label, color: color || DEFAULT_MANUAL_COLOR });
+        entry.manual.push({ label, color: color || resolveTagColor(label, suggestColor(label)) });
         await setValue(TAGS_KEY, all);
         return true;
     }
@@ -302,10 +421,11 @@
         record = record || await getActivity(userId);
         settings = settings || await getSettings();
         if (!record) return;
-        if (!settings.autoEnabled) {
-            await setAutoTags(userId, record.username, []);
-            return;
-        }
+        // Auto-tagging off is a *display* decision, not a data one: the computed
+        // bucket is left intact so the toggle is instant and lossless in both
+        // directions, and so it can never interfere with the user's own tags.
+        // tag-display.js skips the auto half while autoEnabled is false.
+        if (!settings.autoEnabled) return;
         await setAutoTags(userId, record.username, computeAutoTags(record, settings));
     }
 
@@ -313,6 +433,9 @@
     // aliases or the threshold). Returns the number of users updated.
     async function refreshAllAutoTags() {
         const settings = await getSettings();
+        // Nothing to recompute while auto-tagging is off, and walking every
+        // kees-tagact-* key to do nothing is not free.
+        if (!settings.autoEnabled) return 0;
         const activity = await getAllActivity();
         const ids = Object.keys(activity);
         for (const userId of ids) {
@@ -331,6 +454,7 @@
             version: 1,
             exported: Date.now(),
             tags: await getAllTags(),
+            library: await getLibrary(),
             aliases: await getAliases(),
             activity: await getAllActivity(),
             settings: await getSettings()
@@ -346,11 +470,24 @@
         if (mode === 'replace') {
             const all = await getAll();
             const remove = Object.keys(all).filter(k => k.startsWith(ACTIVITY_PREFIX));
-            remove.push(TAGS_KEY, ALIASES_KEY, SETTINGS_KEY);
+            remove.push(TAGS_KEY, LIBRARY_KEY, ALIASES_KEY, SETTINGS_KEY);
             await new Promise((resolve) => chrome.storage.local.remove(remove, resolve));
         }
 
         if (bundle.settings) await saveSettings(bundle.settings);
+
+        if (Array.isArray(bundle.library)) {
+            // Union by lowercased label. On merge an entry the user already has
+            // wins, so an imported (or preloaded) bundle can seed a starter
+            // library without ever recolouring a tag they set themselves.
+            const list = mode === 'merge' ? await getLibrary() : [];
+            for (const t of bundle.library) {
+                if (!t || !t.label) continue;
+                if (findLibraryEntry(list, t.label)) continue;
+                list.push({ label: t.label, color: t.color || suggestColor(t.label) });
+            }
+            await saveLibrary(list);
+        }
 
         if (bundle.aliases) {
             const map = mode === 'merge' ? await getAliases() : {};
@@ -484,7 +621,9 @@
             const t = tags[id] || { username: '', manual: [], auto: [] };
             const a = activity[id] || null;
             const manual = t.manual || [];
-            const auto = t.auto || [];
+            // Auto tags are kept on disk while auto-tagging is off, so the
+            // dashboard has to apply the same display gate the chips do.
+            const auto = settings.autoEnabled ? (t.auto || []) : [];
             manualTags += manual.length;
             autoTags += auto.length;
             const total = a ? a.total : 0;
@@ -525,18 +664,27 @@
     // ============================================================
 
     loadAliasCache();
+    loadLibraryCache();
     chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && changes[ALIASES_KEY]) {
+        if (area !== 'local') return;
+        if (changes[ALIASES_KEY]) {
             aliasCache = changes[ALIASES_KEY].newValue || {};
+        }
+        if (changes[LIBRARY_KEY]) {
+            libraryCache = changes[LIBRARY_KEY].newValue || [];
         }
     });
 
     SNEED.tagging = Object.assign(SNEED.tagging || {}, {
         // constants
-        ACTIVITY_PREFIX, TAGS_KEY, ALIASES_KEY, SETTINGS_KEY, DEFAULT_SETTINGS,
+        ACTIVITY_PREFIX, TAGS_KEY, LIBRARY_KEY, ALIASES_KEY, SETTINGS_KEY, DEFAULT_SETTINGS,
         CRAWL_STATUS_KEY, CRAWL_HISTORY_KEY,
         // settings
         getSettings, saveSettings,
+        // tag library (optional reusable label -> colour list)
+        getLibrary, saveLibrary, getLibrarySync, loadLibraryCache,
+        addLibraryTag, removeLibraryTag, updateLibraryTag,
+        resolveTagColor, suggestColor,
         // aliases
         getAliases, saveAliases, setAlias, ensureForumKnown, shortName, getAliasesSync,
         loadAliasCache, aliasCacheReady: () => aliasCacheReady,
