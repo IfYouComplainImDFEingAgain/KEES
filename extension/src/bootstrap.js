@@ -123,6 +123,10 @@
                     SNEED.features.newUserBadge.start(document);
                 }
 
+                if (SNEED.features.messageActions && SNEED.features.messageActions.start) {
+                    SNEED.features.messageActions.start(document);
+                }
+
                 if (SNEED.features.undelete && SNEED.features.undelete.start) {
                     SNEED.features.undelete.start(document);
                 }
@@ -224,6 +228,10 @@
 
                             if (SNEED.features.newUserBadge && SNEED.features.newUserBadge.start) {
                                 SNEED.features.newUserBadge.start(iframeDoc);
+                            }
+
+                            if (SNEED.features.messageActions && SNEED.features.messageActions.start) {
+                                SNEED.features.messageActions.start(iframeDoc);
                             }
 
                             if (SNEED.features.undelete && SNEED.features.undelete.start) {

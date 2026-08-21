@@ -107,6 +107,7 @@
         "src/features/bot-column.js",
         "src/features/chat-muting.js",
         "src/features/new-user-badge.js",
+        "src/features/message-actions.js",
         "src/features/undelete.js",
         "src/features/scrollback.js",
         "src/features/keyword-filter.js",

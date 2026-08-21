@@ -14,6 +14,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Custom Emotes** - Add and manage your own custom emotes
 - **Image Blacklist** - Filter images from chat (supports bulk adding multiple URLs)
 - **Watched Users** - Highlight messages from users you're watching
+- **Message Actions** - Replaces the hover-only report link with three buttons at the end of every message's meta line: copy message UUID, go to the poster's profile, and report the message
 - **New Account Badge** - Flags recently-joined accounts (default: under 30 days) with a `NEW·<age>` chip, both on chat messages and in the online-users column. Join dates are scraped once per user from their profile, throttled, and cached locally forever. Column entries only trigger a lookup once they scroll into view, and queue behind message lookups
 - **YouTube Titles** - Automatically displays video title and channel name for YouTube links
 - **Double-Click Edit** - Double-click your own messages to quickly enter edit mode
