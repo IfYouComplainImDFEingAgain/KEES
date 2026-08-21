@@ -49,7 +49,6 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Forum Short Names** - Map long forum names to short labels used on tags. Forums populate this list automatically as you browse
 - **Passive Activity Collection** - As you read threads, each post is counted toward its author's per-forum activity table. No extra network requests — the table builds up as you browse normally. Each thread page is recorded once it's counted, so reloads, revisits, and re-crawls never double-count it
 - **Hide Tags** - Hide all tag chips globally (a toggle in settings and on the dashboard) or hide a specific user's chips from the Tag Manager. Chips update live everywhere
-- **Tags in Chat** - Your own tags also render next to names in SneedChat (auto tags are left out — they would be noise on every line). Toggleable in settings
 - **Accurate Per-User Counts** - On a profile, "Generate from forum activity" crawls that user's own posts for an exact per-forum breakdown (and refreshes their auto tags)
 - **Bounded Crawler** - Opt-in, throttled crawl to populate the activity table for many users at once. Crawl buttons appear directly on the pages: on a forum — "Crawl this forum", a "Crawl" button per sub-forum box, and "Crawl all sub-forums"; on a thread — "Crawl this thread" (reads every page, ideal for megathreads). A floating progress/Stop HUD shows status. Hard caps bound the work and it auto-stops the moment it sees a non-200 response or a proof-of-work challenge page
 - **Tag Manager** - A dedicated full-page dashboard (opened in its own tab) listing every tagged user with their manual and auto tags, forum activity, and top forums; plus auto-tag settings, forum short names, live crawl status, recent-crawl history, and JSON export/import
@@ -105,7 +104,7 @@ Click the extension icon in your browser toolbar to open the full settings page 
 - **PII Guard** - Toggle outgoing message protection and manage protected strings (displayed masked in the UI for shoulder-surfing resistance)
 - **Filtered Keywords** - Manage words/phrases to hide from incoming chat messages
 - **Muted Users** - Manage your muted users list
-- **User Tags** - Toggle auto-tagging, tag chips and chat tags, edit your **tag library** (reusable labels and their colours), and open the **Tag Manager** — the dedicated page where per-user tagging lives (tagged-user list, activity, crawls, short names, backup)
+- **User Tags** - Toggle auto-tagging and tag chips, edit your **tag library** (reusable labels and their colours), and open the **Tag Manager** — the dedicated page where per-user tagging lives (tagged-user list, activity, crawls, short names, backup)
 
 ### Tag Manager
 Open it from the settings page ("Open Tag Manager →") or the "Manage all tags →" link on any member profile. It opens in its own tab and provides:

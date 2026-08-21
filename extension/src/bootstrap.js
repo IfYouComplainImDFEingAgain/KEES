@@ -123,10 +123,6 @@
                     SNEED.features.newUserBadge.start(document);
                 }
 
-                if (SNEED.features.chatTagChips && SNEED.features.chatTagChips.start) {
-                    SNEED.features.chatTagChips.start(document);
-                }
-
                 if (SNEED.features.messageActions && SNEED.features.messageActions.start) {
                     SNEED.features.messageActions.start(document);
                 }
@@ -232,10 +228,6 @@
 
                             if (SNEED.features.newUserBadge && SNEED.features.newUserBadge.start) {
                                 SNEED.features.newUserBadge.start(iframeDoc);
-                            }
-
-                            if (SNEED.features.chatTagChips && SNEED.features.chatTagChips.start) {
-                                SNEED.features.chatTagChips.start(iframeDoc);
                             }
 
                             if (SNEED.features.messageActions && SNEED.features.messageActions.start) {

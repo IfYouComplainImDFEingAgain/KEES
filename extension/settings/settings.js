@@ -937,14 +937,11 @@
     // library - the reusable label -> colour list the user owns. Uses the
     // SNEED.tagging API from tag-store.js (included before this script).
 
-    const STORAGE_KEY_CHAT_TAG_CHIPS = 'kees-chat-tag-chips';
-
     const tagging = (window.SNEED && window.SNEED.tagging) || null;
 
     if (tagging) {
         const tagAutoEnabled = document.getElementById('tag-auto-enabled');
         const tagDisplayShow = document.getElementById('tag-display-show');
-        const tagChatChips = document.getElementById('tag-chat-chips');
         const openTagManagerBtn = document.getElementById('open-tag-manager-btn');
 
         const tagLibraryList = document.getElementById('tag-library-list');
@@ -960,10 +957,6 @@
         }
         loadTagSettings();
 
-        chrome.storage.local.get([STORAGE_KEY_CHAT_TAG_CHIPS], (result) => {
-            tagChatChips.checked = result[STORAGE_KEY_CHAT_TAG_CHIPS] !== false;
-        });
-
         tagAutoEnabled.addEventListener('change', async () => {
             await tagging.saveSettings({ autoEnabled: tagAutoEnabled.checked });
             // Turning auto tagging on again only needs a recompute when there is
@@ -976,12 +969,6 @@
         tagDisplayShow.addEventListener('change', async () => {
             await tagging.saveSettings({ displayHidden: !tagDisplayShow.checked });
             showStatus(tagDisplayShow.checked ? 'Tag chips shown' : 'Tag chips hidden');
-        });
-
-        tagChatChips.addEventListener('change', () => {
-            chrome.storage.local.set({ [STORAGE_KEY_CHAT_TAG_CHIPS]: tagChatChips.checked }, () => {
-                showStatus(tagChatChips.checked ? 'Chat tags shown' : 'Chat tags hidden');
-            });
         });
 
         openTagManagerBtn.addEventListener('click', () => {
@@ -1089,9 +1076,6 @@
             if (area !== 'local') return;
             if (changes[tagging.SETTINGS_KEY]) loadTagSettings();
             if (changes[tagging.LIBRARY_KEY]) loadTagLibrary();
-            if (changes[STORAGE_KEY_CHAT_TAG_CHIPS]) {
-                tagChatChips.checked = changes[STORAGE_KEY_CHAT_TAG_CHIPS].newValue !== false;
-            }
         });
     }
 
