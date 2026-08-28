@@ -489,9 +489,11 @@
         return box;
     }
 
-    const CHART_TOTAL_COLOR = '#4a9eff';
-    const CHART_FORUM_COLORS = ['#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c'];
-    const CHART_MAX_FORUM_LINES = 6;
+    // Distinct hues for the top forums; everything else collapses into "Other".
+    const CHART_FORUM_COLORS = ['#4a9eff', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+    const CHART_OTHER_COLOR = '#6b7280';
+    const CHART_MAX_FORUM_SERIES = 6;
+    const CHART_MAX_BARS = 60;    // above this the buckets coarsen (day -> week -> month)
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => (
@@ -499,15 +501,91 @@
         ));
     }
 
-    function formatDayLabel(ts, withYear) {
+    // --- bucketing (the timeline is sparse day buckets; bars need a dense axis) ---
+
+    function weekStart(ts) {
         const d = new Date(ts);
-        const base = (d.getMonth() + 1) + '/' + d.getDate();
-        return withYear ? base + '/' + String(d.getFullYear()).slice(-2) : base;
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - d.getDay());
+        return d.getTime();
     }
 
-    // Build an inline SVG line graph: one bright line for total posts/day plus a
-    // colored line for each of the top forums. Self-contained (no external libs)
-    // so it satisfies the extension CSP. Returns an HTML string.
+    function monthStart(ts) {
+        const d = new Date(ts);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(1);
+        return d.getTime();
+    }
+
+    function nextBucketStart(ts, unit) {
+        const d = new Date(ts);
+        if (unit === 'day') d.setDate(d.getDate() + 1);
+        else if (unit === 'week') d.setDate(d.getDate() + 7);
+        else d.setMonth(d.getMonth() + 1);
+        return d.getTime();
+    }
+
+    function chooseBucketUnit(minT, maxT) {
+        const days = Math.round((maxT - minT) / 86400000) + 1;
+        if (days <= CHART_MAX_BARS) return 'day';
+        if (Math.ceil(days / 7) <= CHART_MAX_BARS) return 'week';
+        return 'month';
+    }
+
+    // Roll sparse daily entries up into contiguous buckets, zero-filling the gaps so
+    // a quiet stretch reads as empty space rather than being squeezed out.
+    function bucketTimeline(timeline, unit) {
+        const startOf = unit === 'day' ? dayStart : unit === 'week' ? weekStart : monthStart;
+        const map = new Map();
+        timeline.forEach(d => {
+            const k = startOf(d.t);
+            let b = map.get(k);
+            if (!b) { b = { t: k, total: 0, forums: {} }; map.set(k, b); }
+            b.total += d.total;
+            Object.keys(d.forums).forEach(name => {
+                b.forums[name] = (b.forums[name] || 0) + d.forums[name];
+            });
+        });
+        const keys = Array.from(map.keys()).sort((a, b) => a - b);
+        const out = [];
+        const last = keys[keys.length - 1];
+        for (let t = keys[0]; t <= last; t = nextBucketStart(t, unit)) {
+            out.push(map.get(t) || { t, total: 0, forums: {} });
+        }
+        return out;
+    }
+
+    function formatBucketLabel(ts, unit, withYear) {
+        const d = new Date(ts);
+        const yy = String(d.getFullYear()).slice(-2);
+        if (unit === 'month') return (d.getMonth() + 1) + '/' + yy;
+        const base = (d.getMonth() + 1) + '/' + d.getDate();
+        return withYear ? base + '/' + yy : base;
+    }
+
+    function bucketRangeLabel(ts, unit) {
+        const d = new Date(ts);
+        if (unit === 'month') {
+            return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        }
+        const start = d.toLocaleDateString();
+        if (unit === 'day') return start;
+        const end = new Date(nextBucketStart(ts, 'week') - 86400000);
+        return `${start} – ${end.toLocaleDateString()}`;
+    }
+
+    // Round a raw tick spacing up to the nearest 1/2/5 x 10^n so axis labels stay whole.
+    function niceStep(v) {
+        if (v <= 1) return 1;
+        const pow = Math.pow(10, Math.floor(Math.log10(v)));
+        const n = v / pow;
+        const s = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+        return s * pow;
+    }
+
+    // Build an inline SVG stacked bar chart: one bar per time bucket, segmented by
+    // forum (top forums coloured, the tail merged into "Other"). Self-contained (no
+    // external libs) so it satisfies the extension CSP. Returns an HTML string.
     function buildActivityChartHtml(data) {
         const timeline = data.timeline || [];
         if (timeline.length === 0) {
@@ -518,93 +596,127 @@
             `;
         }
 
+        const unit = chooseBucketUnit(timeline[0].t, timeline[timeline.length - 1].t);
+        const buckets = bucketTimeline(timeline, unit);
+
+        const topForums = data.forums.slice(0, CHART_MAX_FORUM_SERIES).map(f => f.name);
+        const topSet = new Set(topForums);
+        const otherCount = data.forums.length - topForums.length;
+
+        // Series are stacked bottom-up in this order; "Other" always caps the stack.
+        const series = topForums.map((name, idx) => ({
+            name,
+            label: escapeHtml(name),
+            color: CHART_FORUM_COLORS[idx % CHART_FORUM_COLORS.length],
+            valueAt: b => b.forums[name] || 0
+        }));
+        if (otherCount > 0) {
+            series.push({
+                name: '__other__',
+                label: `Other (${otherCount} ${otherCount === 1 ? 'forum' : 'forums'})`,
+                color: CHART_OTHER_COLOR,
+                valueAt: b => Object.keys(b.forums).reduce(
+                    (sum, n) => topSet.has(n) ? sum : sum + b.forums[n], 0)
+            });
+        }
+
         const W = 800, H = 300;
         const padL = 46, padR = 14, padT = 14, padB = 46;
         const plotW = W - padL - padR;
         const plotH = H - padT - padB;
 
-        const minDay = timeline[0].t;
-        const maxDay = timeline[timeline.length - 1].t;
-        const dayRange = maxDay - minDay;
-        const withYear = dayRange > 365 * 24 * 3600 * 1000;
-        const maxTotal = timeline.reduce((m, d) => Math.max(m, d.total), 0) || 1;
+        const maxTotal = buckets.reduce((m, b) => Math.max(m, b.total), 0) || 1;
+        const tickStep = niceStep(maxTotal / 4);
+        const axisMax = tickStep * Math.ceil(maxTotal / tickStep);
+        const yTicks = Math.round(axisMax / tickStep);
 
-        const xFor = t => dayRange === 0 ? padL + plotW / 2 : padL + ((t - minDay) / dayRange) * plotW;
-        const yFor = v => padT + plotH - (v / maxTotal) * plotH;
+        const yFor = v => padT + plotH - (v / axisMax) * plotH;
+
+        const slotW = plotW / buckets.length;
+        const barW = Math.max(1, Math.min(slotW - 1, slotW * 0.82));
+        const xFor = i => padL + i * slotW + (slotW - barW) / 2;
 
         // Horizontal gridlines + Y-axis labels.
-        const yTicks = 4;
         let grid = '';
         for (let i = 0; i <= yTicks; i++) {
-            const val = Math.round((maxTotal * i) / yTicks);
+            const val = tickStep * i;
             const y = yFor(val).toFixed(1);
             grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#333" stroke-width="1"/>`;
             grid += `<text x="${padL - 6}" y="${y}" text-anchor="end" dominant-baseline="middle" fill="#888" font-size="11">${val}</text>`;
         }
 
-        // X-axis date labels (sample a handful, always include the last day).
-        const step = Math.max(1, Math.ceil(timeline.length / 6));
-        let xLabels = '';
+        // X-axis labels (sample a handful, always include the last bucket).
+        const spanMs = buckets[buckets.length - 1].t - buckets[0].t;
+        const withYear = spanMs > 365 * 24 * 3600 * 1000;
+        const step = Math.max(1, Math.ceil(buckets.length / 7));
         const labelled = new Set();
-        for (let i = 0; i < timeline.length; i += step) {
-            labelled.add(i);
-        }
-        labelled.add(timeline.length - 1);
+        for (let i = 0; i < buckets.length; i += step) labelled.add(i);
+        labelled.add(buckets.length - 1);
+        let xLabels = '';
         Array.from(labelled).sort((a, b) => a - b).forEach(i => {
-            const d = timeline[i];
-            xLabels += `<text x="${xFor(d.t).toFixed(1)}" y="${H - padB + 18}" text-anchor="middle" fill="#888" font-size="11">${formatDayLabel(d.t, withYear)}</text>`;
+            const cx = (xFor(i) + barW / 2).toFixed(1);
+            xLabels += `<text x="${cx}" y="${H - padB + 18}" text-anchor="middle" fill="#888" font-size="11">${formatBucketLabel(buckets[i].t, unit, withYear)}</text>`;
         });
 
-        const topForums = data.forums.slice(0, CHART_MAX_FORUM_LINES).map(f => f.name);
-        const drawDots = timeline.length <= 60;
+        // Each bar is a full-height transparent hit area (so the whole column is
+        // hoverable, empty ones included) carrying the breakdown tooltip, plus the
+        // stacked segments themselves.
+        let bars = '';
+        buckets.forEach((b, i) => {
+            const x = xFor(i).toFixed(2);
+            const wid = barW.toFixed(2);
 
-        function series(valueAt, color, width, dotR) {
-            const pts = timeline.map(d => `${xFor(d.t).toFixed(1)},${yFor(valueAt(d)).toFixed(1)}`).join(' ');
-            let s = `<polyline fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`;
-            if (drawDots) {
-                timeline.forEach(d => {
-                    s += `<circle cx="${xFor(d.t).toFixed(1)}" cy="${yFor(valueAt(d)).toFixed(1)}" r="${dotR}" fill="${color}"/>`;
-                });
-            }
-            return s;
-        }
+            const parts = series
+                .map(s => ({ label: s.name === '__other__' ? 'Other' : s.name, v: s.valueAt(b) }))
+                .filter(p => p.v > 0)
+                .map(p => `${p.label}: ${p.v}`);
+            const tip = escapeHtml(
+                `${bucketRangeLabel(b.t, unit)}\n${b.total} ${b.total === 1 ? 'post' : 'posts'}` +
+                (parts.length ? '\n' + parts.join('\n') : '')
+            );
 
-        // Forum lines first, then the total on top so it stays readable.
-        let lines = '';
-        topForums.forEach((name, idx) => {
-            const color = CHART_FORUM_COLORS[idx % CHART_FORUM_COLORS.length];
-            lines += series(d => d.forums[name] || 0, color, 1.5, 2);
+            bars += `<rect x="${x}" y="${padT}" width="${wid}" height="${plotH}" fill="transparent"><title>${tip}</title></rect>`;
+
+            let acc = 0;
+            series.forEach(s => {
+                const v = s.valueAt(b);
+                if (v <= 0) return;
+                const yTop = yFor(acc + v);
+                const h = yFor(acc) - yTop;
+                acc += v;
+                bars += `<rect x="${x}" y="${yTop.toFixed(2)}" width="${wid}" height="${Math.max(0.5, h).toFixed(2)}" fill="${s.color}" pointer-events="none"/>`;
+            });
         });
-        lines += series(d => d.total, CHART_TOTAL_COLOR, 2.5, 2.5);
+
+        const baseline = `<line x1="${padL}" y1="${yFor(0).toFixed(1)}" x2="${W - padR}" y2="${yFor(0).toFixed(1)}" stroke="#555" stroke-width="1"/>`;
 
         function legendItem(color, label) {
-            return `<span style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;">
-                <span style="width:14px;height:3px;background:${color};display:inline-block;border-radius:2px;"></span>
+            return `<span style="display:inline-flex;align-items:center;gap:6px;margin:0 12px 4px 0;">
+                <span style="width:11px;height:11px;background:${color};display:inline-block;border-radius:2px;"></span>
                 <span style="color:#ccc;font-size:12px;">${label}</span></span>`;
         }
 
-        let legend = legendItem(CHART_TOTAL_COLOR, 'Total posts / day');
-        topForums.forEach((name, idx) => {
-            legend += legendItem(CHART_FORUM_COLORS[idx % CHART_FORUM_COLORS.length], escapeHtml(name));
-        });
+        // Legend reads top-of-stack first so it matches what the bars look like.
+        const legend = series.slice().reverse()
+            .map(s => legendItem(s.color, s.label)).join('');
 
-        const omitted = data.forums.length - topForums.length;
-        const omittedNote = omitted > 0
-            ? `<div style="color:#666;font-size:11px;margin-top:4px;">+${omitted} more ${omitted === 1 ? 'forum' : 'forums'} not shown as lines (still counted in Total).</div>`
-            : '';
+        const unitWord = unit === 'day' ? 'day' : unit === 'week' ? 'week' : 'month';
 
         return `
             <div style="margin-top: 24px;">
-                <div style="font-weight:600;margin-bottom:8px;">Posting Frequency</div>
+                <div style="font-weight:600;margin-bottom:8px;">
+                    Posting Frequency
+                    <span style="font-weight:normal;color:#888;font-size:12px;">(posts per ${unitWord}, by forum)</span>
+                </div>
                 <div style="overflow-x:auto;">
                     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;min-width:520px;height:auto;display:block;">
                         ${grid}
-                        ${lines}
+                        ${bars}
+                        ${baseline}
                         ${xLabels}
                     </svg>
                 </div>
                 <div style="margin-top:10px;">${legend}</div>
-                ${omittedNote}
             </div>
         `;
     }
