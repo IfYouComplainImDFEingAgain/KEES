@@ -124,9 +124,9 @@
         box.style.cssText = 'margin-top:16px;';
         box.innerHTML =
             '<div class="block-container">' +
-            '  <h3 class="block-header" style="display:flex;justify-content:space-between;align-items:center;">' +
-            '    <span>User Tags</span>' +
-            '    <a id="kees-open-tag-manager" href="#" style="font-size:12px;font-weight:normal;color:#6fb3ff;">Manage all tags →</a>' +
+            '  <h3 class="block-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;">' +
+            '    <span style="flex:1 1 auto;text-align:left;">User Tags</span>' +
+            '    <a id="kees-open-tag-manager" href="#" style="flex:0 0 auto;margin-left:auto;text-align:right;white-space:nowrap;font-size:12px;font-weight:normal;color:#6fb3ff;">Manage all tags →</a>' +
             '  </h3>' +
             '  <div class="block-body" style="padding:16px;">' +
             '    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Manual</div>' +
