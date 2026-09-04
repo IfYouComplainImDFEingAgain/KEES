@@ -6,6 +6,10 @@
     window.SNEED = SNEED;
 
     const STORAGE_KEY_PREFIX = 'kees-user-forums-';
+    // Raw per-post records live under their own key: they are only ever read by the
+    // JSON export, so keeping them out of the summary blob keeps every profile view
+    // from deserialising thousands of records it will not display.
+    const STORAGE_KEY_POSTS_PREFIX = 'kees-user-forum-posts-';
     const STORAGE_KEY_MAX_PAGES = 'kees-forum-activity-max-pages';
     const STORAGE_KEY_DEEP_SEARCH = 'kees-forum-activity-deep-search';
     const STORAGE_KEY_WINDOW_DAYS = 'kees-forum-activity-window-days';
@@ -68,6 +72,10 @@
         return STORAGE_KEY_PREFIX + userId;
     }
 
+    function getPostsStorageKey(userId) {
+        return STORAGE_KEY_POSTS_PREFIX + userId;
+    }
+
     async function getCachedData(userId) {
         return new Promise((resolve) => {
             const key = getStorageKey(userId);
@@ -77,17 +85,33 @@
         });
     }
 
-    async function saveCachedData(userId, data) {
+    // Returns the raw post records for a user, or null when the cache predates the
+    // export feature (the summary alone cannot be reconstructed back into posts).
+    async function getCachedPosts(userId) {
         return new Promise((resolve) => {
-            const key = getStorageKey(userId);
-            chrome.storage.local.set({ [key]: data }, resolve);
+            const key = getPostsStorageKey(userId);
+            chrome.storage.local.get([key], (result) => {
+                const entry = result[key];
+                resolve(entry && Array.isArray(entry.posts) ? entry.posts : null);
+            });
+        });
+    }
+
+    async function saveCachedData(userId, data) {
+        const { posts, ...summary } = data;
+        return new Promise((resolve) => {
+            const write = { [getStorageKey(userId)]: summary };
+            if (Array.isArray(posts)) {
+                write[getPostsStorageKey(userId)] = { timestamp: data.timestamp, posts };
+            }
+            chrome.storage.local.set(write, resolve);
         });
     }
 
     async function clearCachedData(userId) {
         return new Promise((resolve) => {
-            const key = getStorageKey(userId);
-            chrome.storage.local.remove([key], resolve);
+            chrome.storage.local.remove(
+                [getStorageKey(userId), getPostsStorageKey(userId)], resolve);
         });
     }
 
@@ -156,6 +180,7 @@
                 name: link.textContent.trim(),
                 url: link.getAttribute('href'),
                 postUrl: titleLink ? titleLink.getAttribute('href') : null,
+                title: titleLink ? titleLink.textContent.trim() : null,
                 timestamp: parsePostTime(row)
             });
         });
@@ -170,6 +195,7 @@
         const forumCounts = {};
         const dailyMap = {};
         const seen = new Set();
+        const records = [];
         let totalPosts = 0;
         return {
             add(p) {
@@ -177,6 +203,7 @@
                     if (seen.has(p.postUrl)) return;
                     seen.add(p.postUrl);
                 }
+                records.push(p);
                 forumCounts[p.name] = (forumCounts[p.name] || 0) + 1;
                 totalPosts++;
                 if (p.timestamp) {
@@ -195,7 +222,9 @@
                     .map(k => parseInt(k, 10))
                     .sort((a, b) => a - b)
                     .map(day => ({ t: day, total: dailyMap[day].total, forums: dailyMap[day].forums }));
-                return { totalPosts, forums, timeline };
+                // Newest post first, matching how the search results were walked.
+                const posts = records.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                return { totalPosts, forums, timeline, posts };
             }
         };
     }
@@ -377,6 +406,7 @@
             stopReason,
             forums: built.forums,
             timeline: built.timeline,
+            posts: built.posts,
             timestamp: Date.now()
         };
     }
@@ -459,6 +489,7 @@
             stopReason,
             forums: built.forums,
             timeline: built.timeline,
+            posts: built.posts,
             timestamp: Date.now()
         };
     }
@@ -721,6 +752,136 @@
         `;
     }
 
+    // --- JSON export -------------------------------------------------------
+
+    const EXPORT_FORMAT_VERSION = 1;
+
+    // Search-result hrefs are site-relative; absolute URLs survive leaving the page.
+    function absoluteUrl(href) {
+        if (!href) return null;
+        try {
+            return new URL(href, window.location.origin).href;
+        } catch (e) {
+            return href;
+        }
+    }
+
+    function isoDay(ts) {
+        const d = new Date(ts);
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${d.getFullYear()}-${m}-${day}`;
+    }
+
+    // Display names are user-controlled, so keep only inert characters and refuse
+    // to emit leading/repeated dots (hidden files, traversal-looking names).
+    function slugForFilename(s) {
+        return String(s || 'user')
+            .replace(/[^a-zA-Z0-9._-]+/g, '-')
+            .replace(/\.{2,}/g, '.')
+            .replace(/^[.\-]+|[.\-]+$/g, '')
+            .slice(0, 60)
+            .replace(/^[.\-]+|[.\-]+$/g, '') || 'user';
+    }
+
+    // Everything the analysis produced: the run's own parameters, the two aggregates
+    // the page renders (forum totals and the daily timeline), and the deduped post
+    // records those aggregates were counted from.
+    function buildExportPayload(data, posts, userInfo) {
+        const analysis = {
+            mode: data.mode,
+            analyzedAt: new Date(data.timestamp).toISOString(),
+            analyzedAtMs: data.timestamp,
+            stopReason: data.stopReason || null
+        };
+        if (data.mode === 'deep') {
+            analysis.searchesRun = data.searchesRun;
+            analysis.maxSearches = data.maxSearches;
+            analysis.windowDays = data.windowDays;
+        } else {
+            analysis.pagesAnalyzed = data.pagesAnalyzed;
+            analysis.maxPages = data.maxPages;
+        }
+
+        const payload = {
+            exportFormat: EXPORT_FORMAT_VERSION,
+            exportedAt: new Date().toISOString(),
+            generatedBy: 'KEES forum activity analysis',
+            source: {
+                site: window.location.origin,
+                userId: data.userId || (userInfo && userInfo.userId) || null,
+                displayName: (userInfo && userInfo.displayName) || null,
+                profileUrl: absoluteUrl(window.location.pathname)
+            },
+            analysis,
+            // The timeline buckets by local day (the same bucketing the on-page chart
+            // uses) while post timestamps are absolute, so re-bucketing postedAtMs in
+            // another zone will not always reproduce `timeline` exactly.
+            timezone: {
+                name: (Intl.DateTimeFormat().resolvedOptions().timeZone) || null,
+                utcOffsetMinutes: -new Date(data.timestamp).getTimezoneOffset()
+            },
+            totalPosts: data.totalPosts,
+            forums: (data.forums || []).map(f => ({ forum: f.name, count: f.count })),
+            timeline: (data.timeline || []).map(d => ({
+                date: isoDay(d.t),
+                dayStartMs: d.t,
+                total: d.total,
+                forums: d.forums
+            }))
+        };
+
+        if (posts) {
+            payload.posts = posts.map(p => ({
+                postedAt: p.timestamp ? new Date(p.timestamp).toISOString() : null,
+                postedAtMs: p.timestamp || null,
+                forum: p.name,
+                forumUrl: absoluteUrl(p.url),
+                threadTitle: p.title || null,
+                postUrl: absoluteUrl(p.postUrl)
+            }));
+        } else {
+            payload.posts = null;
+            payload.postsNote = 'Per-post records were not stored for this cached ' +
+                'analysis. Click Refresh to re-run the analysis and capture them.';
+        }
+
+        return payload;
+    }
+
+    function downloadJson(filename, payload) {
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Revoking synchronously can race the download starting in some builds.
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+
+    async function exportActivityJson(data, statusEl) {
+        const userInfo = currentUserInfo;
+        const userId = data.userId || (userInfo && userInfo.userId);
+        const posts = userId ? await getCachedPosts(userId) : (data.posts || null);
+        const payload = buildExportPayload(data, posts || data.posts || null, userInfo);
+
+        const who = slugForFilename((userInfo && userInfo.displayName) || userId);
+        downloadJson(`kees-forum-activity-${who}-${isoDay(Date.now())}.json`, payload);
+
+        if (statusEl) {
+            const n = payload.posts ? payload.posts.length : 0;
+            statusEl.textContent = payload.posts
+                ? `Exported ${n} post ${n === 1 ? 'record' : 'records'}.`
+                : 'Exported summary only (re-run the analysis to include post records).';
+            statusEl.style.color = payload.posts ? '#2ecc71' : '#e67e22';
+            setTimeout(() => { statusEl.textContent = ''; }, 8000);
+        }
+    }
+
     function renderResults(data, container) {
         const statusEl = document.getElementById('kees-activity-status');
 
@@ -788,16 +949,35 @@
         container.innerHTML = html;
 
         const btnContainer = document.createElement('div');
-        btnContainer.style.marginTop = '16px';
+        btnContainer.style.cssText = 'margin-top: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;';
         btnContainer.innerHTML = `
             <button id="kees-refresh-btn" class="button">
                 <span class="button-text">Refresh Analysis</span>
             </button>
+            <button id="kees-export-btn" class="button" title="Download the forum totals, daily timeline and raw post records as JSON">
+                <span class="button-text">Export JSON</span>
+            </button>
+            <span id="kees-export-status" style="font-size: 12px; color: #888;"></span>
         `;
         container.appendChild(btnContainer);
 
         document.getElementById('kees-refresh-btn').addEventListener('click', () => {
             startAnalysis(true);
+        });
+
+        document.getElementById('kees-export-btn').addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const status = document.getElementById('kees-export-status');
+            btn.disabled = true;
+            exportActivityJson(data, status)
+                .catch(err => {
+                    console.error('[KEES] Export failed:', err);
+                    if (status) {
+                        status.textContent = 'Export failed: ' + err.message;
+                        status.style.color = '#e74c3c';
+                    }
+                })
+                .finally(() => { btn.disabled = false; });
         });
     }
 
@@ -951,6 +1131,7 @@
         analyzeUserActivity,
         analyzeUserActivityDeep,
         getCachedData,
+        getCachedPosts,
         clearCachedData
     };
 
