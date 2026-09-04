@@ -54,7 +54,10 @@
       "matches": [
         "https://kiwifarms.st/members/*"
       ],
-      "js": ["src/features/user-forum-activity.js"],
+      "js": [
+        "src/features/user-forum-activity.js",
+        "src/features/warnings-egg.js"
+      ],
       "run_at": "document_idle"
     },
     {
