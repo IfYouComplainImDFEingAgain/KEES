@@ -40,7 +40,7 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Attachment EXIF Stripping** - Automatically remove location/camera metadata from image attachments (enabled by default)
 
 ### User Profile Features
-- **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results, shown as a per-forum breakdown plus a stacked bar chart of posting frequency over time
+- **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results, shown as a per-forum breakdown plus a stacked bar chart of posting frequency over time. Lives in its own "Forum Activity" tab alongside the profile's native tabs, between "Postings" and "About"
 - **Forum Activity JSON Export** - "Export JSON" downloads everything the analysis produced: the run's own parameters, the per-forum totals, the daily timeline behind the chart, and the deduped per-post records (forum, thread title, permalink, timestamp) those totals were counted from
 
 ### User Tagging
@@ -126,7 +126,7 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 - **Reaction Filter** - Posts exceeding the negative reaction threshold are automatically collapsed
 
 ### User Profiles
-- **Forum Activity** - Click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally). "Export JSON" saves the underlying data — aggregates and raw post records — as a file. Analyses cached before this feature existed hold no post records; hit "Refresh Analysis" once to capture them
+- **Forum Activity** - Open the "Forum Activity" tab on the profile and click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally). "Export JSON" saves the underlying data — aggregates and raw post records — as a file. Analyses cached before this feature existed hold no post records; hit "Refresh Analysis" once to capture them
 - **User Tags** - In the "User Tags" box, add your own tags or click "Generate from forum activity" to produce accurate forum-based auto tags. Tags appear as chips next to the user's name across the site. The box also appears on restricted profiles that show only the "limits who may view" notice, so those users can still be tagged (activity analysis is hidden there, since it has nothing to read)
 
 ### Forum Threads & Profiles

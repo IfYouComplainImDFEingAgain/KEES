@@ -498,7 +498,6 @@
         const box = document.createElement('div');
         box.id = 'kees-forum-activity';
         box.className = 'block';
-        box.style.cssText = 'margin-top: 16px;';
 
         box.innerHTML = `
             <div class="block-container">
@@ -1080,7 +1079,8 @@
 
         function insertBox() {
             const tabHeader = document.querySelector('.block-tabHeader--memberTabs');
-            if (!tabHeader) {
+            const paneList = document.querySelector('.js-memberTabPanes');
+            if (!tabHeader || !paneList) {
                 return false;
             }
 
@@ -1088,8 +1088,70 @@
                 return true;
             }
 
-            const box = createActivityBox(userInfo);
-            tabHeader.parentNode.insertBefore(box, tabHeader);
+            const tabStrip = tabHeader.querySelector('.hScroller-scroll') || tabHeader;
+
+            const tab = document.createElement('a');
+            tab.href = 'javascript:';
+            tab.id = 'kees-activity-tab';
+            tab.className = 'tabs-tab';
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-controls', 'kees-activity-pane');
+            tab.setAttribute('aria-selected', 'false');
+            tab.textContent = 'Forum Activity';
+
+            const aboutTab = tabStrip.querySelector('#about, a[href$="/about"]');
+            if (aboutTab) {
+                tabStrip.insertBefore(tab, aboutTab);
+            } else {
+                tabStrip.appendChild(tab);
+            }
+
+            const pane = document.createElement('li');
+            pane.id = 'kees-activity-pane';
+            pane.setAttribute('role', 'tabpanel');
+            pane.setAttribute('aria-labelledby', 'kees-activity-tab');
+            pane.setAttribute('aria-expanded', 'false');
+            // Toggled inline rather than by class alone: the theme's rule for
+            // hiding inactive panes is not guaranteed to match this element.
+            pane.style.display = 'none';
+            pane.appendChild(createActivityBox(userInfo));
+            paneList.appendChild(pane);
+
+            function setPaneActive(on) {
+                tab.classList.toggle('is-active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                pane.classList.toggle('is-active', on);
+                pane.setAttribute('aria-expanded', on ? 'true' : 'false');
+                pane.style.display = on ? '' : 'none';
+            }
+
+            // XenForo's tab handler was bound before this tab existed, so it
+            // would treat a click here as an unknown pane. Drive the switch
+            // ourselves in the capture phase and keep XF out of it.
+            tabHeader.addEventListener('click', (e) => {
+                const clicked = e.target.closest && e.target.closest('.tabs-tab');
+                if (!clicked) {
+                    return;
+                }
+                if (clicked === tab) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tabStrip.querySelectorAll('.tabs-tab').forEach(t => {
+                        if (t === tab) return;
+                        t.classList.remove('is-active');
+                        t.setAttribute('aria-selected', 'false');
+                    });
+                    paneList.querySelectorAll(':scope > li').forEach(p => {
+                        if (p === pane) return;
+                        p.classList.remove('is-active');
+                        p.setAttribute('aria-expanded', 'false');
+                    });
+                    setPaneActive(true);
+                } else {
+                    // XF activates its own tab but knows nothing about ours.
+                    setPaneActive(false);
+                }
+            }, true);
 
             getCachedData(userInfo.userId).then(cached => {
                 if (cached) {
