@@ -11,8 +11,8 @@
 // incrementally, so a stop/close never loses collected data.
 //
 // Note: re-running the crawler ADDS to counts (it cannot know which posts a prior
-// run already saw across sessions). For an exact per-user snapshot, use the
-// "Generate from forum activity" button on a member profile instead.
+// run already saw across sessions), though thread pages already tallied are skipped
+// via the seen-pages index in tag-store.js.
 (function() {
     'use strict';
 

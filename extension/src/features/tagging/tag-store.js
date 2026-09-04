@@ -296,12 +296,11 @@
     // Merge a batch of increments collected from one page in a single read/write
     // pass. batch shape:
     //   { [userId]: { username, forums: { [forumId]: { name, add } } } }
-    // `replace: true` overwrites a user's forum counts instead of adding (used by
-    // the accurate per-user analysis so re-running doesn't double-count).
-    async function applyActivityBatch(batch, opts) {
+    // Always additive: callers avoid double-counting by never re-submitting a
+    // thread page they already tallied (see getSeenPages/addSeenPage).
+    async function applyActivityBatch(batch) {
         const userIds = Object.keys(batch || {});
         if (!userIds.length) return;
-        const replace = !!(opts && opts.replace);
 
         const keys = userIds.map(activityKey);
         const existing = await new Promise((resolve) => {
@@ -312,7 +311,7 @@
         const now = Date.now();
         for (const userId of userIds) {
             const incoming = batch[userId];
-            const rec = (!replace && existing[activityKey(userId)]) || emptyRecord(incoming.username);
+            const rec = existing[activityKey(userId)] || emptyRecord(incoming.username);
             if (incoming.username) rec.username = incoming.username;
             for (const forumId of Object.keys(incoming.forums || {})) {
                 const f = incoming.forums[forumId];

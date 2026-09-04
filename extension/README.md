@@ -50,7 +50,6 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Forum Short Names** - Map long forum names to short labels used on tags. Forums populate this list automatically as you browse
 - **Passive Activity Collection** - As you read threads, each post is counted toward its author's per-forum activity table. No extra network requests — the table builds up as you browse normally. Each thread page is recorded once it's counted, so reloads, revisits, and re-crawls never double-count it
 - **Hide Tags** - Hide all tag chips globally (a toggle in settings and on the dashboard) or hide a specific user's chips from the Tag Manager. Chips update live everywhere
-- **Accurate Per-User Counts** - On a profile, "Generate from forum activity" crawls that user's own posts for an exact per-forum breakdown (and refreshes their auto tags)
 - **Bounded Crawler** - Opt-in, throttled crawl to populate the activity table for many users at once. Crawl buttons appear directly on the pages: on a forum — "Crawl this forum", a "Crawl" button per sub-forum box, and "Crawl all sub-forums"; on a thread — "Crawl this thread" (reads every page, ideal for megathreads). A floating progress/Stop HUD shows status. Hard caps bound the work and it auto-stops the moment it sees a non-200 response or a proof-of-work challenge page
 - **Tag Manager** - A dedicated full-page dashboard (opened in its own tab) listing every tagged user with their manual and auto tags, forum activity, and top forums; plus auto-tag settings, forum short names, live crawl status, recent-crawl history, and JSON export/import
 - **Export / Import** - Back up or transfer all tags, your tag library, forum short names, and activity as a JSON file
@@ -127,7 +126,7 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 
 ### User Profiles
 - **Forum Activity** - Open the "Forum Activity" tab on the profile and click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally). "Export JSON" saves the underlying data — aggregates and raw post records — as a file. Analyses cached before this feature existed hold no post records; hit "Refresh Analysis" once to capture them
-- **User Tags** - In the "User Tags" box, add your own tags or click "Generate from forum activity" to produce accurate forum-based auto tags. Tags appear as chips next to the user's name across the site. The box also appears on restricted profiles that show only the "limits who may view" notice, so those users can still be tagged (activity analysis is hidden there, since it has nothing to read)
+- **User Tags** - In the "User Tags" box, add your own tags; auto tags derived from forum activity are shown below them. Tags appear as chips next to the user's name across the site. The box also appears on restricted profiles that show only the "limits who may view" notice, so those users can still be tagged
 
 ### Forum Threads & Profiles
 - **Tag Chips** - Users you've tagged show colored chips below the author's name in posts and on their profile header, your own tags first. Browsing threads also passively builds the per-user forum activity table used for auto tags
