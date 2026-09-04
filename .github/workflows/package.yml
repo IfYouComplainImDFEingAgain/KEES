@@ -31,24 +31,38 @@ jobs:
         run: |
           jq '.version = "${{ steps.version.outputs.version }}" | .browser_specific_settings.gecko.id = "kees@kiwifarms.extension"' extension/manifest.json > tmp.json && mv tmp.json extension/manifest.json
 
-      - name: Verify packaged paths exist
+      - name: Package extension
         run: |
           cd extension
+          # Driven by git rather than an allow-list of top-level paths: a new
+          # file living somewhere nobody remembered to add to the zip is exactly
+          # how a release ships without it. Anything tracked ships; anything
+          # untracked was never going to be in the checkout anyway.
+          git ls-files -z ':!:.gitignore' \
+            | xargs -0 zip -qX ../kees-${{ steps.version.outputs.version }}.zip
+
+      # Verifies the archive, not the checkout: a file can be present in the
+      # repo and still be missing from the zip, which is the failure this is
+      # really here to catch. Everything the manifest and the extension's own
+      # HTML pages point at must be inside the package, or the build silently
+      # ships dead pages, missing icons, or a content script that never runs.
+      - name: Verify archive contents
+        run: |
+          zip="kees-${{ steps.version.outputs.version }}.zip"
+          zipinfo -1 "$zip" | sort > /tmp/archive.txt
+          echo "packaged $(wc -l < /tmp/archive.txt) files:"
+          cat /tmp/archive.txt
+
           status=0
-          for path in manifest.json src icons settings tags data; do
-            if [ ! -e "$path" ]; then
-              echo "::error::missing packaged path: extension/$path"
+          for path in manifest.json src settings tags data icons; do
+            if ! grep -qE "^$path(/|\$)" /tmp/archive.txt; then
+              echo "::error::archive is missing extension/$path"
               status=1
             fi
           done
-          # Every local file the manifest points at must be present, or the
-          # build silently ships an extension with dead pages/resources.
-          while read -r ref; do
-            if [ ! -e "$ref" ]; then
-              echo "::error::manifest references missing file: extension/$ref"
-              status=1
-            fi
-          done < <(jq -r '
+
+          # Local files the manifest points at.
+          jq -r '
             [ .options_ui.page?,
               .background.service_worker?,
               (.background.scripts // [] | .[]),
@@ -57,20 +71,36 @@ jobs:
               (.web_accessible_resources // [] | .[] | (.resources // [] | .[])),
               (.icons // {} | .[]),
               (.action.default_icon // {} | .[])
-            ] | map(select(type == "string")) | unique | .[]' manifest.json)
-          exit $status
+            ] | map(select(type == "string")) | unique | .[]' \
+            extension/manifest.json > /tmp/refs.txt
 
-      - name: Package extension
-        run: |
-          cd extension
-          zip -r ../kees-${{ steps.version.outputs.version }}.zip \
-            manifest.json \
-            src/ \
-            settings/ \
-            tags/ \
-            data/ \
-            icons/ \
-            -x '*/.*' '.*'
+          # Scripts, stylesheets, and images the packaged HTML pages load. These
+          # never appear in the manifest, so nothing else would notice a new one
+          # going missing - settings.html and tags.html both reach across into
+          # src/ for the tag store.
+          while read -r page; do
+            dir=$(dirname "$page")
+            grep -oE '(src|href)="[^"]+"' "extension/$page" \
+              | sed -E 's/.*="([^"]+)"/\1/' \
+              | grep -vE '^([a-zA-Z]+:|//|#|\?)' \
+              | while read -r rel; do
+                  realpath -m --relative-to=extension "extension/$dir/${rel%%[?#]*}"
+                done
+          done < <(grep -E '\.html$' /tmp/archive.txt) >> /tmp/refs.txt
+
+          while read -r ref; do
+            [ -n "$ref" ] || continue
+            if grep -Fxq "$ref" /tmp/archive.txt; then
+              continue
+            fi
+            if [ -e "extension/$ref" ]; then
+              echo "::error::extension/$ref exists but was not packaged - is it tracked by git?"
+            else
+              echo "::error::referenced file does not exist: extension/$ref"
+            fi
+            status=1
+          done < <(sort -u /tmp/refs.txt)
+          exit $status
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
