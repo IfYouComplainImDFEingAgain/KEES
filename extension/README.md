@@ -40,11 +40,11 @@ A browser extension that adds enhanced features to Xenforo chat and forum pages.
 - **Attachment EXIF Stripping** - Automatically remove location/camera metadata from image attachments (enabled by default)
 
 ### User Profile Features
-- **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results, shown as a per-forum breakdown plus a stacked bar chart of posting frequency over time. Lives in its own "Forum Activity" tab alongside the profile's native tabs, between "Postings" and "About"
+- **Forum Activity Analysis** - Analyze which forums a user posts in most frequently with cached results, shown as a per-forum breakdown plus a stacked bar chart of posting frequency over time. Lives in its own "Forum Activity" tab alongside the profile's native tabs, ahead of "About"
 - **Forum Activity JSON Export** - "Export JSON" downloads everything the analysis produced: the run's own parameters, the per-forum totals, the daily timeline behind the chart, and the deduped per-post records (forum, thread title, permalink, timestamp) those totals were counted from
 
 ### User Tagging
-- **Your Tags** - Tag any user from their profile, from the Tag Manager, or from a restricted profile that shows nothing but "This member limits who may view their full profile." Your tags always render **first** in the chip row and are styled solid and bold, ahead of the dimmed, dashed auto tags
+- **Your Tags** - Tag any user from the "Tags" tab on their profile, from the Tag Manager, or from a restricted profile that shows nothing but "This member limits who may view their full profile." Your tags always render **first** in the chip row and are styled solid and bold, ahead of the dimmed, dashed auto tags
 - **Tag Library** - Optionally save labels you reuse, each with its own colour, in settings. Saved labels are offered as autocomplete wherever you add a tag, and recolouring one updates every chip carrying it instantly — no recompute, no page reload. Entirely optional: you can still type any tag by hand and never open the library
 - **Auto Tags from Forum Activity** - Automatically tag users by the forums/sub-forums they post in most, using your short names (configurable threshold and max tags per user). Auto tags are stored separately from your own tags, so regenerating never overwrites tags you added by hand. Turning auto-tagging off just hides them — the computed tags and the collected activity are kept, so switching it back on is instant and needs no recompute. The shipped dataset can also include per-megathread tags for specific threads (chips link to the thread); everything else stays lumped into its forum
 - **Forum Short Names** - Map long forum names to short labels used on tags. Forums populate this list automatically as you browse
@@ -126,7 +126,7 @@ The emote bar and format bar appear above the chat input when you're on a chat p
 
 ### User Profiles
 - **Forum Activity** - Open the "Forum Activity" tab on the profile and click "Analyze Forum Activity" to see which forums a user posts in most (results are cached locally). "Export JSON" saves the underlying data — aggregates and raw post records — as a file. Analyses cached before this feature existed hold no post records; hit "Refresh Analysis" once to capture them
-- **User Tags** - In the "User Tags" box, add your own tags; auto tags derived from forum activity are shown below them. Tags appear as chips next to the user's name across the site. The box also appears on restricted profiles that show only the "limits who may view" notice, so those users can still be tagged
+- **User Tags** - Open the "Tags" tab on the profile and add your own tags; auto tags derived from forum activity are shown below them. Tags appear as chips next to the user's name across the site. On restricted profiles that show only the "limits who may view" notice there are no tabs, so the box appears on its own and those users can still be tagged
 
 ### Forum Threads & Profiles
 - **Tag Chips** - Users you've tagged show colored chips below the author's name in posts and on their profile header, your own tags first. Browsing threads also passively builds the per-user forum activity table used for auto tags

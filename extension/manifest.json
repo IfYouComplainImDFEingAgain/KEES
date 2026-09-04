@@ -55,6 +55,7 @@
         "https://kiwifarms.st/members/*"
       ],
       "js": [
+        "src/util/member-tabs.js",
         "src/features/user-forum-activity.js",
         "src/features/warnings-egg.js"
       ],
@@ -67,6 +68,7 @@
         "https://kiwifarms.st/members/*"
       ],
       "js": [
+        "src/util/member-tabs.js",
         "src/features/tagging/tag-store.js",
         "src/features/tagging/preload.js",
         "src/features/tagging/post-scanner.js",

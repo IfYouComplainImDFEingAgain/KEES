@@ -1,6 +1,6 @@
 // features/tagging/member-tagging.js - Tagging UI on member profile pages.
 //
-// Adds a "User Tags" block to the profile with manual tag add/remove, plus a
+// Adds a "Tags" profile tab holding manual tag add/remove, plus a
 // read-only view of the auto-tags derived from the activity index (tag-store.js).
 // Activity itself is collected by the passive post-scanner and the crawler; this
 // block only reads and never fetches anything of its own.
@@ -73,7 +73,6 @@
         const box = document.createElement('div');
         box.id = 'kees-user-tags';
         box.className = 'block';
-        box.style.cssText = 'margin-top:16px;';
         box.innerHTML =
             '<div class="block-container">' +
             '  <h3 class="block-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;">' +
@@ -158,17 +157,22 @@
     }
 
     function place(box) {
-        // Preferred: straight after the forum-activity box, as before.
-        const activity = document.getElementById('kees-forum-activity');
-        if (activity) { activity.insertAdjacentElement('afterend', box); return true; }
-
-        const tabs = document.querySelector('.block-tabHeader--memberTabs');
-        if (tabs && tabs.parentNode) { tabs.parentNode.insertBefore(box, tabs); return true; }
+        // Preferred: its own profile tab, beside Postings/About.
+        const memberTabs = SNEED.memberTabs;
+        const pane = memberTabs && memberTabs.add({
+            tabId: 'kees-tags-tab',
+            paneId: 'kees-tags-pane',
+            label: 'Tags'
+        });
+        if (pane) { pane.appendChild(box); return true; }
 
         // Only reach for the fallbacks once we know the tabs are never coming.
         // On a normal profile the observer should keep waiting instead, or the
-        // box lands above the activity panel it is supposed to follow.
+        // box lands somewhere the tab layout will not account for.
         if (!isLimitedProfile()) return false;
+
+        // Off-tab the block stands on its own, so give it some breathing room.
+        box.style.marginTop = '16px';
 
         // This wraps the "member limits who may view" notice.
         const pageContent = document.querySelector('.p-body-pageContent');
