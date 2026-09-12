@@ -155,6 +155,11 @@
 
         if (parsed.messages) {
             for (const msg of parsed.messages) {
+                // Whispers now ride in the same array as room messages, told
+                // apart by carrying a recipient (room_id is 0 on them). They are
+                // private and belong to the whisper conversations, so they never
+                // go into the room log this view shows.
+                if (msg.recipient) continue;
                 const author = msg.author ? msg.author.username : null;
                 const text = msg.message || '';
                 chatAddMessage(msg.message_uuid, author, text, msg.message_date, msg.message_edit_date);
@@ -456,9 +461,21 @@
         const history = await storageGet(STORAGE_KEYS.WHISPER_HISTORY);
         if (history && typeof history === 'object') {
             for (const [partner, data] of Object.entries(history)) {
+                // Same key the chat tab dedupes on. It owns this store and
+                // rewrites it deduped on its next save, but until then the
+                // history can still hold whispers the server replayed more than
+                // once, and this view should not show them twice either.
+                const seen = new Set();
+                const messages = [];
+                for (const msg of (data.messages || [])) {
+                    const key = msg.direction + '|' + (msg.timestamp || 0) + '|' + (msg.html || '');
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    messages.push(msg);
+                }
                 conversations[partner] = {
                     partnerId: data.partnerId || 0,
-                    messages: data.messages || [],
+                    messages: messages,
                     unread: 0
                 };
             }

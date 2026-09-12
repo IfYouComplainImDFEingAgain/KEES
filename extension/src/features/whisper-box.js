@@ -5,6 +5,40 @@
     const SNEED = window.SNEED;
     let maxHistoryPerPartner = 100;
 
+    // Whispers already on the server when we join are replayed into the room on
+    // every connect, so anything at or before this is backlog, not news.
+    const START_TS = Math.floor(Date.now() / 1000);
+
+    // Sneedchat gives whispers no uuid in the DOM - only the partner, direction,
+    // second-resolution timestamp and body - so identity is that tuple. Two real
+    // whispers collide only when the same text goes the same way to the same
+    // partner inside one second, which is rarer than the replayed history this
+    // keys out. The key is derived, not stored, so history saved before any of
+    // this existed dedupes on load just the same.
+    function whisperKey(msg) {
+        return msg.direction + '|' + (msg.timestamp || 0) + '|' + (msg.html || '');
+    }
+
+    // Conversations carry a Set of the keys they hold. Kept off the serialized
+    // shape - saveHistory writes partnerId and messages only - and rebuilt from
+    // the stored messages on the next load, so a whisper the retention cap
+    // trimmed can come back on a later replay. That is the cap being undone
+    // rather than a duplicate, and orderMessages puts it back where it belongs.
+    function seenKeys(convo) {
+        if (!convo.seen) convo.seen = new Set(convo.messages.map(whisperKey));
+        return convo.seen;
+    }
+
+    // The replay is not guaranteed to start after everything already held, so a
+    // whisper can arrive older than the one before it. Sorting is stable, and
+    // skipped entirely in the ordinary case of a message that belongs last.
+    function orderMessages(convo) {
+        const n = convo.messages.length;
+        if (n < 2) return;
+        if ((convo.messages[n - 1].timestamp || 0) >= (convo.messages[n - 2].timestamp || 0)) return;
+        convo.messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    }
+
     const conversations = {};
     let activePartner = null;
     let boxElement = null;
@@ -84,13 +118,30 @@
         try {
             const history = await SNEED.core.storage.getStorageValue(SNEED.state.STORAGE_KEYS.WHISPER_HISTORY);
             if (history && typeof history === 'object') {
+                let dropped = false;
                 for (const [partner, data] of Object.entries(history)) {
                     if (!conversations[partner]) {
                         conversations[partner] = { partnerId: data.partnerId || 0, messages: [], unread: 0 };
                     }
-                    conversations[partner].messages = data.messages || [];
-                    conversations[partner].partnerId = data.partnerId || conversations[partner].partnerId;
+                    // Merge rather than assign: history saved while the replay
+                    // was going unnoticed can hold the same whisper many times
+                    // over, and that is what gets loaded here.
+                    const convo = conversations[partner];
+                    convo.messages = [];
+                    convo.seen = new Set();
+                    for (const msg of (data.messages || [])) {
+                        const key = whisperKey(msg);
+                        if (convo.seen.has(key)) continue;
+                        convo.seen.add(key);
+                        convo.messages.push(msg);
+                    }
+                    convo.partnerId = data.partnerId || convo.partnerId;
+                    if (convo.messages.length !== (data.messages || []).length) dropped = true;
                 }
+                // Write the cleaned history back rather than waiting for the
+                // next whisper to trigger a save, so a store already polluted by
+                // the replay is repaired on this load.
+                if (dropped) saveHistory();
             }
         } catch (e) {
             SNEED.log.error('Failed to load whisper history:', e);
@@ -111,14 +162,22 @@
         }, 1000);
     }
 
+    // Returns true when the whisper was not already held, i.e. when there is
+    // something new to show for it.
     function addMessage(partnerUsername, partnerId, msg) {
         if (!conversations[partnerUsername]) {
             conversations[partnerUsername] = { partnerId: partnerId, messages: [], unread: 0 };
         }
 
         const convo = conversations[partnerUsername];
+        const seen = seenKeys(convo);
+        const key = whisperKey(msg);
+        if (seen.has(key)) return false;
+        seen.add(key);
+
         convo.partnerId = partnerId;
         convo.messages.push(msg);
+        orderMessages(convo);
 
         // Cap history (0 = unlimited)
         if (maxHistoryPerPartner > 0 && convo.messages.length > maxHistoryPerPartner) {
@@ -139,6 +198,8 @@
                 ts: Date.now()
             });
         }
+
+        return true;
     }
 
     function markRead(partner) {
@@ -416,16 +477,25 @@
                         whisperNode.style.display = 'none';
                     }
 
-                    addMessage(whisper.partner, whisper.partnerId, {
+                    const isNew = addMessage(whisper.partner, whisper.partnerId, {
                         direction: whisper.direction,
                         author: whisper.author,
                         html: whisper.html,
                         timestamp: whisper.timestamp
                     });
 
+                    // Replayed backlog. The node still had to be hidden above,
+                    // but the box has this whisper already.
+                    if (!isNew) continue;
+
                     newWhispers = true;
 
-                    if (whisper.direction === 'in') {
+                    // Only whispers that arrived after this page did get a
+                    // desktop notification: the replay can carry hundreds, and a
+                    // burst of them on every join is noise. Ones that landed
+                    // while the tab was away are still new here, so they keep
+                    // their unread badge and open the box below.
+                    if (whisper.direction === 'in' && whisper.timestamp >= START_TS) {
                         const plainText = whisperNode.querySelector('.message')?.textContent?.trim() || '';
                         sendWhisperNotification(whisper.partner, plainText, doc);
                     }
